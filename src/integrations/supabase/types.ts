@@ -78,12 +78,135 @@ export type Database = {
           organisation_id?: string | null
           status?: string
         }
+        Relationships: []
+      }
+      admins: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          pricing_plan: string
+          super_admin_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          pricing_plan: string
+          super_admin_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          pricing_plan?: string
+          super_admin_id?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "admin_approvals_organisation_id_fkey"
-            columns: ["organisation_id"]
+            foreignKeyName: "admins_super_admin_id_fkey"
+            columns: ["super_admin_id"]
             isOneToOne: false
-            referencedRelation: "organisations"
+            referencedRelation: "super_admins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          appointment_date: string
+          client_id: string | null
+          created_at: string | null
+          garage_id: string | null
+          id: string
+          notes: string | null
+          status: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          appointment_date: string
+          client_id?: string | null
+          created_at?: string | null
+          garage_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          appointment_date?: string
+          client_id?: string | null
+          created_at?: string | null
+          garage_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_garage_id_fkey"
+            columns: ["garage_id"]
+            isOneToOne: false
+            referencedRelation: "garages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          garage_id: string | null
+          id: string
+          loyalty_points: number | null
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          garage_id?: string | null
+          id?: string
+          loyalty_points?: number | null
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          garage_id?: string | null
+          id?: string
+          loyalty_points?: number | null
+          name?: string
+          phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_garage_id_fkey"
+            columns: ["garage_id"]
+            isOneToOne: false
+            referencedRelation: "garages"
             referencedColumns: ["id"]
           },
         ]
@@ -134,15 +257,7 @@ export type Database = {
           postal_code?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "customers_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       employees: {
         Row: {
@@ -229,47 +344,46 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "employees_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       garages: {
         Row: {
-          address: string | null
+          address: string
           created_at: string | null
+          description: string | null
           id: string
-          name: string | null
+          is_active: boolean | null
+          name: string
+          opening_hours: string | null
           organisation_id: string | null
+          phone: string | null
+          updated_at: string | null
         }
         Insert: {
-          address?: string | null
+          address: string
           created_at?: string | null
+          description?: string | null
           id?: string
-          name?: string | null
+          is_active?: boolean | null
+          name: string
+          opening_hours?: string | null
           organisation_id?: string | null
+          phone?: string | null
+          updated_at?: string | null
         }
         Update: {
-          address?: string | null
+          address?: string
           created_at?: string | null
+          description?: string | null
           id?: string
-          name?: string | null
+          is_active?: boolean | null
+          name?: string
+          opening_hours?: string | null
           organisation_id?: string | null
+          phone?: string | null
+          updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "garages_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       invoices: {
         Row: {
@@ -293,15 +407,7 @@ export type Database = {
           organisation_id?: string | null
           status?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "invoices_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -334,15 +440,40 @@ export type Database = {
           type?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      onboarding_workflow_states: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          current_step: string
+          id: string
+          is_completed: boolean | null
+          last_updated: string | null
+          organisation_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          current_step: string
+          id?: string
+          is_completed?: boolean | null
+          last_updated?: string | null
+          organisation_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          current_step?: string
+          id?: string
+          is_completed?: boolean | null
+          last_updated?: string | null
+          organisation_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       organisation_creation_log: {
         Row: {
@@ -363,105 +494,75 @@ export type Database = {
           id?: number
           organisation_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "organisation_creation_log_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       organisations: {
         Row: {
-          address: string | null
-          city: string | null
-          code: string
-          config: Json | null
-          country: string | null
           created_at: string | null
-          created_by: string | null
-          creation_date: string | null
           description: string | null
-          email: string | null
+          email: string
           id: string
-          is_active: boolean | null
-          logo_url: string | null
           name: string
           owner_id: string | null
-          parent_id: string | null
-          phone: string | null
-          plan_tier: string
-          plan_type: string
-          slug: string | null
-          status: string | null
-          storage_quota_mb: number | null
-          subscription_end: string | null
-          subscription_plan: string | null
+          slug: string
           subscription_type: string | null
-          trial_end_date: string | null
-          user_quota: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          email: string
+          id?: string
+          name: string
+          owner_id?: string | null
+          slug: string
+          subscription_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          email?: string
+          id?: string
+          name?: string
+          owner_id?: string | null
+          slug?: string
+          subscription_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      organizations: {
+        Row: {
+          address: string | null
+          admin_id: string | null
+          created_at: string | null
+          id: string
+          name: string
         }
         Insert: {
           address?: string | null
-          city?: string | null
-          code?: string
-          config?: Json | null
-          country?: string | null
+          admin_id?: string | null
           created_at?: string | null
-          created_by?: string | null
-          creation_date?: string | null
-          description?: string | null
-          email?: string | null
           id?: string
-          is_active?: boolean | null
-          logo_url?: string | null
           name: string
-          owner_id?: string | null
-          parent_id?: string | null
-          phone?: string | null
-          plan_tier?: string
-          plan_type?: string
-          slug?: string | null
-          status?: string | null
-          storage_quota_mb?: number | null
-          subscription_end?: string | null
-          subscription_plan?: string | null
-          subscription_type?: string | null
-          trial_end_date?: string | null
-          user_quota?: number | null
         }
         Update: {
           address?: string | null
-          city?: string | null
-          code?: string
-          config?: Json | null
-          country?: string | null
+          admin_id?: string | null
           created_at?: string | null
-          created_by?: string | null
-          creation_date?: string | null
-          description?: string | null
-          email?: string | null
           id?: string
-          is_active?: boolean | null
-          logo_url?: string | null
           name?: string
-          owner_id?: string | null
-          parent_id?: string | null
-          phone?: string | null
-          plan_tier?: string
-          plan_type?: string
-          slug?: string | null
-          status?: string | null
-          storage_quota_mb?: number | null
-          subscription_end?: string | null
-          subscription_plan?: string | null
-          subscription_type?: string | null
-          trial_end_date?: string | null
-          user_quota?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizations_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "admins"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       parts: {
         Row: {
@@ -542,62 +643,103 @@ export type Database = {
           organisation_id?: string | null
           price?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "products_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
-          actif: boolean | null
           avatar_url: string | null
           created_at: string | null
           email: string
           full_name: string | null
           id: string
+          is_active: boolean | null
+          is_superadmin: boolean | null
+          name: string | null
           organisation_id: string | null
           phone: string | null
+          phone_verified: boolean | null
           role: string | null
+          sms_code: string | null
+          sms_code_expires_at: string | null
           updated_at: string | null
-          user_id: string
         }
         Insert: {
-          actif?: boolean | null
           avatar_url?: string | null
           created_at?: string | null
           email: string
           full_name?: string | null
           id: string
+          is_active?: boolean | null
+          is_superadmin?: boolean | null
+          name?: string | null
           organisation_id?: string | null
           phone?: string | null
+          phone_verified?: boolean | null
           role?: string | null
+          sms_code?: string | null
+          sms_code_expires_at?: string | null
           updated_at?: string | null
-          user_id: string
         }
         Update: {
-          actif?: boolean | null
           avatar_url?: string | null
           created_at?: string | null
           email?: string
           full_name?: string | null
           id?: string
+          is_active?: boolean | null
+          is_superadmin?: boolean | null
+          name?: string | null
           organisation_id?: string | null
           phone?: string | null
+          phone_verified?: boolean | null
           role?: string | null
+          sms_code?: string | null
+          sms_code_expires_at?: string | null
           updated_at?: string | null
-          user_id?: string
+        }
+        Relationships: []
+      }
+      repair_photos: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          photo_url: string
+          repair_id: string | null
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          photo_url: string
+          repair_id?: string | null
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          photo_url?: string
+          repair_id?: string | null
+          type?: string
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "profiles_organisation_id_fkey"
-            columns: ["organisation_id"]
+            foreignKeyName: "repair_photos_repair_id_fkey"
+            columns: ["repair_id"]
             isOneToOne: false
-            referencedRelation: "organisations"
+            referencedRelation: "repairs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_photos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -630,15 +772,7 @@ export type Database = {
           status?: string | null
           vehicle_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "repairs_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       security_logs: {
         Row: {
@@ -667,6 +801,82 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_validations: {
+        Row: {
+          code: string
+          created_at: string | null
+          id: string
+          phone: string
+          user_id: string | null
+          validated: boolean | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          id?: string
+          phone: string
+          user_id?: string | null
+          validated?: boolean | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          id?: string
+          phone?: string
+          user_id?: string | null
+          validated?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_validations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_items: {
+        Row: {
+          created_at: string | null
+          garage_id: string | null
+          id: string
+          name: string
+          quantity: number | null
+          supplier: string | null
+          threshold: number | null
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          garage_id?: string | null
+          id?: string
+          name: string
+          quantity?: number | null
+          supplier?: string | null
+          threshold?: number | null
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          garage_id?: string | null
+          id?: string
+          name?: string
+          quantity?: number | null
+          supplier?: string | null
+          threshold?: number | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_items_garage_id_fkey"
+            columns: ["garage_id"]
+            isOneToOne: false
+            referencedRelation: "garages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_movements: {
         Row: {
           created_at: string | null
@@ -693,13 +903,6 @@ export type Database = {
           quantity?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "stock_movements_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "stock_movements_product_id_fkey"
             columns: ["product_id"]
@@ -734,52 +937,47 @@ export type Database = {
           start_date?: string | null
           status?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "subscriptions_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       super_admins: {
         Row: {
           created_at: string | null
           email: string
-          est_actif: boolean | null
+          est_actif: boolean
           id: string
-          nom: string
+          is_superadmin: boolean | null
+          name: string | null
+          nom: string | null
           phone: string | null
-          prenom: string
-          setup_expires_at: string | null
-          updated_at: string | null
-          user_id: string | null
+          prenom: string | null
+          role: string
+          user_id: string
         }
         Insert: {
           created_at?: string | null
           email: string
-          est_actif?: boolean | null
+          est_actif?: boolean
           id?: string
-          nom: string
+          is_superadmin?: boolean | null
+          name?: string | null
+          nom?: string | null
           phone?: string | null
-          prenom: string
-          setup_expires_at?: string | null
-          updated_at?: string | null
-          user_id?: string | null
+          prenom?: string | null
+          role?: string
+          user_id: string
         }
         Update: {
           created_at?: string | null
           email?: string
-          est_actif?: boolean | null
+          est_actif?: boolean
           id?: string
-          nom?: string
+          is_superadmin?: boolean | null
+          name?: string | null
+          nom?: string | null
           phone?: string | null
-          prenom?: string
-          setup_expires_at?: string | null
-          updated_at?: string | null
-          user_id?: string | null
+          prenom?: string | null
+          role?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -802,15 +1000,7 @@ export type Database = {
           preferences?: Json | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_contexts_current_organisation_id_fkey"
-            columns: ["current_organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_organisations: {
         Row: {
@@ -837,53 +1027,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_organisations_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_organizations: {
-        Row: {
-          created_at: string | null
-          est_actif: boolean | null
-          id: string
-          organisation_id: string
-          role: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          est_actif?: boolean | null
-          id?: string
-          organisation_id: string
-          role: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          est_actif?: boolean | null
-          id?: string
-          organisation_id?: string
-          role?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_organizations_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -939,6 +1083,74 @@ export type Database = {
         }
         Relationships: []
       }
+      users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          garage_id: string | null
+          id: string
+          name: string
+          phone: string | null
+          role: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          garage_id?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          role: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          garage_id?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_garage_id_fkey"
+            columns: ["garage_id"]
+            isOneToOne: false
+            referencedRelation: "garages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users_organisations: {
+        Row: {
+          created_at: string | null
+          id: string
+          organisation_id: string
+          role: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          organisation_id: string
+          role: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          organisation_id?: string
+          role?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       vehicles: {
         Row: {
           created_at: string | null
@@ -981,33 +1193,169 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "vehicles_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
         ]
+      }
+      workflow_states: {
+        Row: {
+          created_at: string | null
+          current_step: string
+          id: string
+          is_completed: boolean | null
+          metadata: Json | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_step: string
+          id?: string
+          is_completed?: boolean | null
+          metadata?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_step?: string
+          id?: string
+          is_completed?: boolean | null
+          metadata?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      can_create_first_super_admin: {
-        Args: Record<PropertyKey, never>
+      check_admin_email_exists: {
+        Args: { p_email: string }
         Returns: boolean
       }
       check_create_organisation_permissions: {
         Args: { p_owner_id: string }
         Returns: undefined
       }
-      create_organisation_with_admin: {
-        Args:
-          | { admin_email: string; org_data: Json }
-          | { admin_id: string; org_data: Json }
+      check_email_exists: {
+        Args: { p_email: string }
+        Returns: boolean
+      }
+      check_first_super_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      check_super_admin_exists: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      check_system_tables: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      check_user_role: {
+        Args: { p_email: string }
+        Returns: string
+      }
+      check_workflow_state: {
+        Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      create_admin_complete: {
+        Args: {
+          p_email: string
+          p_name: string
+          p_password: string
+          p_phone?: string
+          p_pricing_plan?: string
+        }
+        Returns: Json
+      }
+      create_admin_user: {
+        Args: {
+          p_email: string
+          p_nom: string
+          p_password: string
+          p_phone: string
+        }
+        Returns: string
+      }
+      create_admin_v3: {
+        Args: {
+          p_email: string
+          p_first_name: string
+          p_name: string
+          p_password: string
+          p_phone: string
+        }
+        Returns: string
+      }
+      create_admin_v4: {
+        Args: {
+          p_email: string
+          p_is_superadmin?: boolean
+          p_nom: string
+          p_password: string
+          p_phone: string
+        }
+        Returns: string
+      }
+      create_admin_with_auth: {
+        Args:
+          | {
+              p_email: string
+              p_first_name: string
+              p_name: string
+              p_password: string
+              p_phone: string
+            }
+          | {
+              p_email: string
+              p_nom: string
+              p_password: string
+              p_phone: string
+            }
+        Returns: string
+      }
+      create_admin_with_auth_v2: {
+        Args: {
+          p_email: string
+          p_first_name: string
+          p_name: string
+          p_password: string
+          p_phone: string
+        }
+        Returns: string
+      }
+      create_auth_user: {
+        Args: { email: string; password: string }
+        Returns: string
+      }
+      create_first_super_admin: {
+        Args: { p_email: string; p_name: string; p_password: string }
+        Returns: Json
+      }
+      create_garage_complete: {
+        Args: {
+          p_address?: string
+          p_name: string
+          p_organization_id?: string
+          p_phone?: string
+        }
+        Returns: Json
+      }
+      create_initial_super_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      create_initial_user_profile: {
+        Args: {
+          p_user_email: string
+          p_user_full_name: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
       create_organisation_with_owner: {
         Args:
@@ -1051,6 +1399,30 @@ export type Database = {
         }
         Returns: Json
       }
+      create_organization_complete: {
+        Args: { p_address?: string; p_admin_email?: string; p_name: string }
+        Returns: Json
+      }
+      create_organization_for_admin: {
+        Args: {
+          p_description?: string
+          p_email: string
+          p_name: string
+          p_slug: string
+          p_subscription_type?: string
+        }
+        Returns: string
+      }
+      create_organization_with_admin: {
+        Args: {
+          p_admin_id: string
+          p_description?: string
+          p_email: string
+          p_name: string
+          p_subscription_type?: string
+        }
+        Returns: string
+      }
       create_organization_with_owner: {
         Args: {
           org_code: string
@@ -1062,21 +1434,78 @@ export type Database = {
         }
         Returns: Json
       }
-      create_user_profile: {
+      create_profile_with_role: {
         Args: {
-          avatar_url?: string
-          email: string
-          full_name: string
-          organisation_id?: string
-          phone?: string
-          role?: string
-          user_id: string
+          p_email: string
+          p_id: string
+          p_name: string
+          p_phone: string
+          p_role: string
+        }
+        Returns: undefined
+      }
+      create_super_admin: {
+        Args: { p_email: string; p_name: string; p_password: string }
+        Returns: {
+          id: string
+        }[]
+      }
+      create_super_admin_complete: {
+        Args: {
+          p_email: string
+          p_name: string
+          p_password: string
+          p_phone?: string
         }
         Returns: Json
+      }
+      create_super_admin_v2: {
+        Args: { p_email: string; p_name: string; p_phone: string }
+        Returns: Json
+      }
+      create_super_admin_with_auth: {
+        Args: {
+          p_email: string
+          p_nom: string
+          p_password: string
+          p_phone: string
+        }
+        Returns: string
+      }
+      create_user_profile: {
+        Args:
+          | {
+              avatar_url?: string
+              email: string
+              full_name: string
+              organisation_id?: string
+              phone?: string
+              role?: string
+              user_id: string
+            }
+          | {
+              full_name: string
+              phone: string
+              user_email: string
+              user_id: string
+              user_role: string
+            }
+          | {
+              user_email: string
+              user_name: string
+              user_password: string
+              user_phone: string
+              user_role?: string
+            }
+        Returns: undefined
       }
       create_user_simple: {
         Args: { user_email: string; user_id: string; user_role?: string }
         Returns: Json
+      }
+      delete_profile: {
+        Args: { profile_id: string }
+        Returns: undefined
       }
       disable_rls_for_org_creation: {
         Args: Record<PropertyKey, never>
@@ -1102,6 +1531,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_profile: {
+        Args: { profile_id: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string
+          theme: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       get_user_organisations: {
         Args: { user_uuid: string }
         Returns: {
@@ -1113,12 +1556,65 @@ export type Database = {
         Args: Record<PropertyKey, never> | { org_code: string }
         Returns: undefined
       }
+      initialize_system: {
+        Args: {
+          admin_email: string
+          admin_name: string
+          admin_password: string
+        }
+        Returns: Json
+      }
       is_first_super_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
       is_super_admin: {
-        Args: Record<PropertyKey, never> | { userid: string }
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      quick_downgrade_to_admin: {
+        Args: { target_email: string }
+        Returns: undefined
+      }
+      send_validation_sms: {
+        Args: { phone_number: string; user_id: string }
+        Returns: boolean
+      }
+      set_user_role: {
+        Args: { new_role: string; user_id: string }
+        Returns: undefined
+      }
+      setup_garage: {
+        Args: {
+          garage_address: string
+          garage_description: string
+          garage_name: string
+          garage_opening_hours: string
+          garage_phone: string
+        }
+        Returns: boolean
+      }
+      update_profile: {
+        Args: {
+          avatar_url: string
+          first_name: string
+          last_name: string
+          phone: string
+          profile_id: string
+          theme: string
+        }
+        Returns: undefined
+      }
+      update_profile_role: {
+        Args: { new_role: string; profile_id: string }
+        Returns: undefined
+      }
+      update_user_role: {
+        Args: { p_email: string; p_role: string }
+        Returns: undefined
+      }
+      update_workflow_state: {
+        Args: { p_current_step: string; p_user_id: string }
         Returns: boolean
       }
       upsert_user_and_profile_v2: {
@@ -1143,6 +1639,14 @@ export type Database = {
           user_id: string
           user_role?: string
         }
+        Returns: Json
+      }
+      validate_sms_code: {
+        Args: { p_code: string; p_phone?: string }
+        Returns: Json
+      }
+      verify_or_create_admin_profile: {
+        Args: { p_email: string; p_user_id?: string }
         Returns: Json
       }
     }
