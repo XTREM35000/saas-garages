@@ -6,38 +6,129 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useApp } from '@/contexts/AppContext';
-import { Crown, Building, Shield, Smartphone, CheckCircle } from 'lucide-react';
+import {
+  Car,
+  SprayCan,
+  Gauge,
+  Wrench, // Remplacer Tool par Wrench
+  Settings,
+  Crown,
+  Shield,
+  Building,
+  MessageSquare, // Ajout de MessageSquare
+  CheckCircle // Ajout de CheckCircle si nécessaire
+} from 'lucide-react';
+import AnimatedLogo from '../AnimatedLogo';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// Super Admin Modal
-export const SuperAdminModal: React.FC<ModalProps & { onComplete: () => void }> = ({ 
-  isOpen, 
-  onClose, 
-  onComplete 
-}) => {
-  const [formData, setFormData] = useState({ name: '', email: '' });
-  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+// Super Admin Modal
+type SuperAdminResponse = {
+  success: boolean;
+  user_id: string;
+  message: string;
+};
+
+export const SuperAdminModal: React.FC<ModalProps & { onComplete: () => void }> = ({
+  isOpen,
+  onClose,
+  onComplete
+}) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
+    avatar_url: '',
+    theme: 'default'
+  });
+  const { toast } = useToast();
+  const { supabase } = useApp();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email) {
+
+    if (!supabase?.rpc) {
       toast({
         title: "Erreur",
-        description: "Veuillez remplir tous les champs",
+        description: "La connexion à la base de données n'est pas disponible",
         variant: "destructive",
       });
       return;
     }
-    
-    toast({
-      title: "Super Admin créé",
-      description: "Propriétaire principal configuré avec succès",
-    });
-    onComplete();
+
+    if (!formData.email || !formData.password || !formData.first_name || !formData.last_name) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs obligatoires",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Vérifie si on peut créer le premier Super Admin
+      const { data: canCreate, error: checkError } = await supabase.rpc('can_create_first_super_admin');
+      if (checkError) throw checkError;
+      if (!canCreate) {
+        toast({
+          title: "Erreur",
+          description: "Un Super Admin existe déjà",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Création du Super Admin
+      const { data: superAdminData, error: createSAError } = await supabase.rpc('create_super_admin', {
+        p_email: formData.email,
+        p_name: `${formData.first_name} ${formData.last_name}`,
+        p_password: formData.password
+      });
+
+      if (createSAError) throw createSAError;
+
+      // Forcer le typage
+      const superAdmin = superAdminData as SuperAdminResponse;
+
+      if (!superAdmin || !superAdmin.user_id) {
+        throw new Error("Impossible de récupérer l'ID utilisateur du Super Admin créé.");
+      }
+
+      // Création du profil associé
+      const { data: profile, error: profileError } = await supabase.rpc('create_profile', {
+        user_id: superAdmin.user_id,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        avatar_url: formData.avatar_url,
+        theme: formData.theme
+      });
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: "Super Admin créé",
+        description: "Configuration terminée avec succès",
+      });
+
+      onComplete();
+
+    } catch (err: any) {
+      console.error("Erreur création Super Admin:", err);
+      toast({
+        title: "Erreur",
+        description: err.message || "Une erreur est survenue",
+        variant: "destructive",
+      });
+    }
   };
 
   if (!isOpen) return null;
@@ -46,8 +137,14 @@ export const SuperAdminModal: React.FC<ModalProps & { onComplete: () => void }> 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
       <Card className="w-full max-w-md mx-4 animate-scale-in">
         <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
-            <Crown className="h-8 w-8 text-primary-foreground" />
+          <div className="w-16 h-16 mx-auto mb-4">
+            <AnimatedLogo
+              mainIcon={Crown}
+              secondaryIcon={Settings}
+              mainColor="text-primary"
+              secondaryColor="text-yellow-400"
+              waterDrop={true}
+            />
           </div>
           <CardTitle>Initialisation Super Admin</CardTitle>
           <CardDescription>
@@ -56,14 +153,25 @@ export const SuperAdminModal: React.FC<ModalProps & { onComplete: () => void }> 
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nom complet</Label>
-              <Input
-                id="name"
-                placeholder="Votre nom complet"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">Prénom</Label>
+                <Input
+                  id="firstName"
+                  placeholder="John"
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Nom</Label>
+                <Input
+                  id="lastName"
+                  placeholder="Doe"
+                  value={formData.last_name}
+                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -73,6 +181,25 @@ export const SuperAdminModal: React.FC<ModalProps & { onComplete: () => void }> 
                 placeholder="votre@email.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Mot de passe</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Téléphone</Label>
+              <Input
+                id="phone"
+                placeholder="+33 6 12 34 56 78"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
             <Button type="submit" className="w-full">
@@ -85,17 +212,18 @@ export const SuperAdminModal: React.FC<ModalProps & { onComplete: () => void }> 
   );
 };
 
+
 // Admin Modal
-export const AdminModal: React.FC<ModalProps & { onComplete: () => void }> = ({ 
-  isOpen, 
-  onClose, 
-  onComplete 
+export const AdminModal: React.FC<ModalProps & { onComplete: () => void }> = ({
+  isOpen,
+  onClose,
+  onComplete
 }) => {
-  const [formData, setFormData] = useState({ 
-    name: '', 
-    email: '', 
-    phone: '', 
-    pricingPlan: '' 
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    pricingPlan: ''
   });
   const { toast } = useToast();
 
@@ -115,7 +243,7 @@ export const AdminModal: React.FC<ModalProps & { onComplete: () => void }> = ({
       });
       return;
     }
-    
+
     toast({
       title: "Admin créé",
       description: `Compte admin configuré avec le plan ${formData.pricingPlan}`,
@@ -129,8 +257,14 @@ export const AdminModal: React.FC<ModalProps & { onComplete: () => void }> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
       <Card className="w-full max-w-md mx-4 animate-scale-in">
         <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="h-8 w-8 text-primary-foreground" />
+          <div className="w-16 h-16 mx-auto mb-4">
+            <AnimatedLogo
+              mainIcon={Shield}
+              secondaryIcon={Wrench}
+              mainColor="text-primary"
+              secondaryColor="text-blue-400"
+              waterDrop={true}
+            />
           </div>
           <CardTitle>Création Admin</CardTitle>
           <CardDescription>
@@ -169,7 +303,7 @@ export const AdminModal: React.FC<ModalProps & { onComplete: () => void }> = ({
             </div>
             <div className="space-y-2">
               <Label htmlFor="pricingPlan">Plan tarifaire</Label>
-              <Select value={formData.pricingPlan} onValueChange={(value) => 
+              <Select value={formData.pricingPlan} onValueChange={(value) =>
                 setFormData({ ...formData, pricingPlan: value })
               }>
                 <SelectTrigger>
@@ -195,10 +329,10 @@ export const AdminModal: React.FC<ModalProps & { onComplete: () => void }> = ({
 };
 
 // Organization Modal
-export const OrganizationModal: React.FC<ModalProps & { onComplete: () => void }> = ({ 
-  isOpen, 
-  onClose, 
-  onComplete 
+export const OrganizationModal: React.FC<ModalProps & { onComplete: () => void }> = ({
+  isOpen,
+  onClose,
+  onComplete
 }) => {
   const [formData, setFormData] = useState({ name: '', address: '' });
   const { toast } = useToast();
@@ -213,7 +347,7 @@ export const OrganizationModal: React.FC<ModalProps & { onComplete: () => void }
       });
       return;
     }
-    
+
     toast({
       title: "Organisation créée",
       description: "Organisation configurée avec succès",
@@ -227,8 +361,14 @@ export const OrganizationModal: React.FC<ModalProps & { onComplete: () => void }
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
       <Card className="w-full max-w-md mx-4 animate-scale-in">
         <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
-            <Building className="h-8 w-8 text-primary-foreground" />
+          <div className="w-16 h-16 mx-auto mb-4">
+            <AnimatedLogo
+              mainIcon={Building}
+              secondaryIcon={Settings}
+              mainColor="text-primary"
+              secondaryColor="text-green-400"
+              waterDrop={true}
+            />
           </div>
           <CardTitle>Création Organisation</CardTitle>
           <CardDescription>
@@ -266,15 +406,15 @@ export const OrganizationModal: React.FC<ModalProps & { onComplete: () => void }
 };
 
 // SMS Validation Modal
-export const SMSValidationModal: React.FC<ModalProps & { onComplete: () => void }> = ({ 
-  isOpen, 
-  onClose, 
-  onComplete 
+export const SMSValidationModal: React.FC<ModalProps & { onComplete: () => void }> = ({
+  isOpen,
+  onClose,
+  onComplete
 }) => {
   const [code, setCode] = useState('');
   const [isValidated, setIsValidated] = useState(false);
   const { toast } = useToast();
-  
+
   const correctCode = '1234'; // Simulation
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -301,21 +441,20 @@ export const SMSValidationModal: React.FC<ModalProps & { onComplete: () => void 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
       <Card className="w-full max-w-md mx-4 animate-scale-in">
         <CardHeader className="text-center">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors ${
-            isValidated ? 'bg-toast-success' : 'bg-gradient-primary'
-          }`}>
-            {isValidated ? (
-              <CheckCircle className="h-8 w-8 text-white" />
-            ) : (
-              <Smartphone className="h-8 w-8 text-primary-foreground" />
-            )}
+          <div className="w-16 h-16 mx-auto mb-4">
+            <AnimatedLogo
+              mainIcon={MessageSquare}
+              secondaryIcon={CheckCircle}
+              mainColor={isValidated ? "text-success" : "text-primary"}
+              secondaryColor="text-primary-foreground"
+            />
           </div>
           <CardTitle>
             {isValidated ? 'Validation Réussie!' : 'Validation SMS'}
           </CardTitle>
           <CardDescription>
-            {isValidated 
-              ? 'Votre plan tarifaire a été activé' 
+            {isValidated
+              ? 'Votre plan tarifaire a été activé'
               : 'Entrez le code reçu par SMS (Code: 1234)'
             }
           </CardDescription>
@@ -353,10 +492,10 @@ export const SMSValidationModal: React.FC<ModalProps & { onComplete: () => void 
 };
 
 // Garage Modal
-export const GarageModal: React.FC<ModalProps & { onComplete: () => void }> = ({ 
-  isOpen, 
-  onClose, 
-  onComplete 
+export const GarageModal: React.FC<ModalProps & { onComplete: () => void }> = ({
+  isOpen,
+  onClose,
+  onComplete
 }) => {
   const [formData, setFormData] = useState({ name: '', address: '', phone: '' });
   const { toast } = useToast();
@@ -371,7 +510,7 @@ export const GarageModal: React.FC<ModalProps & { onComplete: () => void }> = ({
       });
       return;
     }
-    
+
     toast({
       title: "Garage créé",
       description: "Votre garage a été configuré avec succès!",
@@ -385,8 +524,14 @@ export const GarageModal: React.FC<ModalProps & { onComplete: () => void }> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
       <Card className="w-full max-w-md mx-4 animate-scale-in">
         <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
-            <Building className="h-8 w-8 text-primary-foreground" />
+          <div className="w-16 h-16 mx-auto mb-4">
+            <AnimatedLogo
+              mainIcon={Car}
+              secondaryIcon={Wrench}
+              mainColor="text-primary"
+              secondaryColor="text-orange-400"
+              waterDrop={true}
+            />
           </div>
           <CardTitle>Création Garage</CardTitle>
           <CardDescription>

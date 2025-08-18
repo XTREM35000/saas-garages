@@ -1,14 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { TypedSupabaseClient } from '@/types/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 type Theme = 'icloud' | 'whatsapp';
 
-interface AppContextType {
+export interface AppContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   currentStep: string;
   setCurrentStep: (step: string) => void;
   currentUser: any;
   setCurrentUser: (user: any) => void;
+  supabase: TypedSupabaseClient;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -33,7 +36,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     localStorage.setItem('garage-theme', newTheme);
-    
+
     // Apply theme to body
     const body = document.body;
     body.className = body.className.replace(/\b(icloud|whatsapp)\b/g, '');
@@ -57,7 +60,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setCurrentStep,
     currentUser,
     setCurrentUser,
+    supabase, // Instance Supabase importée
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
+
