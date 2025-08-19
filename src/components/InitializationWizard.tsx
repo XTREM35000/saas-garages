@@ -242,7 +242,6 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
             showPassword={showPassword}
             onToggleShowPassword={() => setShowPassword(!showPassword)}
             isLoading={isLoading}
-            selectedPlan={organizationData.selectedPlan}
           />
         );
 
@@ -269,7 +268,6 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
             showPassword={showPassword}
             onToggleShowPassword={() => setShowPassword(!showPassword)}
             isLoading={isLoading}
-            selectedPlan={organizationData.selectedPlan}
           />
         );
 

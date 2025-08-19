@@ -13,6 +13,7 @@ import "../styles/whatsapp-theme.css";
 import { useWorkflow } from "@/contexts/WorkflowProvider";
 import { EmailField } from "@/components/ui/email-field";
 import { PhoneField } from '@/components/ui/phone-field';
+import { PasswordField } from "@/components/ui/password-field";
 
 const PASSWORD_MIN_LENGTH = 8;
 const PHONE_REGEX = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
@@ -66,11 +67,11 @@ const SuperAdminSetupModal: React.FC<SuperAdminSetupModalProps> = ({
         return { error: value.length >= PASSWORD_MIN_LENGTH ? "" : `Minimum ${PASSWORD_MIN_LENGTH} caractères`, isValid: value.length >= PASSWORD_MIN_LENGTH };
       case "name":
         return { error: value.length >= 2 ? "" : "Nom trop court", isValid: value.length >= 2 };
-      case "phone":
-        const valid = value === "" || PHONE_REGEX.test(value);
-        return { error: valid ? "" : "Numéro de téléphone invalide", isValid: valid };
-      default:
-        return { error: "", isValid: false };
+      // case "phone":
+      //   const valid = value === "" || PHONE_REGEX.test(value);
+      //   return { error: valid ? "" : "Numéro de téléphone invalide", isValid: valid };
+      // default:
+      //   return { error: "", isValid: false };
     }
   };
 
@@ -87,55 +88,57 @@ const SuperAdminSetupModal: React.FC<SuperAdminSetupModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setIsSubmitting(true);
-    try {
-      if (formData.phone.value && !validatePhone(formData.phone.value)) {
-        setError('Format de téléphone invalide');
-        return;
-      }
 
+    try {
+      // 1. Formatage du numéro de téléphone
+      const formattedPhone = formData.phone.value.startsWith('+')
+        ? formData.phone.value
+        : `+${formData.phone.value.replace(/\D/g, '')}`;
+
+      // 2. Création du compte utilisateur
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email.value,
         password: formData.password.value,
-        options: { data: { name: formData.name.value, role: "super_admin" } }
+        phone: formattedPhone, // Ajout du téléphone formaté
       });
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Utilisateur non créé");
 
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: authData.user.id,
-        user_id: authData.user.id,
-        email: formData.email.value,
-        full_name: formData.name.value,
-        role: "super_admin"
-      });
+      if (authError) throw authError;
+
+      // 3. Création du profil avec is_superadmin à true
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user!.id,
+          email: formData.email.value,
+          phone: formattedPhone,
+          is_superadmin: true, // Explicitement défini
+          first_name: formData.name.value.split(' ')[0],
+          last_name: formData.name.value.split(' ').slice(1).join(' '),
+          updated_at: new Date().toISOString()
+        });
+
       if (profileError) throw profileError;
 
-      const { error: superAdminError } = await supabase.from("super_admins").insert({
-        id: authData.user.id,
-        user_id: authData.user.id,
-        email: formData.email.value,
-        name: formData.name.value
-      });
+      // 4. Création de l'entrée super_admin
+      const { error: superAdminError } = await supabase
+        .from('super_admins')
+        .insert({
+          user_id: authData.user!.id,
+          email: formData.email.value,
+          created_at: new Date().toISOString()
+        });
+
       if (superAdminError) throw superAdminError;
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email.value,
-        password: formData.password.value
-      });
-      if (signInError) throw signInError;
-
-      toast.success("Super administrateur créé avec succès!");
-      await completeStep("super_admin_check"); // Met à jour le state
       setShowSuccessMessage(true);
       setTimeout(() => {
-        onComplete(); // Ceci déclenchera le rendu de 'admin_creation' dans le wizard
-      }, 1500);
+        onComplete();
+      }, 2000);
 
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la création");
-      toast.error(err.message || "Erreur lors de la création");
+    } catch (error) {
+      console.error('❌ Erreur création super admin:', error);
+      setError(error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -243,22 +246,15 @@ const SuperAdminSetupModal: React.FC<SuperAdminSetupModalProps> = ({
                     <Label htmlFor="password" className="flex items-center gap-2 mb-2">
                       <Key className="w-4 h-4" /> Mot de passe
                     </Label>
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password.value}
-                        onChange={e => handleFieldChange("password", e.target.value)}
-                        placeholder={`Minimum ${PASSWORD_MIN_LENGTH} caractères`}
-                      />
-                      <button
-                        type="button"
-                        onClick={onToggleShowPassword}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
+                    <PasswordField
+                      value={formData.password.value}
+                      onChange={val => handleFieldChange("password", val)}
+                      onValidationChange={(isValid) => {
+                        setFormData(prev => ({ ...prev, password: { ...prev.password, isValid } }));
+                      }}
+                      showStrengthIndicator
+                      disabled={isSubmitting}
+                    />
                   </div>
 
                   <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={!isFormValid() || isLoading}>

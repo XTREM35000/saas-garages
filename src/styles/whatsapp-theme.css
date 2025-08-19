@@ -44,19 +44,23 @@
 
 /* Classes utilitaires pour les modales */
 .modal-whatsapp {
-  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
+  @apply fixed inset-0 flex items-end justify-center z-50;
 }
 
 .modal-whatsapp-content {
-  @apply w-full max-w-md mx-4;
+  @apply w-full max-w-6xl mx-auto;
+  min-height: calc(100vh - 80px);
+  /* 80px = hauteur barre des étapes */
 }
 
 .modal-whatsapp-card {
-  @apply bg-white dark:bg-gray-900;
+  @apply bg-white dark:bg-gray-900 rounded-t-2xl shadow-xl;
+  height: auto;
+  min-height: 200px;
 }
 
 .modal-whatsapp-header {
-  @apply bg-gradient-to-r from-[#128C7E] to-[#075E54] text-white p-6 sticky top-0 z-10;
+  @apply bg-gradient-to-r from-[#128C7E] to-[#075E54] text-white p-4 md:p-6 sticky top-0 z-20;
 }
 
 .modal-whatsapp-header h3 {
@@ -64,28 +68,18 @@
 }
 
 .modal-whatsapp-body {
-  @apply p-6 space-y-6;
+  @apply p-6;
+  height: auto;
 }
 
-/* Personnalisation de la barre de défilement */
+/* Style pour l'effet de rebond */
+.modal-bounce {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Suppression des anciennes classes de scroll */
 .scrollbar-thin {
-  scrollbar-width: thin;
-}
-
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 dark:bg-gray-700 rounded-full;
-}
-
-.modal-whatsapp-footer {
-  @apply px-6 py-4 bg-gray-50 border-t border-gray-200;
+  display: none;
 }
 
 /* Ajustements pour le drag */
@@ -206,6 +200,36 @@
   .btn-whatsapp-warning,
   .btn-whatsapp-danger {
     @apply py-2.5 px-4 text-sm;
+  }
+}
+
+/* Ajustements pour le responsive */
+@media (max-width: 768px) {
+  .modal-whatsapp-card {
+    @apply rounded-t-xl;
+  }
+
+  .grid-cols-1>div {
+    max-width: calc(100vw - 2rem);
+  }
+
+  .modal-whatsapp-header {
+    @apply p-4;
+  }
+
+  /* Force l'affichage vertical sur mobile */
+  .grid-cols-1 {
+    @apply space-y-4;
+    height: auto;
+    min-height: min-content;
+  }
+
+  /* Assure que chaque carte est entièrement visible */
+  .grid-cols-1>div {
+    @apply w-full;
+    height: auto;
+    transform: none !important;
+    /* Désactive l'effet hover sur mobile */
   }
 }
 

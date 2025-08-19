@@ -32,7 +32,7 @@ export function Modal({
   isDraggable = true,
   title
 }: ModalProps) {
-  const STEP_BAR_HEIGHT = 80; // hauteur de la barre de step
+  const STEP_BAR_HEIGHT = 80;
 
   // Gestion du Escape et overflow
   useEffect(() => {
@@ -64,47 +64,36 @@ export function Modal({
             onClick={onClose}
           />
 
-          {/* Modal */}
-          <motion.div
-            initial={{ y: STEP_BAR_HEIGHT, opacity: 0 }}
-            animate={{ y: STEP_BAR_HEIGHT, opacity: 1 }}
-            exit={{ y: STEP_BAR_HEIGHT + 50, opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            drag={isDraggable ? "y" : false}
-            dragConstraints={{ top: STEP_BAR_HEIGHT, bottom: window.innerHeight - 100 }}
-            dragElastic={0.2}
-            className={cn(
-              "fixed inset-x-0 z-50 w-full max-w-md bg-white rounded-t-2xl shadow-lg touch-none",
-              className
-            )}
-          >
-            {/* Barre de drag */}
-            {isDraggable && (
-              <div className="p-2 cursor-grab active:cursor-grabbing">
-                <div className="w-12 h-1.5 mx-auto mb-2 rounded-full bg-gray-300 dark:bg-gray-600" />
-              </div>
-            )}
+          {/* Container pour centrer */}
+          <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center">
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: STEP_BAR_HEIGHT }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              drag={isDraggable ? "y" : false}
+              dragConstraints={{
+                top: STEP_BAR_HEIGHT,
+                bottom: window.innerHeight - 100
+              }}
+              dragElastic={0.2}
+              className={cn(
+                "w-full",  // Enlève max-w-md pour laisser le contrôle aux enfants
+                "touch-none",
+                className
+              )}
+            >
+              {/* Barre de drag */}
+              {isDraggable && (
+                <div className="p-2 cursor-grab active:cursor-grabbing">
+                  <div className="w-12 h-1.5 mx-auto rounded-full bg-gray-300 dark:bg-gray-600" />
+                </div>
+              )}
 
-            {/* Header */}
-            {title && (
-              <div className="flex items-center justify-between px-6 py-4 border-b">
-                <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-                {showCloseButton && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onClose}
-                    className="h-8 w-8 p-0 hover:bg-gray-100"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {/* Content */}
-            <div className="p-6 space-y-4">{children}</div>
-          </motion.div>
+              {/* Supprime les styles de contenu fixes */}
+              {children}
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

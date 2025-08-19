@@ -256,25 +256,33 @@ export const useWorkflow = () => {
   return context;
 };
 
-const createWorkflowState = async (userId: string) => {
+const createWorkflowState = async (userId: string, adminType = 'standard') => {
   try {
+    console.log('📝 Création workflow state pour:', userId);
+
     const { data, error } = await supabase
       .from('workflow_states')
       .insert({
         user_id: userId,
-        current_step: 'init',
+        current_step: 'admin_setup',
         completed_steps: [],
-        is_completed: false,
-        metadata: {}
+        admin_type: adminType,
+        metadata: {
+          created_at: new Date().toISOString(),
+          isDemo: false
+        }
       })
       .select()
       .single();
 
-    if (error) throw error;
-    return data;
+    if (error) {
+      console.error('❌ Erreur création workflow:', error);
+      throw error;
+    }
 
-  } catch (err) {
-    console.error('❌ [WorkflowProvider] Erreur création état:', err);
-    throw err;
+    return data;
+  } catch (error) {
+    console.error('❌ Erreur WorkflowProvider:', error);
+    throw error;
   }
 };

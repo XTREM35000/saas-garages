@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 // import { Mail } from 'react-feather';import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,6 +12,7 @@ import { AnimatedLogo } from "./AnimatedLogo";
 import { useWorkflow } from "@/contexts/WorkflowProvider";
 import { EmailField } from "@/components/ui/email-field";
 import { PhoneField } from "@/components/ui/phone-field";
+import { PasswordField } from "@/components/ui/password-field";
 
 const PASSWORD_MIN_LENGTH = 8;
 
@@ -192,22 +192,15 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
                     <Label htmlFor="password" className="flex items-center gap-2 mb-2">
                       <Key className="w-4 h-4" /> Mot de passe
                     </Label>
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password.value}
-                        onChange={e => handleFieldChange("password", e.target.value)}
-                        placeholder={`Minimum ${PASSWORD_MIN_LENGTH} caractères`}
-                      />
-                      <button
-                        type="button"
-                        onClick={onToggleShowPassword}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
+                    <PasswordField
+                      value={formData.password.value}
+                      onChange={val => handleFieldChange("password", val)}
+                      onValidationChange={(isValid) => {
+                        setFormData(prev => ({ ...prev, password: { ...prev.password, isValid } }));
+                      }}
+                      showStrengthIndicator
+                      disabled={isLoading}
+                    />
                   </div>
 
                   <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={!isFormValid() || isLoading}>
