@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Input } from './input';
 import { cn } from '@/lib/utils';
 import { Mail } from 'lucide-react';
+
+// Définition des domaines par défaut
+const DEFAULT_DOMAINS = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com'];
 
 interface EmailFieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   value?: string;
@@ -9,25 +12,33 @@ interface EmailFieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElemen
   error?: string;
   label?: string;
   showIcon?: boolean;
-  domains?: string[];
+  domains?: string[]; // Ajout de la prop domains
   allowCustomDomain?: boolean;
+  required?: boolean;
+  disabled?: boolean;
+  onValidationChange?: (isValid: boolean) => void;
 }
 
 export const EmailField: React.FC<EmailFieldProps> = ({
   value = '',
   onChange,
-  className,
-  error,
+  error: externalError,
   label,
-  showIcon = true,
-  domains = ['gmail.com', 'outlook.com', 'yahoo.com'],
+  required,
+  disabled,
+  className,
+  domains = DEFAULT_DOMAINS, // Utilisation des domaines par défaut
   allowCustomDomain = true,
+  showIcon = true,
+  onValidationChange,
   ...props
 }) => {
   const [localPart, setLocalPart] = useState('');
   const [domain, setDomain] = useState(domains[0]);
   const [isCustomDomain, setIsCustomDomain] = useState(false);
   const [customDomain, setCustomDomain] = useState('');
+  const [internalError, setInternalError] = useState<string>('');
+  const [isValid, setIsValid] = useState(false);
 
   // Initialise l'email à partir de la valeur fournie
   useEffect(() => {
@@ -46,6 +57,33 @@ export const EmailField: React.FC<EmailFieldProps> = ({
       }
     }
   }, [value, domains]);
+
+  // Validation de l'email
+  const validateEmail = useCallback((email: string): boolean => {
+    if (!required && !email) return true;
+    if (required && !email) {
+      setInternalError('Email requis');
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isValidFormat = emailRegex.test(email);
+
+    if (!isValidFormat) {
+      setInternalError('Format email invalide');
+      return false;
+    }
+
+    setInternalError('');
+    return true;
+  }, [required]);
+
+  // Effet pour la validation
+  useEffect(() => {
+    const valid = validateEmail(value);
+    setIsValid(valid);
+    onValidationChange?.(valid);
+  }, [value, validateEmail, onValidationChange]);
 
   const handleLocalPartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Empêcher la saisie du caractère "@"
@@ -92,7 +130,7 @@ export const EmailField: React.FC<EmailFieldProps> = ({
       <div className="relative">
         <div className={cn(
           "flex items-center gap-1",
-          error ? "text-red-500" : "text-muted-foreground",
+          (externalError || internalError) ? "text-red-500" : "text-muted-foreground",
           className
         )}>
           <div className="flex-1">
@@ -103,7 +141,7 @@ export const EmailField: React.FC<EmailFieldProps> = ({
               onChange={handleLocalPartChange}
               className={cn(
                 "border",
-                error ? "border-red-500 focus-visible:ring-red-500" : ""
+                (externalError || internalError) ? "border-red-500 focus-visible:ring-red-500" : ""
               )}
               placeholder="votre.nom"
             />
@@ -117,7 +155,7 @@ export const EmailField: React.FC<EmailFieldProps> = ({
               onChange={handleDomainChange}
               className={cn(
                 "h-10 rounded-md border bg-background px-3",
-                error ? "border-red-500" : "border-input"
+                (externalError || internalError) ? "border-red-500" : "border-input"
               )}
             >
               {domains.map(d => (
@@ -131,7 +169,7 @@ export const EmailField: React.FC<EmailFieldProps> = ({
               onChange={handleDomainChange}
               className={cn(
                 "h-10 rounded-md border bg-background px-3",
-                error ? "border-red-500" : "border-input"
+                (externalError || internalError) ? "border-red-500" : "border-input"
               )}
             >
               {domains.map(d => (
@@ -147,15 +185,15 @@ export const EmailField: React.FC<EmailFieldProps> = ({
               onChange={handleCustomDomainChange}
               className={cn(
                 "border",
-                error ? "border-red-500" : ""
+                (externalError || internalError) ? "border-red-500" : ""
               )}
               placeholder="domaine.com"
             />
           )}
         </div>
 
-        {error && (
-          <p className="mt-1 text-xs text-red-500">{error}</p>
+        {(externalError || internalError) && (
+          <p className="mt-1 text-xs text-red-500">{externalError || internalError}</p>
         )}
       </div>
     </div>

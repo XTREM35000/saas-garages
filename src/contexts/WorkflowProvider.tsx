@@ -221,6 +221,121 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id]);
 
+  // Vérification et initialisation du workflow
+  const checkSuperAdmin = async () => {
+    try {
+      const { data: superAdmins, error } = await supabase
+        .from('super_admins')
+        .select('*');
+
+      if (error) {
+        console.error('❌ [WorkflowProvider] Erreur vérification super admin:', error);
+        return false;
+      }
+
+      console.log('✅ [WorkflowProvider] Nombre de super admins:', superAdmins?.length);
+      return superAdmins && superAdmins.length > 0;
+    } catch (err) {
+      console.error('❌ [WorkflowProvider] Erreur inattendue:', err);
+      return false;
+    }
+  };
+
+  // Interface pour la table workflow_states
+  interface WorkflowStateInsert {
+    current_step: string;
+    user_id: string;
+    completed_steps?: string[];
+    metadata?: Record<string, any>;
+    updated_at?: string;
+    created_at?: string;
+    is_completed?: boolean;
+  }
+
+  // Fonction pour créer ou mettre à jour l'état du workflow
+  const createOrUpdateWorkflowState = async (workflowData: Partial<WorkflowStateInsert>) => {
+    if (!user?.id) return;
+
+    try {
+      const dataToUpsert: WorkflowStateInsert = {
+        user_id: user.id,
+        current_step: workflowData.current_step || 'super_admin_check',
+        completed_steps: workflowData.completed_steps || [],
+        metadata: {
+          ...(state.metadata || {}),
+          lastUpdate: new Date().toISOString(),
+          ...(workflowData.metadata || {})
+        },
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('workflow_states')
+        .upsert(dataToUpsert)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ [WorkflowProvider] Erreur upsert:', error);
+        throw error;
+      }
+
+      console.log('✅ [WorkflowProvider] Workflow mis à jour:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ [WorkflowProvider] Erreur mise à jour workflow:', error);
+      throw error;
+    }
+  };
+
+  const initializeWorkflow = async () => {
+    if (!user) return;
+
+    try {
+      console.log('🔄 [WorkflowProvider] Initialisation du workflow...');
+
+      const hasSuperAdmin = await checkSuperAdmin();
+
+      if (hasSuperAdmin) {
+        console.log('✅ [WorkflowProvider] Super admin existe déjà');
+        await createOrUpdateWorkflowState({
+          current_step: 'admin_creation',
+          completed_steps: ['super_admin_check'],
+          metadata: {
+            lastUpdate: new Date().toISOString()
+          }
+        });
+
+        setState(prev => ({
+          ...prev,
+          currentStep: 'admin_creation',
+          completedSteps: ['super_admin_check']
+        }));
+      } else {
+        console.log('ℹ️ [WorkflowProvider] Pas de super admin, création nécessaire');
+        await createOrUpdateWorkflowState({
+          current_step: 'super_admin_check',
+          completed_steps: [],
+          metadata: {
+            lastUpdate: new Date().toISOString()
+          }
+        });
+
+        setState(prev => ({
+          ...prev,
+          currentStep: 'super_admin_check',
+          completedSteps: []
+        }));
+      }
+
+    } catch (error) {
+      console.error('❌ [WorkflowProvider] Erreur initialisation:', error);
+      setError(error instanceof Error ? error.message : 'Erreur d\'initialisation');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Sync automatique au changement d'utilisateur
   useEffect(() => {
     if (isAuthenticated && user?.id) {
