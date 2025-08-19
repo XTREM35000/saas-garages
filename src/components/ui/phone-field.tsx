@@ -57,13 +57,13 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
     setPrefix(newPrefix);
     updatePhone(newPrefix, number);
   };
-
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Accepter uniquement les chiffres et espaces
+    // Autoriser uniquement chiffres et espaces, supprimer tout le reste
     const newNumber = e.target.value.replace(/[^\d\s]/g, '');
     setNumber(newNumber);
     updatePhone(prefix, newNumber);
   };
+
 
   const updatePhone = (selectedPrefix: string, phoneNumber: string) => {
     if (onChange) {

@@ -12,6 +12,7 @@ import { AnimatedLogo } from "./AnimatedLogo";
 import "../styles/whatsapp-theme.css";
 import { useWorkflow } from "@/contexts/WorkflowProvider";
 import { EmailField } from "@/components/ui/email-field";
+import { PhoneField } from '@/components/ui/phone-field';
 
 const PASSWORD_MIN_LENGTH = 8;
 const PHONE_REGEX = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
@@ -40,6 +41,7 @@ const SuperAdminSetupModal: React.FC<SuperAdminSetupModalProps> = ({
   const { completeStep } = useWorkflow();
   const [error, setError] = useState<string>("");
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     email: { value: "", error: "", isValid: false },
@@ -77,10 +79,22 @@ const SuperAdminSetupModal: React.FC<SuperAdminSetupModalProps> = ({
     return (email.isValid && password.isValid && name.isValid);
   };
 
+  const validatePhone = (phone: string) => {
+    if (!phone) return true; // Optional
+    const cleanPhone = phone.replace(/\s/g, '');
+    return /^\+\d{8,}$/.test(cleanPhone);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
     try {
+      if (formData.phone.value && !validatePhone(formData.phone.value)) {
+        setError('Format de téléphone invalide');
+        return;
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email.value,
         password: formData.password.value,
@@ -113,12 +127,17 @@ const SuperAdminSetupModal: React.FC<SuperAdminSetupModalProps> = ({
       if (signInError) throw signInError;
 
       toast.success("Super administrateur créé avec succès!");
-      await completeStep("super_admin_check");
+      await completeStep("super_admin_check"); // Met à jour le state
       setShowSuccessMessage(true);
-      setTimeout(() => onComplete(), 1500);
+      setTimeout(() => {
+        onComplete(); // Ceci déclenchera le rendu de 'admin_creation' dans le wizard
+      }, 1500);
+
     } catch (err: any) {
       setError(err.message || "Erreur lors de la création");
       toast.error(err.message || "Erreur lors de la création");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -211,15 +230,12 @@ const SuperAdminSetupModal: React.FC<SuperAdminSetupModalProps> = ({
                   </div>
 
                   <div>
-                    <Label htmlFor="phone" className="flex items-center gap-2 mb-2">
-                      <Phone className="w-4 h-4" /> Téléphone
-                    </Label>
-                    <Input
-                      id="phone"
+                    <PhoneField
+                      label="Numéro de téléphone"
                       value={formData.phone.value}
-                      onChange={e => handleFieldChange("phone", e.target.value)}
-                      disabled={isLoading}
-                      placeholder="07 58 96 61 56"
+                      onChange={(value) => handleFieldChange('phone', value)}
+                      error={formData.phone.error}
+                      disabled={isSubmitting}
                     />
                   </div>
 

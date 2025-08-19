@@ -13,7 +13,6 @@ interface ModalProps {
   showCloseButton?: boolean;
   isDraggable?: boolean;
   title?: string;
-  description?: string;
 }
 
 interface ModalFormProps {
@@ -21,27 +20,6 @@ interface ModalFormProps {
   children: React.ReactNode;
   submitText?: string;
   isLoading?: boolean;
-  className?: string;
-}
-
-interface ModalGifProps {
-  src: string;
-  alt: string;
-  className?: string;
-}
-
-interface ModalHeaderProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-interface ModalBodyProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-interface ModalFooterProps {
-  children: React.ReactNode;
   className?: string;
 }
 
@@ -54,6 +32,8 @@ export function Modal({
   isDraggable = true,
   title
 }: ModalProps) {
+  const STEP_BAR_HEIGHT = 80; // hauteur de la barre de step
+
   // Gestion du Escape et overflow
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -71,10 +51,6 @@ export function Modal({
 
   if (!isOpen) return null;
 
-  // Drag constraints dynamiques selon la taille de l'écran
-  const dragTop = -window.innerHeight / 2 + 100;
-  const dragBottom = window.innerHeight / 2 - 100;
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -89,48 +65,46 @@ export function Modal({
           />
 
           {/* Modal */}
-          <div className="fixed inset-0 z-50 flex justify-center items-center p-4">
-            <motion.div
-              initial={{ y: 50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 50, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              drag={isDraggable ? "y" : false}
-              dragConstraints={{ top: dragTop, bottom: dragBottom }}
-              dragElastic={0.2}
-              className={cn(
-                "w-full max-w-md max-h-[90vh] overflow-auto bg-white rounded-t-2xl shadow-lg touch-none",
-                className
-              )}
-            >
-              {/* Barre de drag */}
-              {isDraggable && (
-                <div className="p-2 cursor-grab active:cursor-grabbing">
-                  <div className="w-12 h-1.5 mx-auto mb-2 rounded-full bg-gray-300 dark:bg-gray-600" />
-                </div>
-              )}
+          <motion.div
+            initial={{ y: STEP_BAR_HEIGHT, opacity: 0 }}
+            animate={{ y: STEP_BAR_HEIGHT, opacity: 1 }}
+            exit={{ y: STEP_BAR_HEIGHT + 50, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            drag={isDraggable ? "y" : false}
+            dragConstraints={{ top: STEP_BAR_HEIGHT, bottom: window.innerHeight - 100 }}
+            dragElastic={0.2}
+            className={cn(
+              "fixed inset-x-0 z-50 w-full max-w-md bg-white rounded-t-2xl shadow-lg touch-none",
+              className
+            )}
+          >
+            {/* Barre de drag */}
+            {isDraggable && (
+              <div className="p-2 cursor-grab active:cursor-grabbing">
+                <div className="w-12 h-1.5 mx-auto mb-2 rounded-full bg-gray-300 dark:bg-gray-600" />
+              </div>
+            )}
 
-              {/* Header */}
-              {title && (
-                <div className="flex items-center justify-between px-6 py-4 border-b">
-                  <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-                  {showCloseButton && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={onClose}
-                      className="h-8 w-8 p-0 hover:bg-gray-100"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              )}
+            {/* Header */}
+            {title && (
+              <div className="flex items-center justify-between px-6 py-4 border-b">
+                <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+                {showCloseButton && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClose}
+                    className="h-8 w-8 p-0 hover:bg-gray-100"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            )}
 
-              {/* Content */}
-              <div className="p-6">{children}</div>
-            </motion.div>
-          </div>
+            {/* Content */}
+            <div className="p-6 space-y-4">{children}</div>
+          </motion.div>
         </>
       )}
     </AnimatePresence>
@@ -169,60 +143,4 @@ export const ModalForm: React.FC<ModalFormProps> = ({
       </div>
     </form>
   );
-};
-
-export const ModalGif: React.FC<ModalGifProps> = ({ src, alt, className }) => {
-  return (
-    <div className={cn("mb-6", className)}>
-      <img
-        src={src}
-        alt={alt}
-        className="w-full h-48 object-cover rounded-lg shadow-md"
-        loading="lazy"
-      />
-    </div>
-  );
-};
-
-// Header, Body, Footer réutilisables
-export const ModalHeader: React.FC<ModalHeaderProps> = ({ children, className }) => (
-  <div className={cn("px-6 py-4 border-b border-gray-200 dark:border-gray-800", className)}>
-    {children}
-  </div>
-);
-
-export const ModalBody: React.FC<ModalBodyProps> = ({ children, className }) => (
-  <div className={cn("p-6", className)}>{children}</div>
-);
-
-export const ModalFooter: React.FC<ModalFooterProps> = ({ children, className }) => (
-  <div
-    className={cn(
-      "px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-2",
-      className
-    )}
-  >
-    {children}
-  </div>
-);
-
-// Hook pour feedback de soumission
-export const useModalFeedback = () => {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [showSuccess, setShowSuccess] = React.useState(false);
-
-  const handleSubmit = async (submitFn: () => Promise<void>) => {
-    setIsSubmitting(true);
-    try {
-      await submitFn();
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 2000);
-    } catch (error) {
-      console.error("Erreur lors de la soumission:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return { isSubmitting, showSuccess, handleSubmit };
 };

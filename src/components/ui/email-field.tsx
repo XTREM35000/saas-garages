@@ -49,7 +49,8 @@ export const EmailField: React.FC<EmailFieldProps> = ({
 
   const handleLocalPartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Empêcher la saisie du caractère "@"
-    const newValue = e.target.value.replace('@', '');
+    const newValue = e.target.value.replace(/@/g, '');
+
     setLocalPart(newValue);
     updateEmail(newValue, isCustomDomain ? customDomain : domain);
   };

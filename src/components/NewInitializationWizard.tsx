@@ -1,12 +1,13 @@
 import React from 'react';
 import { useWorkflow } from '@/contexts/WorkflowProvider';
 import { useAuthWorkflow } from '@/hooks/useAuthWorkflow';
-import { WorkflowStep } from '@/types/workflow.d';
+import { WorkflowStep } from '@/types/workflow.types';
 import SuperAdminSetupModal from '@/components/SuperAdminSetupModal';
 import PricingModal from '@/components/PricingModal';
 import OrganizationSetupModal from '@/components/OrganizationSetupModal';
 import SmsValidationModal from '@/components/SmsValidationModal';
 import GarageSetupModal from '@/components/GarageSetupModal';
+import AdminCreationModal from '@/components/AdminCreationModal';
 import { toast } from 'sonner';
 
 interface NewInitializationWizardProps {
@@ -27,7 +28,7 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
   const handleStepComplete = async (stepData?: any) => {
     try {
       console.log('🎯 [NewInitializationWizard] Complétion étape:', state.currentStep, stepData);
-      
+
       if (state.currentStep === 'garage_setup') {
         // Dernière étape, terminer le workflow
         await completeStep(state.currentStep);
@@ -77,7 +78,7 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
           </div>
         </div>
         <div className="w-full bg-secondary rounded-full h-2">
-          <div 
+          <div
             className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
             style={{ width: `${(progress.current / progress.total) * 100}%` }}
           />
@@ -105,7 +106,7 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
           <div className="text-center">
             <div className="text-destructive text-lg mb-4">Erreur Workflow</div>
             <p className="text-muted-foreground mb-4">{error}</p>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
             >
@@ -130,13 +131,31 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
               name: '',
               avatarFile: null
             }}
-            onAdminDataChange={() => {}}
+            onAdminDataChange={() => { }}
             showPassword={false}
-            onToggleShowPassword={() => {}}
+            onToggleShowPassword={() => { }}
             isLoading={false}
-            selectedPlan=""
           />
         );
+
+      case 'admin_creation':
+        return (
+          <AdminCreationModal
+            isOpen={isOpen}
+            onComplete={handleStepComplete}
+            adminData={{
+              email: '',
+              password: '',
+              phone: '',
+              name: '',
+            }}
+            onAdminDataChange={() => { }}
+            showPassword={false}
+            onToggleShowPassword={() => { }}
+            isLoading={false}
+          />
+        );
+
 
       case 'pricing_selection':
         return (
@@ -159,11 +178,10 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
               name: '',
               avatarFile: null
             }}
-            onAdminDataChange={() => {}}
+            onAdminDataChange={() => { }}
             showPassword={false}
-            onToggleShowPassword={() => {}}
+            onToggleShowPassword={() => { }}
             isLoading={false}
-            selectedPlan=""
           />
         );
 
@@ -201,7 +219,7 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
           <div className="flex items-center justify-center min-h-screen">
             <div className="text-center">
               <div className="text-lg text-muted-foreground">Workflow terminé</div>
-              <button 
+              <button
                 onClick={onComplete}
                 className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 mt-4"
               >
