@@ -71,3 +71,58 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+# SaaS Multi-Garages
+
+## 🚀 Workflow de Démarrage
+
+1. **Initialisation**
+   - Vérification de l'authentification
+   - Vérification de l'existence d'un Super Admin
+
+2. **Configuration Super Admin**
+   - Si aucun Super Admin n'existe
+   - Création du premier compte Super Admin
+   - Configuration initiale de l'application
+
+3. **Configuration Organisation**
+   - Création de l'organisation
+   - Configuration des paramètres de base
+
+4. **Configuration Garage**
+   - Ajout du premier garage
+   - Configuration des services
+
+## 🔧 Structure du Projet
+
+```
+src/
+├── components/
+│   ├── ui/              # Composants UI réutilisables
+│   ├── modals/          # Modaux du workflow
+│   └── layout/          # Composants de mise en page
+├── contexts/
+│   ├── WorkflowProvider.tsx  # Gestion du workflow
+│   └── ThemeProvider.tsx     # Gestion du thème
+├── hooks/
+│   └── useWorkflowCheck.ts   # Hook de vérification workflow
+└── types/
+    └── workflow.types.ts     # Types du workflow
+```
+
+## 🏁 Pour Démarrer
+
+1. Installer les dépendances :
+```bash
+npm install
+```
+
+2. Configurer les variables d'environnement :
+```bash
+cp .env.example .env.local
+```
+
+3. Lancer le projet :
+```bash
+npm run dev
+```

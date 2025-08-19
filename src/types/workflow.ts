@@ -19,14 +19,14 @@ export type WorkflowStep =
   | 'dashboard';
 
 export interface WorkflowState {
-  currentStep: WorkflowStep;
-  completedSteps: WorkflowStep[];
-  lastActiveOrg: string | null; // Au lieu de Json
-  isDemo: boolean;
-  userId?: string;
-  metadata?: Record<string, unknown>;
-  loading?: boolean;
-  error?: string | null;
+  id: string;
+  user_id: string;
+  current_step: string;
+  completed_steps: string[];
+  is_completed: boolean;
+  metadata: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface WorkflowContextType {
@@ -58,13 +58,13 @@ export const isValidWorkflowStep = (step: unknown): step is WorkflowStep => {
 
 export const parseWorkflowState = (data: any): WorkflowState => {
   return {
-    currentStep: isValidWorkflowStep(data.current_step) ? data.current_step : 'super_admin_check',
-    completedSteps: Array.isArray(data.completed_steps) ? data.completed_steps : [],
-    isDemo: Boolean(data.meta?.isDemo),
-    userId: data.user_id,
-    lastActiveOrg: data.meta?.lastActiveOrg,
+    id: data.id,
+    user_id: data.user_id,
+    current_step: isValidWorkflowStep(data.current_step) ? data.current_step : 'super_admin_check',
+    completed_steps: Array.isArray(data.completed_steps) ? data.completed_steps : [],
+    is_completed: Boolean(data.is_completed),
     metadata: data.meta || {},
-    loading: false,
-    error: null
+    created_at: data.created_at,
+    updated_at: data.updated_at
   };
 };

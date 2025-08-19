@@ -1,16 +1,19 @@
-import React, { useEffect } from 'react';
-import { X, Check, Loader2 } from 'lucide-react';
-import { Button } from './button';
-import { cn } from '@/lib/utils';
+// src/components/ui/modal.tsx
+import React, { useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Check, Loader2 } from "lucide-react";
+import { Button } from "./button";
+import { cn } from "@/lib/utils";
 
 interface ModalProps {
   isOpen: boolean;
-  onClose: () => void;
-  title: string;
+  onClose?: () => void;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  showCloseButton?: boolean;
   className?: string;
+  showCloseButton?: boolean;
+  isDraggable?: boolean;
+  title?: string;
+  description?: string;
 }
 
 interface ModalFormProps {
@@ -27,91 +30,123 @@ interface ModalGifProps {
   className?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({
+interface ModalHeaderProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+interface ModalBodyProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+interface ModalFooterProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function Modal({
   isOpen,
   onClose,
-  title,
   children,
-  size = 'md',
+  className,
   showCloseButton = true,
-  className
-}) => {
-  // Fermer avec Escape
+  isDraggable = true,
+  title
+}: ModalProps) {
+  // Gestion du Escape et overflow
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose?.();
     };
-
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
+      document.addEventListener("keydown", handleEscape);
+      document.body.style.overflow = "hidden";
     }
-
     return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "unset";
     };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl'
-  };
+  // Drag constraints dynamiques selon la taille de l'écran
+  const dragTop = -window.innerHeight / 2 + 100;
+  const dragBottom = window.innerHeight / 2 - 100;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Overlay */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/50"
+            onClick={onClose}
+          />
 
-      {/* Modal */}
-      <div
-        className={cn(
-          'relative bg-white rounded-lg shadow-xl w-full mx-4',
-          sizeClasses[size],
-          className
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-          {showCloseButton && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-8 w-8 p-0 hover:bg-gray-100"
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex justify-center items-center p-4">
+            <motion.div
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              drag={isDraggable ? "y" : false}
+              dragConstraints={{ top: dragTop, bottom: dragBottom }}
+              dragElastic={0.2}
+              className={cn(
+                "w-full max-w-md max-h-[90vh] overflow-auto bg-white rounded-t-2xl shadow-lg touch-none",
+                className
+              )}
             >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+              {/* Barre de drag */}
+              {isDraggable && (
+                <div className="p-2 cursor-grab active:cursor-grabbing">
+                  <div className="w-12 h-1.5 mx-auto mb-2 rounded-full bg-gray-300 dark:bg-gray-600" />
+                </div>
+              )}
 
-        {/* Content */}
-        <div className="p-6">
-          {children}
-        </div>
-      </div>
-    </div>
+              {/* Header */}
+              {title && (
+                <div className="flex items-center justify-between px-6 py-4 border-b">
+                  <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+                  {showCloseButton && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onClose}
+                      className="h-8 w-8 p-0 hover:bg-gray-100"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Content */}
+              <div className="p-6">{children}</div>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
   );
-};
+}
 
+// Formulaire modal réutilisable
 export const ModalForm: React.FC<ModalFormProps> = ({
   onSubmit,
   children,
-  submitText = 'Enregistrer',
+  submitText = "Enregistrer",
   isLoading = false,
   className
 }) => {
   return (
-    <form onSubmit={onSubmit} className={cn('space-y-6', className)}>
+    <form onSubmit={onSubmit} className={cn("space-y-6", className)}>
       {children}
       <div className="flex justify-end space-x-3 pt-4 border-t">
         <Button
@@ -136,13 +171,9 @@ export const ModalForm: React.FC<ModalFormProps> = ({
   );
 };
 
-export const ModalGif: React.FC<ModalGifProps> = ({
-  src,
-  alt,
-  className
-}) => {
+export const ModalGif: React.FC<ModalGifProps> = ({ src, alt, className }) => {
   return (
-    <div className={cn('mb-6', className)}>
+    <div className={cn("mb-6", className)}>
       <img
         src={src}
         alt={alt}
@@ -153,7 +184,29 @@ export const ModalGif: React.FC<ModalGifProps> = ({
   );
 };
 
-// Hook pour les animations de feedback
+// Header, Body, Footer réutilisables
+export const ModalHeader: React.FC<ModalHeaderProps> = ({ children, className }) => (
+  <div className={cn("px-6 py-4 border-b border-gray-200 dark:border-gray-800", className)}>
+    {children}
+  </div>
+);
+
+export const ModalBody: React.FC<ModalBodyProps> = ({ children, className }) => (
+  <div className={cn("p-6", className)}>{children}</div>
+);
+
+export const ModalFooter: React.FC<ModalFooterProps> = ({ children, className }) => (
+  <div
+    className={cn(
+      "px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-2",
+      className
+    )}
+  >
+    {children}
+  </div>
+);
+
+// Hook pour feedback de soumission
 export const useModalFeedback = () => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [showSuccess, setShowSuccess] = React.useState(false);
@@ -165,7 +218,7 @@ export const useModalFeedback = () => {
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
     } catch (error) {
-      console.error('Erreur lors de la soumission:', error);
+      console.error("Erreur lors de la soumission:", error);
     } finally {
       setIsSubmitting(false);
     }

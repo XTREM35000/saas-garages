@@ -3,10 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 // import { supabase } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import { WorkflowStep } from '@/types/workflow.types';
 
-export const useWorkflowCheck = () => {
+interface WorkflowCheckResult {
+  isChecking: boolean;
+  currentStep: WorkflowStep;
+  error?: string;
+}
+
+export function useWorkflowCheck(): WorkflowCheckResult {
   const navigate = useNavigate();
   const [isChecking, setIsChecking] = useState(true);
+  const [currentStep, setCurrentStep] = useState<WorkflowStep>('init');
+  const [error, setError] = useState<string>();
 
   useEffect(() => {
     const checkWorkflowStatus = async () => {
@@ -44,6 +53,7 @@ export const useWorkflowCheck = () => {
       } catch (error) {
         console.error('Erreur workflow check:', error);
         toast.error("Erreur de vérification du workflow");
+        setError("Erreur de vérification du workflow");
       } finally {
         setIsChecking(false);
       }
@@ -52,5 +62,9 @@ export const useWorkflowCheck = () => {
     checkWorkflowStatus();
   }, [navigate]);
 
-  return { isChecking };
-};
+  return {
+    isChecking,
+    currentStep,
+    error
+  };
+}

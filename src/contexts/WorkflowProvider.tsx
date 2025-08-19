@@ -3,13 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import {
   WorkflowState,
+  WorkflowStep,
+  DBWorkflowState,
   WorkflowContextType,
-  WorkflowStep
-} from '@/types/workflow.d';
-import { getNextStep } from '@/lib/workflow';
+  getNextStep
+} from '@/types/workflow.types';
 declare const RTCError: undefined;
 
-const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
+export const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
 
 
 const initialState: WorkflowState = {
@@ -58,17 +59,22 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data) {
+        const workflowData = data as DBWorkflowState;
         setState({
-          currentStep: data.current_step as WorkflowStep,
-          completedSteps: Array.isArray(data.completed_steps)
-            ? data.completed_steps
-            : [],
-          lastActiveOrg: typeof data.meta?.lastActiveOrg === 'string'
-            ? data.meta.lastActiveOrg
-            : null,
-          isDemo: Boolean(data.meta?.isDemo),
-          userId: data.user_id,
-          metadata: data.meta ? JSON.parse(JSON.stringify(data.meta)) : undefined
+          currentStep: workflowData.current_step as WorkflowStep,
+          completedSteps: workflowData.completed_steps || [],
+          lastActiveOrg: typeof workflowData.metadata === 'object' && workflowData.metadata !== null
+            ? (workflowData.metadata as Record<string, any>).lastActiveOrg
+            : undefined,
+          isDemo: typeof workflowData.metadata === 'object' && workflowData.metadata !== null
+            ? Boolean((workflowData.metadata as Record<string, any>).isDemo)
+            : false,
+          userId: workflowData.user_id,
+          loading: false,
+          error: null,
+          metadata: typeof workflowData.metadata === 'object' && workflowData.metadata !== null
+            ? (workflowData.metadata as Record<string, any>)
+            : {}
         });
       } else {
         await createInitialState();
@@ -91,7 +97,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       const newState = {
         ...initialState,
         userId: user.id,
-        currentStep: isSuperAdmin ? 'pricing_selection' : 'super_admin_check' as WorkflowStep
+        currentStep: isSuperAdmin ? ('pricing_selection' as WorkflowStep) : ('super_admin_check' as WorkflowStep)
       };
 
       const { error: insertError } = await supabase
@@ -128,28 +134,27 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         newCompletedSteps.push(step);
       }
 
-      const newState = {
-        ...state,
-        currentStep: nextStep,
-        completedSteps: newCompletedSteps
-      };
-
-      console.log('🎯 [WorkflowProvider] Progression:', step, '→', nextStep);
-
       const { error: updateError } = await supabase
         .from('workflow_states')
         .upsert({
           user_id: user.id,
           current_step: nextStep,
           completed_steps: newCompletedSteps,
-          meta: state.metadata || {},
+          metadata: {
+            ...state.metadata,
+            lastUpdate: new Date().toISOString()
+          },
           updated_at: new Date().toISOString()
         });
 
       if (updateError) throw updateError;
 
-      setState(newState);
-      console.log('✅ [WorkflowProvider] Étape complétée:', newState);
+      setState(prev => ({
+        ...prev,
+        currentStep: nextStep,
+        completedSteps: newCompletedSteps
+      }));
+
     } catch (err) {
       console.error('❌ [WorkflowProvider] Erreur progression:', err);
       setError(err instanceof Error ? err.message : 'Erreur de progression');
@@ -243,10 +248,33 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useWorkflow = (): WorkflowContextType => {
+export const useWorkflow = () => {
   const context = useContext(WorkflowContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useWorkflow must be used within a WorkflowProvider');
   }
   return context;
+};
+
+const createWorkflowState = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('workflow_states')
+      .insert({
+        user_id: userId,
+        current_step: 'init',
+        completed_steps: [],
+        is_completed: false,
+        metadata: {}
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+
+  } catch (err) {
+    console.error('❌ [WorkflowProvider] Erreur création état:', err);
+    throw err;
+  }
 };

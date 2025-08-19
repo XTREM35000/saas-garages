@@ -8,7 +8,10 @@ import SmsValidationModal from '@/components/SmsValidationModal';
 import GarageSetupModal from '@/components/GarageSetupModal';
 import CompletionSummaryModal from '@/components/CompletionSummaryModal';
 import { useNavigate } from 'react-router-dom';
-import { WorkflowStep, WORKFLOW_STEP_ORDER } from '@/types/workflow.d';
+import { WorkflowStep, WORKFLOW_STEPS } from '@/types/workflow.types';
+
+// Define WORKFLOW_STEP_ORDER here if not exported from workflow.d
+// (Removed local declaration because it's imported)
 import '../styles/whatsapp-theme.css';
 
 interface InitializationWizardProps {
@@ -69,10 +72,10 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
 
   // Calculer la progression du workflow
   const calculateProgress = (step: WorkflowStep) => {
-    const stepOrder = WORKFLOW_STEP_ORDER.slice(0, -1); // Exclure 'dashboard'
-    
-    const currentIndex = stepOrder.indexOf(step as any);
+    const stepOrder = WORKFLOW_STEPS.slice(0, -1); // Exclure 'dashboard'
+
     const stepNames = [
+      'Initialisation',
       'Super Admin',
       'Plan Tarifaire',
       'Création Admin',
@@ -80,6 +83,8 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
       'Validation SMS',
       'Configuration Garage'
     ];
+
+    const currentIndex = step === 'init' ? 0 : stepOrder.indexOf(step as any);
 
     return {
       current: currentIndex >= 0 ? currentIndex + 1 : stepOrder.length,
@@ -99,7 +104,7 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
   useEffect(() => {
     console.log('🔄 Changement étape:', startStep, 'Mode:', mode);
     // Vérification que startStep est une étape valide
-    if (WORKFLOW_STEP_ORDER.includes(startStep)) {
+    if (WORKFLOW_STEPS.includes(startStep)) {
       setCurrentStep(startStep);
     } else {
       console.error('Étape invalide:', startStep);
@@ -124,10 +129,10 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
         case 'admin_creation':
           console.log('🔐 Admin créé, préparation pour la connexion...');
           setAdminData(stepData);
-          
+
           // Attendre un peu que l'utilisateur soit créé
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           // Tentative de connexion immédiate avec l'admin créé
           try {
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -142,10 +147,10 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
             }
 
             console.log('✅ Connexion admin réussie:', data);
-            
+
             // Attendre que la session soit bien établie
             await new Promise(resolve => setTimeout(resolve, 500));
-            
+
             // Vérifier que l'utilisateur est bien connecté
             const { data: { session: currentSession } } = await supabase.auth.getSession();
             if (currentSession?.user) {
@@ -198,7 +203,7 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
           </div>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
+          <div
             className="bg-gradient-to-r from-[#128C7E] to-[#25D366] h-2 rounded-full transition-all duration-500 ease-out"
             style={{ width: `${(workflowProgress.current / workflowProgress.total) * 100}%` }}
           />
@@ -210,6 +215,19 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
   // Rendu conditionnel avec logs explicites
   const renderCurrentStep = () => {
     switch (currentStep) {
+      case 'init':
+        console.log('🚀 Initialisation du workflow');
+        // Rediriger automatiquement vers la première étape
+        setCurrentStep('super_admin_check');
+        return (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#128C7E] border-t-transparent mx-auto mb-4"></div>
+              <p className="text-[#128C7E] font-medium">Initialisation du système...</p>
+            </div>
+          </div>
+        );
+
       case 'super_admin_check':
         console.log('👑 Affichage modal super admin');
         return (
@@ -292,7 +310,7 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
         return (
           <div className="text-center py-8">
             <div className="text-red-500 text-lg">Étape inconnue</div>
-            <button 
+            <button
               onClick={() => setCurrentStep('super_admin_check')}
               className="btn-whatsapp-primary mt-4"
             >
@@ -307,7 +325,7 @@ const InitializationWizard: React.FC<InitializationWizardProps> = ({
     <>
       {/* Barre de progression */}
       <ProgressBar />
-      
+
       {/* Contenu de l'étape courante */}
       <div className="pt-20">
         {renderCurrentStep()}
