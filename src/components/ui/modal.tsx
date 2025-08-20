@@ -335,16 +335,18 @@ export const DraggableFormModal: React.FC<{
     onClose={onClose}
     size="xl"
     draggable={true}
-    dragConstraints={{ top: -400, bottom: 400 }}
+    dragConstraints={{ top: -600, bottom: 600 }} // ← Augmentez les limites
     maxHeight={maxHeight}
-    className={cn("min-h-[120vh]", className)}
+    className={cn("min-h-[140vh] bg-white", className)} // ← Hauteur augmentée
     overlayClassName="p-2 sm:p-4"
+    position="bottom" // ← Position en bas pour mieux voir
+    scrollable={false} // ← Désactive le scroll interne
   >
     <ModalHeader onClose={onClose}>
       {title && <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h2>}
       {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
     </ModalHeader>
-    <ModalBody scrollable={false}>
+    <ModalBody scrollable={false} className="min-h-[120vh]">  
       {children}
     </ModalBody>
   </Modal>
