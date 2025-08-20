@@ -33,11 +33,16 @@ const EnvDebugger = () => {
 const AppContent = () => {
   const { isChecking, currentStep } = useWorkflowCheck();
 
+
   useEffect(() => {
     console.log("🚦 Workflow debug:", {
       currentStep,
       env: import.meta.env.MODE,
       supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+      VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+      VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) + '...',
+      MODE: import.meta.env.MODE
+
     });
   }, [currentStep]);
 
