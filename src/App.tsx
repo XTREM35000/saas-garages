@@ -18,7 +18,18 @@ import InitializationWizard from "@/components/InitializationWizard";
 import { WorkflowStep } from "@/types/workflow.types";
 
 const queryClient = new QueryClient();
+const EnvDebugger = () => {
+  useEffect(() => {
+    console.log('🔍 Toutes les variables d\'environnement:');
+    console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
+    console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) + '...'); // Partiel pour sécurité
+    console.log('MODE:', import.meta.env.MODE);
+    console.log('DEV:', import.meta.env.DEV);
+    console.log('PROD:', import.meta.env.PROD);
+  }, []);
 
+  return null;
+};
 const AppContent = () => {
   const { isChecking, currentStep } = useWorkflowCheck();
 
@@ -64,21 +75,24 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <BrowserRouter>
-    <QueryClientProvider client={queryClient}>
-      <AppProvider>
-        <WorkflowProvider>
-          <TooltipProvider>
-            <SplashScreenManager>
-              <AppContent />
-            </SplashScreenManager>
-            <Toaster />
-            <Sonner />
-          </TooltipProvider>
-        </WorkflowProvider>
-      </AppProvider>
-    </QueryClientProvider>
-  </BrowserRouter>
+  <>
+    <EnvDebugger />
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <AppProvider>
+          <WorkflowProvider>
+            <TooltipProvider>
+              <SplashScreenManager>
+                <AppContent />
+              </SplashScreenManager>
+              <Toaster />
+              <Sonner />
+            </TooltipProvider>
+          </WorkflowProvider>
+        </AppProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
+  </>
 );
 
 export default App;
