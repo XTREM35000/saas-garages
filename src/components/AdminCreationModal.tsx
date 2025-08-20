@@ -78,25 +78,18 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
     setError("");
     setIsSubmitting(true);
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email.value,
-        password: formData.password.value,
-        options: { data: { name: formData.name.value, role: "admin" } }
+      // Utiliser la fonction RPC existante
+      const { data, error } = await supabase.rpc('create_admin_complete', {
+        p_email: formData.email.value,
+        p_password: formData.password.value,
+        p_name: formData.name.value,
+        p_phone: formData.phone.value || null
       });
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Utilisateur non créé");
 
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: authData.user.id,
-        user_id: authData.user.id,
-        email: formData.email.value,
-        full_name: formData.name.value,
-        role: "admin"
-      });
-      if (profileError) throw profileError;
+      if (error) throw error;
 
       toast.success("Administrateur créé avec succès!");
-      await completeStep("admin_creation"); // enchaîne dans le workflow
+      await completeStep("admin_creation");
       onComplete();
     } catch (err: any) {
       setError(err.message || "Erreur lors de la création");

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, validateSession, clearSession } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import OrganizationSelect from './OrganizationSelect';
 import { toast } from 'sonner';
 
@@ -24,15 +24,12 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     try {
       console.log('🔍 Vérification de l\'authentification...');
 
-      // Valider la session
-      await validateSession();
-
       // Obtenir l'utilisateur
       const { data: { user }, error: userError } = await supabase.auth.getUser();
 
       if (userError || !user) {
         console.error('❌ Erreur utilisateur:', userError);
-        await clearSession();
+        localStorage.clear();
         setAuthState('unauthenticated');
         return;
       }
@@ -75,7 +72,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
 
     } catch (error) {
       console.error('❌ Erreur vérification auth:', error);
-      await clearSession();
+      localStorage.clear();
       setAuthState('unauthenticated');
     }
   };
@@ -121,7 +118,8 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
 
   const handleLogout = async () => {
     try {
-      await clearSession();
+      await supabase.auth.signOut();
+      localStorage.clear();
       setAuthState('unauthenticated');
       setCurrentUser(null);
       setSelectedOrg(null);

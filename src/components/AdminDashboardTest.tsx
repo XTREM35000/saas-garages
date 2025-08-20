@@ -46,7 +46,7 @@ const AdminDashboardTest: React.FC<AdminDashboardTestProps> = ({ onLogout }) => 
 
           // Récupérer l'organisation de l'utilisateur
           const { data: orgData } = await supabase
-            .from('user_organizations')
+            .from('user_organisations')
             .select(`
               *,
               organisations (*)
