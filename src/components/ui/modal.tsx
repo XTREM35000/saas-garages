@@ -1,6 +1,6 @@
 // src/components/ui/modal.tsx
-import React, { useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,8 @@ interface ModalProps {
   maxHeight?: string;
   scrollable?: boolean;
   position?: "center" | "top" | "bottom";
+  draggable?: boolean;
+  dragConstraints?: { top: number; bottom: number };
 }
 
 const sizeClasses = {
@@ -63,9 +65,13 @@ export const Modal: React.FC<ModalProps> = ({
   footer,
   maxHeight = "90vh",
   scrollable = true,
-  position = "center"
+  position = "center",
+  draggable = false,
+  dragConstraints = { top: -400, bottom: 400 }
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Gestion de la touche Escape
   useEffect(() => {
@@ -106,6 +112,21 @@ export const Modal: React.FC<ModalProps> = ({
     if (closeOnOverlayClick && e.target === e.currentTarget) {
       onClose();
     }
+  };
+
+  // Gestion du drag
+  const handleDragStart = () => {
+    setIsDragging(true);
+  };
+
+  const handleDrag = (event: any, info: PanInfo) => {
+    setDragY(info.offset.y);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    // Reset position après un délai
+    setTimeout(() => setDragY(0), 100);
   };
 
   if (!isOpen) return null;
@@ -151,23 +172,38 @@ export const Modal: React.FC<ModalProps> = ({
             stiffness: 300,
             duration: 0.3
           }}
+          // Props de drag si activé
+          {...(draggable && {
+            drag: "y",
+            dragConstraints,
+            dragElastic: 0.2,
+            dragTransition: { bounceStiffness: 600, bounceDamping: 20 },
+            onDragStart: handleDragStart,
+            onDrag: handleDrag,
+            onDragEnd: handleDragEnd,
+            style: { y: dragY }
+          })}
           className={cn(
             "relative w-full bg-white rounded-2xl shadow-2xl overflow-hidden",
             sizeClasses[size],
             scrollable ? "max-h-[90vh]" : "",
+            draggable ? "touch-pan-y" : "",
             className
           )}
-          style={{ maxHeight: scrollable ? maxHeight : "auto" }}
+          style={{ 
+            maxHeight: scrollable ? maxHeight : "auto",
+            ...(draggable && { y: dragY })
+          }}
         >
           {/* Header */}
           {showHeader && (title || description || showCloseButton) && (
             <div className={cn(
-              "flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50",
+              "flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-gray-50",
               headerClassName
             )}>
               <div className="flex-1">
                 {title && (
-                  <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1">
                     {title}
                   </h2>
                 )}
@@ -184,7 +220,7 @@ export const Modal: React.FC<ModalProps> = ({
                   className="ml-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   aria-label="Fermer la modal"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               )}
             </div>
@@ -196,7 +232,7 @@ export const Modal: React.FC<ModalProps> = ({
             scrollable ? "overflow-y-auto" : "overflow-hidden",
             bodyClassName
           )}>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {children}
             </div>
           </div>
@@ -204,7 +240,7 @@ export const Modal: React.FC<ModalProps> = ({
           {/* Footer */}
           {showFooter && footer && (
             <div className={cn(
-              "p-6 border-t border-gray-200 bg-gray-50",
+              "p-4 sm:p-6 border-t border-gray-200 bg-gray-50",
               footerClassName
             )}>
               {footer}
@@ -224,7 +260,7 @@ export const ModalHeader: React.FC<{
   showCloseButton?: boolean;
 }> = ({ children, className = "", onClose, showCloseButton = true }) => (
   <div className={cn(
-    "flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50",
+    "flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-gray-50",
     className
   )}>
     <div className="flex-1">
@@ -237,7 +273,7 @@ export const ModalHeader: React.FC<{
         className="ml-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         aria-label="Fermer la modal"
       >
-        <X className="w-5 h-5" />
+        <X className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
     )}
   </div>
@@ -257,7 +293,7 @@ export const ModalBody: React.FC<{
   )}
   style={{ maxHeight: scrollable ? maxHeight : "auto" }}
   >
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {children}
     </div>
   </div>
@@ -269,9 +305,47 @@ export const ModalFooter: React.FC<{
   className?: string;
 }> = ({ children, className = "" }) => (
   <div className={cn(
-    "p-6 border-t border-gray-200 bg-gray-50",
+    "p-4 sm:p-6 border-t border-gray-200 bg-gray-50",
     className
   )}>
     {children}
   </div>
+);
+
+// Version spécialisée pour les formulaires avec draggable
+export const DraggableFormModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  title?: string;
+  description?: string;
+  className?: string;
+  maxHeight?: string;
+}> = ({ 
+  isOpen, 
+  onClose, 
+  children, 
+  title, 
+  description, 
+  className = "",
+  maxHeight = "95vh"
+}) => (
+  <Modal
+    isOpen={isOpen}
+    onClose={onClose}
+    size="xl"
+    draggable={true}
+    dragConstraints={{ top: -400, bottom: 400 }}
+    maxHeight={maxHeight}
+    className={cn("min-h-[120vh]", className)}
+    overlayClassName="p-2 sm:p-4"
+  >
+    <ModalHeader onClose={onClose}>
+      {title && <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h2>}
+      {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+    </ModalHeader>
+    <ModalBody scrollable={false}>
+      {children}
+    </ModalBody>
+  </Modal>
 );
