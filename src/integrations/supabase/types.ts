@@ -647,13 +647,16 @@ export type Database = {
       }
       profiles: {
         Row: {
+          admin_type: string | null
           avatar_url: string | null
           created_at: string | null
           email: string
+          first_name: string | null
           full_name: string | null
           id: string
           is_active: boolean | null
           is_superadmin: boolean | null
+          last_name: string | null
           name: string | null
           organisation_id: string | null
           phone: string | null
@@ -662,15 +665,19 @@ export type Database = {
           sms_code: string | null
           sms_code_expires_at: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
+          admin_type?: string | null
           avatar_url?: string | null
           created_at?: string | null
           email: string
+          first_name?: string | null
           full_name?: string | null
           id: string
           is_active?: boolean | null
           is_superadmin?: boolean | null
+          last_name?: string | null
           name?: string | null
           organisation_id?: string | null
           phone?: string | null
@@ -679,15 +686,19 @@ export type Database = {
           sms_code?: string | null
           sms_code_expires_at?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
+          admin_type?: string | null
           avatar_url?: string | null
           created_at?: string | null
           email?: string
+          first_name?: string | null
           full_name?: string | null
           id?: string
           is_active?: boolean | null
           is_superadmin?: boolean | null
+          last_name?: string | null
           name?: string | null
           organisation_id?: string | null
           phone?: string | null
@@ -696,6 +707,7 @@ export type Database = {
           sms_code?: string | null
           sms_code_expires_at?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1197,28 +1209,37 @@ export type Database = {
       }
       workflow_states: {
         Row: {
+          admin_type: string | null
+          completed_steps: Json | null
           created_at: string | null
           current_step: string
           id: string
           is_completed: boolean | null
+          meta: Json | null
           metadata: Json | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          admin_type?: string | null
+          completed_steps?: Json | null
           created_at?: string | null
           current_step: string
           id?: string
           is_completed?: boolean | null
+          meta?: Json | null
           metadata?: Json | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          admin_type?: string | null
+          completed_steps?: Json | null
           created_at?: string | null
           current_step?: string
           id?: string
           is_completed?: boolean | null
+          meta?: Json | null
           metadata?: Json | null
           updated_at?: string | null
           user_id?: string | null
@@ -1259,6 +1280,10 @@ export type Database = {
         Returns: string
       }
       check_workflow_state: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      check_workflow_state_v2: {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
@@ -1337,10 +1362,21 @@ export type Database = {
         Returns: Json
       }
       create_garage_complete: {
+        Args:
+          | {
+              p_address?: string
+              p_name: string
+              p_organization_id?: string
+              p_phone?: string
+            }
+          | { p_address?: string; p_name: string; p_phone?: string }
+        Returns: Json
+      }
+      create_garage_complete_v2: {
         Args: {
           p_address?: string
+          p_admin_email?: string
           p_name: string
-          p_organization_id?: string
           p_phone?: string
         }
         Returns: Json
@@ -1642,6 +1678,10 @@ export type Database = {
         Returns: Json
       }
       validate_sms_code: {
+        Args: { p_code: string; p_phone?: string }
+        Returns: Json
+      }
+      validate_sms_code_v2: {
         Args: { p_code: string; p_phone?: string }
         Returns: Json
       }

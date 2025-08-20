@@ -31,7 +31,7 @@ export const useWorkflowManager = () => {
       setIsLoading(true);
       setError(null);
 
-      const { data, error: rpcError } = await supabase.rpc('check_workflow_state');
+      const { data, error: rpcError } = await (supabase as any).rpc('check_workflow_state');
       
       if (rpcError) throw rpcError;
 
@@ -56,7 +56,7 @@ export const useWorkflowManager = () => {
     phone?: string;
   }) => {
     try {
-      const { data: result, error } = await supabase.rpc('create_super_admin_complete', {
+      const { data: result, error } = await (supabase as any).rpc('create_super_admin_complete', {
         p_email: data.email,
         p_password: data.password,
         p_name: data.name,
@@ -89,7 +89,7 @@ export const useWorkflowManager = () => {
     pricingPlan: string;
   }) => {
     try {
-      const { data: result, error } = await supabase.rpc('create_admin_complete', {
+      const { data: result, error } = await (supabase as any).rpc('create_admin_complete', {
         p_email: data.email,
         p_password: data.password,
         p_name: data.name,
@@ -120,7 +120,7 @@ export const useWorkflowManager = () => {
     address?: string;
   }) => {
     try {
-      const { data: result, error } = await supabase.rpc('create_organization_complete', {
+      const { data: result, error } = await (supabase as any).rpc('create_organization_complete', {
         p_name: data.name,
         p_address: data.address || null
       });
@@ -145,7 +145,7 @@ export const useWorkflowManager = () => {
   // Valider le SMS
   const validateSMS = async (code: string, phone?: string) => {
     try {
-      const { data: result, error } = await supabase.rpc('validate_sms_code', {
+      const { data: result, error } = await (supabase as any).rpc('validate_sms_code', {
         p_code: code,
         p_phone: phone || null
       });
@@ -174,7 +174,7 @@ export const useWorkflowManager = () => {
     phone?: string;
   }) => {
     try {
-      const { data: result, error } = await supabase.rpc('create_garage_complete', {
+      const { data: result, error } = await (supabase as any).rpc('create_garage_complete', {
         p_name: data.name,
         p_address: data.address || null,
         p_phone: data.phone || null

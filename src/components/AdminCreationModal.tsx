@@ -78,8 +78,8 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
     setError("");
     setIsSubmitting(true);
     try {
-      // Utiliser la fonction RPC existante
-      const { data, error } = await supabase.rpc('create_admin_complete', {
+      // Utiliser la fonction RPC avec typage flexible
+      const { data, error } = await (supabase as any).rpc('create_admin_complete', {
         p_email: formData.email.value,
         p_password: formData.password.value,
         p_name: formData.name.value,
@@ -87,6 +87,12 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
       });
 
       if (error) throw error;
+
+      // Traiter la réponse JSON
+      const result = data as any;
+      if (!result?.success) {
+        throw new Error(result?.error || 'Erreur lors de la création');
+      }
 
       toast.success("Administrateur créé avec succès!");
       await completeStep("admin_creation");
