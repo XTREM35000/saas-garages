@@ -10,39 +10,33 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { SplashScreenManager } from "@/components/SplashScreenManager";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-
-// logique workflow
 import { useWorkflowCheck } from "@/hooks/useWorkflowCheck";
 import InitializationWizard from "@/components/InitializationWizard";
-
 import { WorkflowStep } from "@/types/workflow.types";
 
 const queryClient = new QueryClient();
-const EnvDebugger = () => {
-  useEffect(() => {
-    console.log('🔍 Toutes les variables d\'environnement:');
-    console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
-    console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) + '...'); // Partiel pour sécurité
-    console.log('MODE:', import.meta.env.MODE);
-    console.log('DEV:', import.meta.env.DEV);
-    console.log('PROD:', import.meta.env.PROD);
-  }, []);
 
-  return null;
-};
 const AppContent = () => {
   const { isChecking, currentStep } = useWorkflowCheck();
 
+  // Debug des variables d'environnement
+  useEffect(() => {
+    console.log("🔍 Variables d'environnement:", {
+      VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+      VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ?
+        import.meta.env.VITE_SUPABASE_ANON_KEY.substring(0, 20) + '...' : 'non défini',
+      MODE: import.meta.env.MODE,
+      DEV: import.meta.env.DEV,
+      PROD: import.meta.env.PROD
+    });
+  }, []);
 
+  // Debug du workflow
   useEffect(() => {
     console.log("🚦 Workflow debug:", {
       currentStep,
       env: import.meta.env.MODE,
       supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-      VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-      VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) + '...',
-      MODE: import.meta.env.MODE
-
     });
   }, [currentStep]);
 
@@ -57,7 +51,6 @@ const AppContent = () => {
     );
   }
 
-  // Si pas encore arrivé au "dashboard" → lancer le wizard
   if (currentStep !== "dashboard") {
     return (
       <InitializationWizard
@@ -68,7 +61,6 @@ const AppContent = () => {
     );
   }
 
-  // Workflow complet → layout normal avec logo animé
   return (
     <MainLayout>
       <Routes>
@@ -80,24 +72,21 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <>
-    <EnvDebugger />
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <AppProvider>
-          <WorkflowProvider>
-            <TooltipProvider>
-              <SplashScreenManager>
-                <AppContent />
-              </SplashScreenManager>
-              <Toaster />
-              <Sonner />
-            </TooltipProvider>
-          </WorkflowProvider>
-        </AppProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
-  </>
+  <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <AppProvider>
+        <WorkflowProvider>
+          <TooltipProvider>
+            <SplashScreenManager>
+              <AppContent />
+            </SplashScreenManager>
+            <Toaster />
+            <Sonner />
+          </TooltipProvider>
+        </WorkflowProvider>
+      </AppProvider>
+    </QueryClientProvider>
+  </BrowserRouter>
 );
 
 export default App;
