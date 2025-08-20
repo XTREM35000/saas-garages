@@ -9,6 +9,8 @@ export const WORKFLOW_STEPS = {
   COMPLETE: 'complete'
 } as const;
 
+export type WorkflowMode = 'super_admin' | 'tenant' | 'admin';
+
 export type WorkflowStep =
   | 'super_admin_check'
   | 'pricing_selection'
@@ -31,7 +33,11 @@ export interface WorkflowState {
 
 export interface WorkflowContextType {
   state: WorkflowState;
+  currentStep: WorkflowStep;
+  steps: Array<{ id: WorkflowStep; status: string }>;
   completeStep: (step: WorkflowStep) => Promise<void>;
+  goToStep: (step: WorkflowStep) => Promise<void>;
+  canGoToStep: (step: WorkflowStep) => boolean;
   reset: () => Promise<void>;
   isLoading: boolean;
   error: string | null;

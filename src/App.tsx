@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "@/contexts/AppContext";
 import { WorkflowProvider } from "@/contexts/WorkflowProvider";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { SplashScreenManager } from "@/components/SplashScreenManager";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -30,7 +31,14 @@ const AppContent = () => {
   }, [currentStep]);
 
   if (isChecking || currentStep === "loading") {
-    return <div>⏳ Chargement du workflow...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-500 to-green-700">
+        <div className="text-center text-white">
+          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-xl font-semibold">⏳ Chargement du workflow...</p>
+        </div>
+      </div>
+    );
   }
 
   // Si pas encore arrivé au "dashboard" → lancer le wizard
@@ -44,7 +52,7 @@ const AppContent = () => {
     );
   }
 
-  // Workflow complet → layout normal
+  // Workflow complet → layout normal avec logo animé
   return (
     <MainLayout>
       <Routes>
@@ -61,7 +69,9 @@ const App = () => (
       <AppProvider>
         <WorkflowProvider>
           <TooltipProvider>
-            <AppContent />
+            <SplashScreenManager>
+              <AppContent />
+            </SplashScreenManager>
             <Toaster />
             <Sonner />
           </TooltipProvider>

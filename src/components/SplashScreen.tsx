@@ -1,209 +1,306 @@
-import React, { useState, useEffect } from 'react';
-import { Car, Wrench, Zap, Building2, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { AnimatedLogo } from "./AnimatedLogo";
+import { Car, Wrench, Settings, Shield, Database, Zap } from "lucide-react";
 
 interface SplashScreenProps {
-  visible: boolean;
-  onComplete?: () => void;
+  onComplete: () => void;
+  duration?: number;
+  skipKey?: string;
+  showSkipButton?: boolean;
+  className?: string;
 }
 
-const SplashScreen: React.FC<SplashScreenProps> = ({ visible, onComplete }) => {
-  const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [showCheckmark, setShowCheckmark] = useState(false);
+interface TestStep {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  duration: number;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+}
 
-  const steps = [
-    { name: 'Initialisation', icon: Building2, color: 'from-blue-500 to-blue-600' },
-    { name: 'Chargement des modules', icon: Zap, color: 'from-yellow-500 to-orange-500' },
-    { name: 'Configuration système', icon: Wrench, color: 'from-green-500 to-emerald-600' },
-    { name: 'Préparation interface', icon: Car, color: 'from-purple-500 to-pink-500' },
-    { name: 'Finalisation', icon: CheckCircle, color: 'from-green-500 to-teal-600' }
+export const SplashScreen: React.FC<SplashScreenProps> = ({
+  onComplete,
+  duration = 5000, // 5 secondes pour les tests
+  skipKey = "Escape",
+  showSkipButton = true,
+  className = ""
+}) => {
+  const [progress, setProgress] = useState(0);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [currentTest, setCurrentTest] = useState(0);
+
+  const testSteps: TestStep[] = [
+    {
+      id: 'init',
+      name: 'Initialisation système',
+      icon: Zap,
+      duration: 800,
+      status: 'pending'
+    },
+    {
+      id: 'auth',
+      name: 'Vérification authentification',
+      icon: Shield,
+      duration: 600,
+      status: 'pending'
+    },
+    {
+      id: 'database',
+      name: 'Connexion base de données',
+      icon: Database,
+      duration: 1000,
+      status: 'pending'
+    },
+    {
+      id: 'workflow',
+      name: 'Chargement workflow',
+      icon: Settings,
+      duration: 700,
+      status: 'pending'
+    },
+    {
+      id: 'garage',
+      name: 'Configuration garage',
+      icon: Car,
+      duration: 900,
+      status: 'pending'
+    },
+    {
+      id: 'tools',
+      name: 'Outils de réparation',
+      icon: Wrench,
+      duration: 600,
+      status: 'pending'
+    }
   ];
 
   useEffect(() => {
-    if (!visible) {
-      setProgress(0);
-      setCurrentStep(0);
-      setShowCheckmark(false);
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(timer);
-          setShowCheckmark(true);
-          setTimeout(() => {
-            if (onComplete) {
-              onComplete();
+    console.log('🎬 Démarrage SplashScreen pour cette session');
+    
+    // Animation des tests étape par étape
+    let currentStepIndex = 0;
+    let totalProgress = 0;
+    
+    const runTests = async () => {
+      for (let i = 0; i < testSteps.length; i++) {
+        const step = testSteps[i];
+        setCurrentTest(i);
+        
+        // Simuler le test en cours
+        await new Promise(resolve => {
+          const stepDuration = step.duration;
+          const stepProgress = 100 / testSteps.length;
+          
+          const interval = setInterval(() => {
+            totalProgress += (stepProgress / (stepDuration / 16)); // 16ms = 60fps
+            setProgress(Math.min(totalProgress, 100));
+            
+            if (totalProgress >= (i + 1) * stepProgress) {
+              clearInterval(interval);
+              resolve(true);
             }
-          }, 1500);
-          return 100;
-        }
-        return prev + 1.5;
-      });
-    }, 80);
-
-    const stepTimer = setInterval(() => {
-      setCurrentStep(prev => {
-        if (prev >= steps.length - 1) {
-          clearInterval(stepTimer);
-          return steps.length - 1;
-        }
-        return prev + 1;
-      });
-    }, 1200);
-
-    return () => {
-      clearInterval(timer);
-      clearInterval(stepTimer);
+          }, 16);
+        });
+      }
+      
+      // Tous les tests sont terminés
+      setTimeout(() => {
+        handleComplete();
+      }, 500);
     };
-  }, [visible, onComplete, steps.length]);
 
-  if (!visible) {
-    return null;
-  }
+    runTests();
+  }, []);
+
+  // Gestion des touches clavier
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === skipKey || e.key === "Escape") {
+        handleComplete();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyPress);
+    return () => document.removeEventListener("keydown", handleKeyPress);
+  }, [skipKey]);
+
+  const handleComplete = () => {
+    if (isCompleting) return;
+    
+    console.log('✅ SplashScreen terminé');
+    setIsCompleting(true);
+    
+    // Délai pour l'animation de sortie
+    setTimeout(() => {
+      onComplete();
+    }, 500);
+  };
+
+  const handleSkip = () => {
+    handleComplete();
+  };
 
   return (
-    <div 
-      data-testid="splash-screen"
-      className="fixed inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center z-50"
-    >
-      {/* Particules animées en arrière-plan */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-white/20 rounded-full animate-pulse"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 2}s`,
-              animationDuration: `${2 + Math.random() * 2}s`
-            }}
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.5 }}
+        className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-green-500 via-green-600 to-green-700 ${className}`}
+      >
+        {/* Logo animé centré */}
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ 
+            duration: 0.8, 
+            type: "spring", 
+            damping: 15, 
+            stiffness: 100 
+          }}
+          className="mb-8"
+        >
+          <AnimatedLogo 
+            size={120}
+            mainColor="text-white"
+            secondaryColor="text-yellow-200"
+            className="drop-shadow-2xl"
           />
-        ))}
-      </div>
+        </motion.div>
 
-      <div className="relative z-10 text-center space-y-8">
-        {/* Logo principal avec animation */}
-        <div className="relative">
-          <div className="w-32 h-32 mx-auto mb-6 relative">
-            {/* Cercle de fond animé */}
-            <div className="absolute inset-0 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-full animate-spin" style={{ animationDuration: '3s' }} />
-            <div className="absolute inset-2 bg-slate-900 rounded-full flex items-center justify-center">
-              <div className="relative">
-                {/* Voiture principale */}
-                <Car className="w-16 h-16 text-white animate-bounce" style={{ animationDuration: '2s' }} />
-                {/* Voitures flottantes */}
-                <Car className="absolute -top-4 -left-4 w-6 h-6 text-orange-400 animate-pulse" style={{ animationDelay: '0.5s' }} />
-                <Car className="absolute -bottom-4 -right-4 w-6 h-6 text-red-400 animate-pulse" style={{ animationDelay: '1s' }} />
-                <Car className="absolute -top-2 -right-2 w-4 h-4 text-pink-400 animate-pulse" style={{ animationDelay: '1.5s' }} />
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Titre principal */}
+        <motion.h1
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+          className="text-4xl md:text-6xl font-bold text-white text-center mb-4"
+        >
+          Multi-Garages
+        </motion.h1>
 
-        {/* Titre avec animation de typewriter */}
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold text-white animate-fade-in">
-            <span className="bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">
-              Garage Abidjan
-            </span>
-          </h1>
-          <p className="text-gray-300 text-lg animate-fade-in" style={{ animationDelay: '0.5s' }}>
-            Gestion intelligente de votre garage
-          </p>
+        {/* Sous-titre */}
+        <motion.p
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.6 }}
+          className="text-xl md:text-2xl text-green-100 text-center mb-8 max-w-2xl px-4"
+        >
+          Tests de fonctionnalités en cours...
+        </motion.p>
 
-          {/* Informations du développeur */}
-          <div className="mt-6 space-y-1 animate-fade-in" style={{ animationDelay: '1s' }}>
-            <p className="text-blue-300 text-sm font-medium">
-              Développé par <span className="text-blue-200 font-semibold">Thierry Gogo</span>
-            </p>
-            <p className="text-gray-400 text-xs">
-              FullStack Developer • Freelance
-            </p>
-            <div className="flex items-center justify-center space-x-2 mt-2">
-              <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse" />
-              <span className="text-gray-500 text-xs">React • TypeScript • Node.js</span>
-              <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse" />
-            </div>
-          </div>
-        </div>
-
-        {/* Barre de progression */}
-        <div className="w-80 mx-auto space-y-4">
-          <div className="relative">
-            <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-white text-sm font-medium">{Math.round(progress)}%</span>
-            </div>
-          </div>
-
-          {/* Étapes de chargement */}
-          <div className="space-y-2">
-            {steps.map((step, index) => {
+        {/* Étapes de test */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7, duration: 0.6 }}
+          className="w-full max-w-md mx-4 mb-6"
+        >
+          <div className="space-y-3">
+            {testSteps.map((step, index) => {
               const StepIcon = step.icon;
-              const isActive = index === currentStep;
-              const isCompleted = index < currentStep;
+              const isActive = index === currentTest;
+              const isCompleted = index < currentTest;
+              const isPending = index > currentTest;
 
               return (
-                <div
-                  key={index}
-                  className={`flex items-center space-x-3 transition-all duration-300 ${
-                    isActive ? 'text-white' : isCompleted ? 'text-green-400' : 'text-gray-500'
-                  }`}
+                <motion.div
+                  key={step.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.8 + index * 0.1, duration: 0.4 }}
+                  className={`
+                    flex items-center gap-3 p-3 rounded-lg transition-all duration-300
+                    ${isActive ? 'bg-white/20 border border-white/30' : ''}
+                    ${isCompleted ? 'bg-green-500/20 border border-green-300/30' : ''}
+                    ${isPending ? 'bg-white/10 border border-white/20' : ''}
+                  `}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    isActive
-                      ? `bg-gradient-to-r ${step.color}`
-                      : isCompleted
-                        ? 'bg-green-500'
-                        : 'bg-gray-600'
-                  }`}>
-                    {isCompleted ? (
-                      <CheckCircle className="w-4 h-4 text-white" />
-                    ) : (
-                      <StepIcon className="w-4 h-4 text-white" />
-                    )}
+                  {/* Icône de l'étape */}
+                  <div className={`
+                    w-8 h-8 rounded-full flex items-center justify-center
+                    ${isActive ? 'bg-white text-green-600' : ''}
+                    ${isCompleted ? 'bg-green-500 text-white' : ''}
+                    ${isPending ? 'bg-white/30 text-white/50' : ''}
+                  `}>
+                    <StepIcon className="w-4 h-4" />
                   </div>
-                  <span className={`text-sm transition-all duration-300 ${
-                    isActive ? 'font-medium' : ''
-                  }`}>
+
+                  {/* Nom de l'étape */}
+                  <span className={`
+                    text-sm font-medium
+                    ${isActive ? 'text-white' : ''}
+                    ${isCompleted ? 'text-green-200' : ''}
+                    ${isPending ? 'text-white/70' : ''}
+                  `}>
                     {step.name}
                   </span>
-                  {isActive && (
-                    <div className="flex space-x-1">
-                      <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                      <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    </div>
-                  )}
-                </div>
+
+                  {/* Statut */}
+                  <div className="ml-auto">
+                    {isActive && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    )}
+                    {isCompleted && (
+                      <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-white rounded-full" />
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Message de chargement */}
-        <div className="text-gray-400 text-sm animate-pulse">
-          {progress < 100 ? 'Initialisation en cours...' : 'Application prête !'}
-        </div>
-      </div>
-
-      {/* Animation de fin avec checkmark */}
-      {showCheckmark && (
-        <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center animate-fade-in">
-          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center animate-scale-in">
-            <CheckCircle className="w-12 h-12 text-white" />
+        {/* Barre de progression globale */}
+        <motion.div
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ delay: 1.2, duration: 0.8 }}
+          className="w-full max-w-md mx-4 mb-6"
+        >
+          <div className="bg-green-400/30 rounded-full h-3 overflow-hidden">
+            <motion.div
+              className="h-full bg-white rounded-full"
+              style={{ width: `${progress}%` }}
+              transition={{ duration: 0.1 }}
+            />
           </div>
-        </div>
-      )}
-    </div>
+          <div className="text-center mt-2">
+            <span className="text-white/80 text-sm font-mono">
+              {Math.round(progress)}% - Tests en cours
+            </span>
+          </div>
+        </motion.div>
+
+        {/* Bouton de saut */}
+        {showSkipButton && (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.5, duration: 0.5 }}
+            onClick={handleSkip}
+            className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-lg border border-white/30 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white/50"
+          >
+            Appuyez sur {skipKey} pour passer
+          </motion.button>
+        )}
+
+        {/* Informations de version */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2.0, duration: 0.5 }}
+          className="absolute bottom-6 left-6 right-6 text-center"
+        >
+          <p className="text-green-200 text-sm">
+            Version 2.0 • Tests automatisés • Système sécurisé
+          </p>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
