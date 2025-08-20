@@ -1,28 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Shield,
-  Clock,
-  RefreshCw,
-  X,
-  Check,
-  Phone,
-  Building,
-  User
-} from 'lucide-react';
+import { Shield, Clock, RefreshCw, Check, Phone, Building, User, AlertCircle } from 'lucide-react';
+import { BaseModal } from '@/components/ui/base-modal';
+import { ModalFormField } from '@/components/ui/modal-form-field';
+import { ModalButton } from '@/components/ui/modal-button';
+import { PhoneField } from '@/components/ui/phone-field';
 
 export interface SmsValidationModalProps {
   isOpen: boolean;
   onComplete: () => void;
-  organizationName?: string; // Ajout des props manquantes
+  organizationName?: string;
   organizationCode?: string;
   adminName?: string;
 }
@@ -30,18 +18,17 @@ export interface SmsValidationModalProps {
 const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
   isOpen,
   onComplete,
-  organizationName = 'Non défini', // Valeurs par défaut
+  organizationName = 'Non défini',
   organizationCode = 'XXX-XXX',
   adminName = 'Non défini'
 }) => {
-  const [smsCode, setSmsCode] = useState('');
   const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes en secondes
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [formData, setFormData] = useState({
-    phone: '',
-    code: ''
+    phone: { value: '', error: '', isValid: false },
+    code: { value: '', error: '', isValid: false }
   });
 
   // Timer countdown
@@ -62,20 +49,46 @@ const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  const validateField = (field: keyof typeof formData, value: string) => {
+    switch (field) {
+      case 'phone':
+        const phoneRegex = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
+        return {
+          isValid: phoneRegex.test(value),
+          error: !phoneRegex.test(value) ? "Numéro de téléphone invalide" : ""
+        };
+      case 'code':
+        return {
+          isValid: value.length === 6 && /^\d{6}$/.test(value),
+          error: value.length !== 6 ? "Le code doit contenir 6 chiffres" : ""
+        };
+      default:
+        return { isValid: false, error: "" };
+    }
+  };
+
+  const handleFieldChange = (field: keyof typeof formData, value: string) => {
+    const validation = validateField(field, value);
+    setFormData(prev => ({
+      ...prev,
+      [field]: { value, error: validation.error, isValid: validation.isValid }
+    }));
+  };
+
   const handleSendCode = async () => {
-    if (!formData.phone) {
-      toast.error('Veuillez saisir un numéro de téléphone');
+    if (!formData.phone.isValid) {
+      toast.error('Veuillez saisir un numéro de téléphone valide');
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Utilisateur non connecté');
 
       // Envoi du code SMS via la fonction RPC
       const { error } = await supabase.rpc('send_validation_sms', {
-        phone_number: formData.phone,
+        phone_number: formData.phone.value,
         user_id: user.id
       });
 
@@ -83,280 +96,181 @@ const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
 
       toast.success('Code envoyé avec succès!');
       setStep('code');
+      setTimeLeft(15 * 60); // Reset timer
 
     } catch (error: any) {
       console.error('❌ Erreur envoi SMS:', error);
       toast.error(error.message || 'Erreur lors de l\'envoi du code');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleVerifyCode = async () => {
-    if (!formData.code) {
-      toast.error('Veuillez saisir le code reçu');
+    if (!formData.code.isValid) {
+      toast.error('Veuillez saisir un code valide');
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Utilisateur non connecté');
 
-      // Vérification du code via la fonction RPC
-      const { data, error } = await supabase.rpc('verify_sms_code', {
-        verification_code: formData.code,
+      // Vérification du code SMS
+      const { error } = await supabase.rpc('verify_sms_code', {
+        phone_number: formData.phone.value,
+        sms_code: formData.code.value,
         user_id: user.id
       });
 
       if (error) throw error;
 
-      if (data && data.verified) {
-        toast.success('Numéro vérifié avec succès!');
-        onComplete();
-      } else {
-        toast.error('Code invalide');
-      }
+      toast.success('Numéro de téléphone validé avec succès!');
+      onComplete();
 
     } catch (error: any) {
-      console.error('❌ Erreur vérification:', error);
-      toast.error(error.message || 'Erreur lors de la vérification');
+      console.error('❌ Erreur vérification SMS:', error);
+      setError(error.message || 'Code invalide');
+      toast.error(error.message || 'Code invalide');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleResendCode = async () => {
-    setIsLoading(true);
-    setError('');
-
-    try {
-      // Simulation d'envoi de SMS
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setTimeLeft(15 * 60); // Reset timer
-      toast.success('Code SMS renvoyé avec succès !');
-    } catch (error) {
-      setError('Erreur lors de l\'envoi du code');
-      toast.error('Erreur lors de l\'envoi du code');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleValidate = async () => {
-    if (!smsCode || smsCode.length !== 6) {
-      setError('Veuillez entrer un code SMS valide (6 chiffres)');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    try {
-      // Simulation de validation
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      if (smsCode === '123456') { // Code de démonstration
-        toast.success('Validation réussie !');
-        onComplete();
-      } else {
-        setError('Code SMS incorrect');
-        toast.error('Code SMS incorrect');
-      }
-    } catch (error) {
-      setError('Erreur lors de la validation');
-      toast.error('Erreur lors de la validation');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRefuse = () => {
-    toast.info('Demande refusée');
-    onComplete();
-  };
-
-  // Fonction onClose
-  const handleClose = () => {
-    // Réinitialiser les états si nécessaire
-    setStep('phone');
-    setFormData({ phone: '', code: '' });
-    setError('');
+    await handleSendCode();
   };
 
   return (
-    <Dialog open={isOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {step === 'phone' ? 'Validation de votre numéro' : 'Saisissez le code'}
-          </DialogTitle>
-          <DialogDescription>
-            {step === 'phone'
-              ? 'Un code de validation sera envoyé par SMS à ce numéro.'
-              : 'Entrez le code à 6 chiffres reçu par SMS.'
-            }
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {step === 'phone' ? (
-            <div className="space-y-4">
-              <Label htmlFor="phone">Numéro de téléphone</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="+33 6 12 34 56 78"
-                pattern="^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$"
-                title="Format: +33 6 12 34 56 78"
-                required
-                disabled={isLoading}
-              />
-              <Button
-                onClick={handleSendCode}
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Envoi...' : 'Envoyer le code'}
-              </Button>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onComplete}
+      title="Validation SMS"
+      subtitle="Vérifiez votre numéro de téléphone"
+      maxWidth="max-w-md"
+      headerGradient="from-blue-500 to-blue-600"
+      logoSize={60}
+    >
+      <div className="space-y-6">
+        {/* Informations de l'organisation */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Building className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-800">
+              <p className="font-medium mb-1">{organizationName}</p>
+              <p className="text-xs">Code: {organizationCode}</p>
+              <p className="text-xs">Admin: {adminName}</p>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Informations de la demande */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-gray-700">
-                    Demande de Dépôt
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Organisation :</span>
-                    <Badge variant="secondary" className="text-xs">
-                      <Building className="mr-1 h-3 w-3" />
-                      {organizationName}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Code Organisation :</span>
-                    <div className="flex items-center">
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {organizationCode}
-                      </Badge>
-                      <span
-                        role="button"
-                        aria-label="Copier le code organisation"
-                        title="Copier"
-                        className="ml-2 cursor-pointer select-none"
-                        style={{ fontSize: 20, lineHeight: '20px' }}
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(organizationCode || '');
-                            toast.success('Code copié dans le presse-papiers');
-                          } catch (e) {
-                            toast.error('Impossible de copier le code');
-                          }
-                        }}
-                      >
-                        📋
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Administrateur :</span>
-                    <div className="flex items-center gap-1">
-                      <User className="h-3 w-3 text-gray-500" />
-                      <span className="text-sm font-medium">{adminName}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Code SMS */}
-              <div className="space-y-3">
-                <Label htmlFor="smsCode" className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Code de Validation
-                </Label>
-                <p className="text-xs text-gray-600">
-                  Entrez le code reçu par SMS
-                </p>
-
-                <div className="space-y-2">
-                  <Input
-                    id="smsCode"
-                    type="text"
-                    placeholder="123456"
-                    value={smsCode}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').substring(0, 6);
-                      setSmsCode(value);
-                    }}
-                    className="text-center text-lg font-mono tracking-widest"
-                    maxLength={6}
-                  />
-
-                  {/* Timer */}
-                  <div className="flex items-center justify-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-orange-500" />
-                    <span className="text-orange-600 font-medium">
-                      Expire dans : {formatTime(timeLeft)}
-                    </span>
-                  </div>
-                </div>
-
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="space-y-3">
-                <Button
-                  variant="outline"
-                  onClick={handleResendCode}
-                  disabled={isLoading || timeLeft > 0}
-                  className="w-full"
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Renvoyer le code
-                </Button>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleRefuse}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Refuser
-                  </Button>
-                  <Button
-                    onClick={handleValidate}
-                    disabled={isLoading || !smsCode || smsCode.length !== 6}
-                    className="flex-1"
-                  >
-                    <Check className="mr-2 h-4 w-4" />
-                    Valider
-                  </Button>
-                </div>
-              </div>
-
-              {/* Note légale */}
-              <div className="text-xs text-gray-500 text-center p-3 bg-gray-50 rounded-lg">
-                En validant, vous autorisez {organizationName} à déposer votre véhicule.
-                Vous pouvez annuler cette autorisation à tout moment.
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {step === 'phone' ? (
+          <div className="space-y-6">
+            {/* Numéro de téléphone */}
+            <PhoneField
+              label="Numéro de téléphone"
+              value={formData.phone.value}
+              onChange={(value) => handleFieldChange("phone", value)}
+              error={formData.phone.error}
+              required
+              disabled={isSubmitting}
+            />
+
+            {/* Bouton d'envoi */}
+            <ModalButton
+              onClick={handleSendCode}
+              disabled={!formData.phone.isValid || isSubmitting}
+              loading={isSubmitting}
+              loadingText="Envoi en cours..."
+              icon={<Phone className="w-5 h-5" />}
+            >
+              Envoyer le code
+            </ModalButton>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Code SMS */}
+            <ModalFormField
+              id="code"
+              label="Code de vérification"
+              type="text"
+              value={formData.code.value}
+              onChange={(value) => handleFieldChange("code", value)}
+              placeholder="123456"
+              error={formData.code.error}
+              isValid={formData.code.isValid}
+              disabled={isSubmitting}
+              required
+              icon={<Shield className="w-4 h-4" />}
+            />
+
+            {/* Timer */}
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-500" />
+                <span className="text-gray-600">Temps restant: {formatTime(timeLeft)}</span>
+              </div>
+              {timeLeft === 0 && (
+                <button
+                  onClick={handleResendCode}
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Renvoyer
+                </button>
+              )}
+            </div>
+
+            {/* Message d'erreur */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-800">
+                    <p className="font-medium mb-1">Erreur</p>
+                    <p>{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Boutons */}
+            <div className="flex gap-3">
+              <ModalButton
+                onClick={() => setStep('phone')}
+                variant="secondary"
+                disabled={isSubmitting}
+                fullWidth={false}
+              >
+                Retour
+              </ModalButton>
+              <ModalButton
+                onClick={handleVerifyCode}
+                disabled={!formData.code.isValid || isSubmitting}
+                loading={isSubmitting}
+                loadingText="Vérification..."
+                icon={<Check className="w-5 h-5" />}
+              >
+                Vérifier
+              </ModalButton>
+            </div>
+          </div>
+        )}
+
+        {/* Informations */}
+        <div className="modal-info-section">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-800">
+              <p className="font-medium mb-1">Sécurité renforcée</p>
+              <p>Cette validation garantit que vous êtes bien le propriétaire de ce numéro de téléphone.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </BaseModal>
   );
 };
 

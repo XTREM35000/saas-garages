@@ -4,6 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import des styles modaux */
+@import './styles/modal-styles.css';
+
 /* ============================= */
 /* GARAGE SaaS DESIGN SYSTEM     */
 /* ============================= */
@@ -13,47 +16,47 @@
   :root {
     --background: 216 100% 98%;
     --foreground: 222 47% 11%;
-    
+
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
-    
+
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    
+
     --primary: 214 100% 50%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 214 100% 70%;
-    
+
     --secondary: 214 100% 95%;
     --secondary-foreground: 214 100% 25%;
-    
+
     --muted: 214 32% 95%;
     --muted-foreground: 215 16% 47%;
-    
+
     --accent: 214 100% 92%;
     --accent-foreground: 214 100% 30%;
-    
+
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    
+
     --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 214 100% 50%;
-    
+
     --navbar-bg: 214 100% 96%;
     --navbar-glass: 214 100% 98%;
     --modal-bg: 0 0% 100%;
-    
+
     --toast-success: 142 76% 36%;
     --toast-error: 0 84% 60%;
     --toast-info: 214 100% 50%;
-    
+
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
     --gradient-glass: linear-gradient(135deg, hsl(var(--navbar-glass) / 0.8), hsl(var(--navbar-glass) / 0.4));
-    
+
     --shadow-glass: 0 8px 32px 0 hsl(214 100% 50% / 0.15);
     --shadow-card: 0 4px 20px 0 hsl(214 100% 50% / 0.1);
-    
+
     --radius: 12px;
   }
 
@@ -61,48 +64,48 @@
   .whatsapp {
     --background: 160 15% 8%;
     --foreground: 0 0% 90%;
-    
+
     --card: 160 20% 12%;
     --card-foreground: 0 0% 90%;
-    
+
     --popover: 160 20% 12%;
     --popover-foreground: 0 0% 90%;
-    
+
     --primary: 142 76% 36%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 142 76% 56%;
-    
+
     --secondary: 157 46% 25%;
     --secondary-foreground: 0 0% 90%;
-    
+
     --muted: 160 15% 15%;
     --muted-foreground: 160 5% 65%;
-    
+
     --accent: 157 46% 20%;
     --accent-foreground: 142 76% 56%;
-    
+
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 98%;
-    
+
     --border: 160 15% 20%;
     --input: 160 15% 18%;
     --ring: 142 76% 36%;
-    
+
     --navbar-bg: 157 46% 20%;
     --navbar-glass: 157 46% 15%;
     --modal-bg: 160 20% 12%;
-    
+
     --toast-success: 142 76% 36%;
     --toast-error: 0 75% 55%;
     --toast-info: 199 89% 48%;
-    
+
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
     --gradient-glass: linear-gradient(135deg, hsl(var(--navbar-glass) / 0.9), hsl(var(--navbar-glass) / 0.6));
-    
+
     --shadow-glass: 0 8px 32px 0 hsl(142 76% 36% / 0.2);
     --shadow-card: 0 4px 20px 0 hsl(142 76% 36% / 0.15);
   }
-  
+
   * {
     @apply border-border;
   }
@@ -111,7 +114,7 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
   }
-  
+
   /* Smooth transitions pour theme switching */
   * {
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;

@@ -9,6 +9,8 @@ import { AnimatedLogo } from "./AnimatedLogo";
 import { SuperAdminModal } from "./modals/SuperAdminModal";
 import { AdminModal } from "./modals/AdminModal";
 import { OrganizationModal } from "./modals/OrganizationModal";
+import PricingModal from "./PricingModal";
+import { BaseModal } from "@/components/ui/base-modal";
 
 interface InitializationWizardProps {
   isOpen: boolean;
@@ -127,62 +129,61 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
   className = ""
 }) => {
   const { state, completeStep } = useWorkflow();
-  
+
   // Utiliser startStep ou l'état du workflow
   const [currentStep, setCurrentStep] = useState<WorkflowStep>(startStep || state.currentStep || 'init');
-  
+
   // Créer la liste des étapes en fonction du startStep
   const getStepsFromStart = useMemo(() => (start: WorkflowStep) => {
     const stepOrder: WorkflowStep[] = [
       'init',
       'super_admin_check',
-      'pricing_selection', 
+      'pricing_selection',
       'admin_creation',
       'org_creation',
       'sms_validation',
       'garage_setup',
       'dashboard'
     ];
-    
+
     const startIndex = stepOrder.indexOf(start);
     console.log(`🔍 getStepsFromStart: start=${start}, startIndex=${startIndex}, stepOrder=`, stepOrder);
-    
+
     if (startIndex === -1) {
       console.log(`⚠️ startIndex non trouvé, retour de toutes les étapes`);
       return stepOrder;
     }
-    
+
     const result = stepOrder.slice(startIndex);
     console.log(`✅ Étapes retournées:`, result);
     return result;
   }, []);
-  
+
   const steps = useMemo(() => {
     console.log(`🔍 useMemo: recalcul des étapes pour currentStep=${currentStep}`);
-    return getStepsFromStart(currentStep).map(id => ({ 
-      id: id as WorkflowStep, 
-      status: 'pending' 
+    return getStepsFromStart(currentStep).map(id => ({
+      id: id as WorkflowStep,
+      status: 'pending'
     }));
   }, [currentStep]);
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [stepData, setStepData] = useState<Record<WorkflowStep, any>>({} as any);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [dragY, setDragY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const modalRef = useRef<HTMLDivElement>(null);
-  
+
   // États pour les modals spécifiques
   const [isSuperAdminModalOpen, setIsSuperAdminModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isOrganizationModalOpen, setIsOrganizationModalOpen] = useState(false);
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
 
   // Initialiser l'index de l'étape actuelle (seulement au montage)
   useEffect(() => {
-    const index = steps.findIndex(step => step.id === currentStep);
-    console.log(`🔄 useEffect initial: currentStep=${currentStep}, index trouvé=${index}, steps=`, steps.map(s => s.id));
-    setCurrentStepIndex(index >= 0 ? index : 0);
-  }, []); // Dépendances vides pour ne s'exécuter qu'une fois au montage
+    const stepIndex = steps.findIndex(step => step.id === currentStep);
+    if (stepIndex >= 0) {
+      setCurrentStepIndex(stepIndex);
+    }
+  }, [currentStep, steps]);
 
   // Log quand currentStep change
   useEffect(() => {
@@ -223,13 +224,13 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
     setIsNavigating(true);
     try {
       console.log(`🚀 Navigation vers ${stepId}`);
-      
+
       // Mettre à jour currentStep AVANT de chercher l'index
       setCurrentStep(stepId);
-      
+
       // Attendre que currentStep soit mis à jour
       await new Promise(resolve => setTimeout(resolve, 0));
-      
+
       // Calculer l'index dans le tableau COMPLET des étapes (pas seulement à partir de stepId)
       const fullStepOrder: WorkflowStep[] = [
         'init', 'super_admin_check', 'pricing_selection', 'admin_creation',
@@ -237,22 +238,22 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
       ];
       const absoluteIndex = fullStepOrder.indexOf(stepId);
       console.log(`📍 Index absolu dans le workflow complet: ${absoluteIndex} pour ${stepId}`);
-      
+
       if (absoluteIndex >= 0) {
         console.log(`✅ Mise à jour de l'index de ${currentStepIndex} vers ${absoluteIndex}`);
         setCurrentStepIndex(absoluteIndex);
-        
+
         // Mettre à jour l'état local de l'étape précédente
         const previousStep = currentStep;
         setStepData(prev => ({
           ...prev,
           [previousStep]: { ...prev[previousStep], status: 'completed' }
         }));
-        
+
         // Marquer l'étape comme complétée dans le workflow
         await completeStep(stepId);
         console.log(`✅ Étape ${stepId} marquée comme complétée`);
-        
+
         // Forcer la mise à jour de l'interface
         console.log(`🔄 Interface mise à jour: étape ${stepId} à l'index ${absoluteIndex}`);
       } else {
@@ -278,7 +279,7 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
   // Navigation vers l'étape suivante
   const handleNextStep = async () => {
     console.log(`🔄 handleNextStep: currentStepIndex=${currentStepIndex}, steps.length=${steps.length}`);
-    
+
     if (currentStepIndex >= steps.length - 1) {
       console.log(`🏁 Dernière étape atteinte, fin du wizard`);
       onComplete();
@@ -293,10 +294,13 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
   // Gestion des modals spécifiques
   const handleOpenStepModal = (stepId: WorkflowStep) => {
     console.log(`🚀 Ouverture du modal pour l'étape: ${stepId}`);
-    
+
     switch (stepId) {
       case 'super_admin_check':
         setIsSuperAdminModalOpen(true);
+        break;
+      case 'pricing_selection':
+        setIsPricingModalOpen(true);
         break;
       case 'admin_creation':
         setIsAdminModalOpen(true);
@@ -305,21 +309,21 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
         setIsOrganizationModalOpen(true);
         break;
       default:
-        console.log(`⚠️ Pas de modal spécifique pour l'étape: ${stepId}`);
-        // Pour les autres étapes, on passe directement à la suivante
+        // Pour les autres étapes, passer à la suivante
         handleNextStep();
+        break;
     }
   };
 
   const handleStepComplete = async (stepId: WorkflowStep, data: any) => {
     console.log(`✅ Étape ${stepId} complétée avec les données:`, data);
-    
+
     // Sauvegarder les données de l'étape
     setStepData(prev => ({
       ...prev,
       [stepId]: { ...prev[stepId], ...data, status: 'completed' }
     }));
-    
+
     // Fermer le modal spécifique
     switch (stepId) {
       case 'super_admin_check':
@@ -331,8 +335,11 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
       case 'org_creation':
         setIsOrganizationModalOpen(false);
         break;
+      case 'pricing_selection':
+        setIsPricingModalOpen(false);
+        break;
     }
-    
+
     // Passer à l'étape suivante
     await handleNextStep();
   };
@@ -348,21 +355,6 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
   // Récupérer les données d'une étape
   const getStepData = (stepId: WorkflowStep) => {
     return stepData[stepId] || {};
-  };
-
-  // Gestion du drag pour le modal
-  const handleDragStart = () => {
-    setIsDragging(true);
-  };
-
-  const handleDrag = (event: any, info: PanInfo) => {
-    setDragY(info.offset.y);
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    // Reset position après un délai
-    setTimeout(() => setDragY(0), 100);
   };
 
   // Rendu d'une étape
@@ -440,301 +432,286 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
 
   return (
     <>
-      <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        >
-                     <motion.div
-             ref={modalRef}
-             drag="y"
-                           dragConstraints={{ top: -400, bottom: 400 }}
-             dragElastic={0.2}
-             dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
-             onDragStart={handleDragStart}
-             onDrag={handleDrag}
-             onDragEnd={handleDragEnd}
-             style={{ y: dragY }}
-                           className={`relative w-full max-w-4xl mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden touch-pan-y flex flex-col min-h-[120vh] ${className}`}
-           >
-            {/* Header avec logo animé */}
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-center">
-              <div className="flex justify-center mb-4">
-                <AnimatedLogo size={50} />
+      <BaseModal
+        isOpen={isOpen}
+        onClose={onComplete}
+        title="Configuration Initialisation"
+        subtitle="Suivez les étapes pour configurer votre compte"
+        maxWidth="max-w-4xl"
+        headerGradient="from-blue-500 to-blue-600"
+        logoSize={50}
+        draggable={true}
+        dragConstraints={{ top: -400, bottom: 400 }}
+        isFirstModal={true}
+      >
+        <div className="space-y-6">
+          {/* Barre de progression */}
+          <div className="px-6 py-4 bg-gray-50">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">
+                Étape {currentStepIndex + 1} sur {steps.length}
+              </span>
+              <span className="text-sm font-medium text-gray-700">
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <motion.div
+                className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+          </div>
+
+          {/* Étapes du workflow */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <AnimatePresence>
+              {steps.map(renderStep)}
+            </AnimatePresence>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between p-6 bg-gray-50 border-t">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={handlePreviousStep}
+                disabled={currentStepIndex <= 0 || isNavigating}
+                className="flex items-center gap-2"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Précédent
+              </Button>
+
+              {/* Bouton de retour vers une étape spécifique */}
+              {currentStepIndex > 0 && (
+                <div className="flex items-center gap-2 ml-4">
+                  <span className="text-sm text-gray-500">Retour vers:</span>
+                  {steps.slice(0, currentStepIndex).reverse().map((step, index) => {
+                    const config = STEP_CONFIGS[step.id];
+                    if (!config || !canGoBackTo(step.id)) return null;
+
+                    return (
+                      <Button
+                        key={step.id}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleGoToStep(step.id)}
+                        disabled={isNavigating}
+                        className="text-xs"
+                      >
+                        {config.title}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => handleOpenStepModal(currentStep)}
+                disabled={currentStepIndex >= steps.length - 1 || isNavigating}
+                className="flex items-center gap-2"
+              >
+                {['super_admin_check', 'admin_creation', 'org_creation'].includes(currentStep) ? (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Configurer
+                  </>
+                ) : (
+                  <>
+                    Suivant
+                    <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Informations de sécurité */}
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">Navigation sécurisée</p>
+                <p>
+                  Certaines étapes ne permettent pas de retour pour des raisons de sécurité et de cohérence des données.
+                </p>
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">
-                Configuration {STEP_CONFIGS[currentStep]?.title || "Organisation"}
+            </div>
+          </div>
+
+          {/* Contenu spécifique à chaque étape */}
+          <div className="mt-8">
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-lg">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                {STEP_CONFIGS[currentStep]?.title || "Étape en cours"}
               </h2>
-              <p className="text-blue-100 text-sm">
-                Suivez les étapes pour configurer votre compte
-              </p>
-            </div>
 
-                  {/* Barre de progression */}
-            <div className="px-6 py-4 bg-gray-50">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">
-                  Étape {currentStepIndex + 1} sur {steps.length}
-                </span>
-                <span className="text-sm font-medium text-gray-700">
-                  {Math.round(progress)}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.3 }}
-                />
-              </div>
-            </div>
-
-                                     {/* Contenu du modal sans défilement - hauteur complète */}
-             <div className="p-6 flex-1">
-              {/* Étapes du workflow */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                <AnimatePresence>
-                  {steps.map(renderStep)}
-                </AnimatePresence>
-              </div>
-
-                    {/* Navigation */}
-              <div className="flex items-center justify-between p-6 bg-gray-50 border-t">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handlePreviousStep}
-                    disabled={currentStepIndex <= 0 || isNavigating}
-                    className="flex items-center gap-2"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Précédent
-                  </Button>
-
-                  {/* Bouton de retour vers une étape spécifique */}
-                  {currentStepIndex > 0 && (
-                    <div className="flex items-center gap-2 ml-4">
-                      <span className="text-sm text-gray-500">Retour vers:</span>
-                      {steps.slice(0, currentStepIndex).reverse().map((step, index) => {
-                        const config = STEP_CONFIGS[step.id];
-                        if (!config || !canGoBackTo(step.id)) return null;
-
-                        return (
-                          <Button
-                            key={step.id}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleGoToStep(step.id)}
-                            disabled={isNavigating}
-                            className="text-xs"
-                          >
-                            {config.title}
-                          </Button>
-                        );
-                      })}
+              {/* Contenu spécifique à chaque étape */}
+              <div className="text-gray-600">
+                {currentStep === 'init' && (
+                  <div className="space-y-4">
+                    <p>🎯 Initialisation du système en cours...</p>
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-blue-900 mb-2">Configuration initiale</h3>
+                      <p className="text-blue-700">Vérification des prérequis système...</p>
                     </div>
-                  )}
-                </div>
-
-                                 <div className="flex items-center gap-2">
-                   <Button
-                     onClick={() => handleOpenStepModal(currentStep)}
-                     disabled={currentStepIndex >= steps.length - 1 || isNavigating}
-                     className="flex items-center gap-2"
-                   >
-                     {['super_admin_check', 'admin_creation', 'org_creation'].includes(currentStep) ? (
-                       <>
-                         <Play className="w-4 h-4" />
-                         Configurer
-                       </>
-                     ) : (
-                       <>
-                         Suivant
-                         <ChevronRight className="w-4 h-4" />
-                       </>
-                     )}
-                   </Button>
-                 </div>
-              </div>
-
-                    {/* Informations de sécurité */}
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-800">
-                    <p className="font-medium mb-1">Navigation sécurisée</p>
-                    <p>
-                      Certaines étapes ne permettent pas de retour pour des raisons de sécurité et de cohérence des données.
-                    </p>
                   </div>
-                </div>
+                )}
+
+                {currentStep === 'super_admin_check' && (
+                  <div className="space-y-4">
+                    <p>🔐 Configuration du compte Super-Administrateur</p>
+                    <div className="bg-orange-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-orange-900 mb-2">Super-Administrateur</h3>
+                      <p className="text-orange-700">Cliquez sur "Configurer" pour créer le compte administrateur principal du système.</p>
+                      <div className="mt-4 p-3 bg-orange-100 rounded-lg">
+                        <p className="text-sm text-orange-800">
+                          <strong>Important :</strong> Ce compte aura accès à toutes les fonctionnalités du système.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 'pricing_selection' && (
+                  <div className="space-y-4">
+                    <p>💰 Sélection du plan tarifaire</p>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-green-900 mb-2">Plans disponibles</h3>
+                      <p className="text-green-700">Choisissez votre formule tarifaire...</p>
+                      <div className="grid grid-cols-3 gap-4 mt-4">
+                        <div className="border rounded-lg p-3 text-center">
+                          <h4 className="font-medium">Starter</h4>
+                          <p className="text-sm text-gray-600">Gratuit</p>
+                        </div>
+                        <div className="border rounded-lg p-3 text-center">
+                          <h4 className="font-medium">Pro</h4>
+                          <p className="text-sm text-gray-600">29€/mois</p>
+                        </div>
+                        <div className="border rounded-lg p-3 text-center">
+                          <h4 className="font-medium">Enterprise</h4>
+                          <p className="text-sm text-gray-600">99€/mois</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 'admin_creation' && (
+                  <div className="space-y-4">
+                    <p>👤 Création du compte administrateur</p>
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-purple-900 mb-2">Administrateur</h3>
+                      <p className="text-purple-700">Cliquez sur "Configurer" pour créer le compte administrateur de votre organisation.</p>
+                      <div className="mt-4 p-3 bg-purple-100 rounded-lg">
+                        <p className="text-sm text-purple-800">
+                          <strong>Note :</strong> Cet administrateur gérera les utilisateurs et les garages de votre organisation.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 'org_creation' && (
+                  <div className="space-y-4">
+                    <p>🏢 Configuration de l'organisation</p>
+                    <div className="bg-indigo-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-indigo-900 mb-2">Organisation</h3>
+                      <p className="text-indigo-700">Cliquez sur "Configurer" pour créer votre organisation dans le système.</p>
+                      <div className="mt-4 p-3 bg-indigo-100 rounded-lg">
+                        <p className="text-sm text-indigo-800">
+                          <strong>Info :</strong> Votre organisation regroupera tous vos garages et utilisateurs.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 'sms_validation' && (
+                  <div className="space-y-4">
+                    <p>📱 Validation par SMS</p>
+                    <div className="bg-yellow-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-yellow-900 mb-2">Vérification téléphone</h3>
+                      <p className="text-yellow-700">Entrez votre numéro de téléphone pour validation...</p>
+                      <Button className="mt-2" onClick={() => console.log('SMS validation')}>
+                        Valider par SMS
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 'garage_setup' && (
+                  <div className="space-y-4">
+                    <p>🔧 Configuration du garage</p>
+                    <div className="bg-red-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-red-900 mb-2">Premier garage</h3>
+                      <p className="text-red-700">Configurez votre premier garage...</p>
+                      <Button className="mt-2" onClick={() => console.log('Garage setup')}>
+                        Configurer le garage
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 'dashboard' && (
+                  <div className="space-y-4">
+                    <p>🎉 Configuration terminée !</p>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-green-900 mb-2">Bienvenue !</h3>
+                      <p className="text-green-700">Votre compte est maintenant configuré. Accédez à votre tableau de bord...</p>
+                      <Button className="mt-2" onClick={() => console.log('Dashboard access')}>
+                        Accéder au dashboard
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {!['init', 'super_admin_check', 'pricing_selection', 'admin_creation', 'org_creation', 'sms_validation', 'garage_setup', 'dashboard'].includes(currentStep) && (
+                  <div className="text-gray-600">
+                    Contenu de l'étape: {currentStep}
+                  </div>
+                )}
               </div>
+            </div>
+          </div>
+        </div>
+      </BaseModal>
 
-                             {/* Contenu spécifique à chaque étape */}
-               <div className="mt-8">
-                 <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-lg">
-                   <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                     {STEP_CONFIGS[currentStep]?.title || "Étape en cours"}
-                   </h2>
+      {/* Modals spécifiques */}
+      <SuperAdminModal
+        isOpen={isSuperAdminModalOpen}
+        onClose={() => setIsSuperAdminModalOpen(false)}
+        onComplete={(data) => handleStepComplete('super_admin_check', data)}
+      />
 
-                   {/* Contenu spécifique à chaque étape */}
-                   <div className="text-gray-600">
-                     {currentStep === 'init' && (
-                       <div className="space-y-4">
-                         <p>🎯 Initialisation du système en cours...</p>
-                         <div className="bg-blue-50 p-4 rounded-lg">
-                           <h3 className="font-medium text-blue-900 mb-2">Configuration initiale</h3>
-                           <p className="text-blue-700">Vérification des prérequis système...</p>
-                         </div>
-                       </div>
-                     )}
+      <AdminModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        onComplete={(data) => handleStepComplete('admin_creation', data)}
+      />
 
-                     {currentStep === 'super_admin_check' && (
-                       <div className="space-y-4">
-                         <p>🔐 Configuration du compte Super-Administrateur</p>
-                         <div className="bg-orange-50 p-4 rounded-lg">
-                           <h3 className="font-medium text-orange-900 mb-2">Super-Administrateur</h3>
-                           <p className="text-orange-700">Cliquez sur "Configurer" pour créer le compte administrateur principal du système.</p>
-                           <div className="mt-4 p-3 bg-orange-100 rounded-lg">
-                             <p className="text-sm text-orange-800">
-                               <strong>Important :</strong> Ce compte aura accès à toutes les fonctionnalités du système.
-                             </p>
-                           </div>
-                         </div>
-                       </div>
-                     )}
+      <OrganizationModal
+        isOpen={isOrganizationModalOpen}
+        onClose={() => setIsOrganizationModalOpen(false)}
+        onComplete={(data) => handleStepComplete('org_creation', data)}
+      />
 
-                     {currentStep === 'pricing_selection' && (
-                       <div className="space-y-4">
-                         <p>💰 Sélection du plan tarifaire</p>
-                         <div className="bg-green-50 p-4 rounded-lg">
-                           <h3 className="font-medium text-green-900 mb-2">Plans disponibles</h3>
-                           <p className="text-green-700">Choisissez votre formule tarifaire...</p>
-                           <div className="grid grid-cols-3 gap-4 mt-4">
-                             <div className="border rounded-lg p-3 text-center">
-                               <h4 className="font-medium">Starter</h4>
-                               <p className="text-sm text-gray-600">Gratuit</p>
-                             </div>
-                             <div className="border rounded-lg p-3 text-center">
-                               <h4 className="font-medium">Pro</h4>
-                               <p className="text-sm text-gray-600">29€/mois</p>
-                             </div>
-                             <div className="border rounded-lg p-3 text-center">
-                               <h4 className="font-medium">Enterprise</h4>
-                               <p className="text-sm text-gray-600">99€/mois</p>
-                             </div>
-                           </div>
-                         </div>
-                       </div>
-                     )}
-
-                     {currentStep === 'admin_creation' && (
-                       <div className="space-y-4">
-                         <p>👤 Création du compte administrateur</p>
-                         <div className="bg-purple-50 p-4 rounded-lg">
-                           <h3 className="font-medium text-purple-900 mb-2">Administrateur</h3>
-                           <p className="text-purple-700">Cliquez sur "Configurer" pour créer le compte administrateur de votre organisation.</p>
-                           <div className="mt-4 p-3 bg-purple-100 rounded-lg">
-                             <p className="text-sm text-purple-800">
-                               <strong>Note :</strong> Cet administrateur gérera les utilisateurs et les garages de votre organisation.
-                             </p>
-                           </div>
-                         </div>
-                       </div>
-                     )}
-
-                     {currentStep === 'org_creation' && (
-                       <div className="space-y-4">
-                         <p>🏢 Configuration de l'organisation</p>
-                         <div className="bg-indigo-50 p-4 rounded-lg">
-                           <h3 className="font-medium text-indigo-900 mb-2">Organisation</h3>
-                           <p className="text-indigo-700">Cliquez sur "Configurer" pour créer votre organisation dans le système.</p>
-                           <div className="mt-4 p-3 bg-indigo-100 rounded-lg">
-                             <p className="text-sm text-indigo-800">
-                               <strong>Info :</strong> Votre organisation regroupera tous vos garages et utilisateurs.
-                             </p>
-                           </div>
-                         </div>
-                       </div>
-                     )}
-
-                     {currentStep === 'sms_validation' && (
-                       <div className="space-y-4">
-                         <p>📱 Validation par SMS</p>
-                         <div className="bg-yellow-50 p-4 rounded-lg">
-                           <h3 className="font-medium text-yellow-900 mb-2">Vérification téléphone</h3>
-                           <p className="text-yellow-700">Entrez votre numéro de téléphone pour validation...</p>
-                           <Button className="mt-2" onClick={() => console.log('SMS validation')}>
-                             Valider par SMS
-                           </Button>
-                         </div>
-                       </div>
-                     )}
-
-                     {currentStep === 'garage_setup' && (
-                       <div className="space-y-4">
-                         <p>🔧 Configuration du garage</p>
-                         <div className="bg-red-50 p-4 rounded-lg">
-                           <h3 className="font-medium text-red-900 mb-2">Premier garage</h3>
-                           <p className="text-red-700">Configurez votre premier garage...</p>
-                           <Button className="mt-2" onClick={() => console.log('Garage setup')}>
-                             Configurer le garage
-                           </Button>
-                         </div>
-                       </div>
-                     )}
-
-                     {currentStep === 'dashboard' && (
-                       <div className="space-y-4">
-                         <p>🎉 Configuration terminée !</p>
-                         <div className="bg-green-50 p-4 rounded-lg">
-                           <h3 className="font-medium text-green-900 mb-2">Bienvenue !</h3>
-                           <p className="text-green-700">Votre compte est maintenant configuré. Accédez à votre tableau de bord...</p>
-                           <Button className="mt-2" onClick={() => console.log('Dashboard access')}>
-                             Accéder au dashboard
-                           </Button>
-                         </div>
-                       </div>
-                     )}
-
-                     {!['init', 'super_admin_check', 'pricing_selection', 'admin_creation', 'org_creation', 'sms_validation', 'garage_setup', 'dashboard'].includes(currentStep) && (
-                       <div className="text-gray-600">
-                         Contenu de l'étape: {currentStep}
-                       </div>
-                     )}
-                   </div>
-                 </div>
-               </div>
-                         </div>
-           </motion.div>
-         </motion.div>
-       )}
-     </AnimatePresence>
-
-     {/* Modals spécifiques */}
-     <SuperAdminModal
-       isOpen={isSuperAdminModalOpen}
-       onClose={() => setIsSuperAdminModalOpen(false)}
-       onComplete={(data) => handleStepComplete('super_admin_check', data)}
-     />
-     
-     <AdminModal
-       isOpen={isAdminModalOpen}
-       onClose={() => setIsAdminModalOpen(false)}
-       onComplete={(data) => handleStepComplete('admin_creation', data)}
-     />
-     
-     <OrganizationModal
-       isOpen={isOrganizationModalOpen}
-       onClose={() => setIsOrganizationModalOpen(false)}
-       onComplete={(data) => handleStepComplete('org_creation', data)}
-     />
-   </>
-   );
- };
+      <PricingModal
+        isOpen={isPricingModalOpen}
+        onClose={() => setIsPricingModalOpen(false)}
+        onComplete={(data) => handleStepComplete('pricing_selection', data)}
+        onSelectPlan={async (planId) => {
+          console.log('Plan sélectionné:', planId);
+          // La logique de sélection sera gérée par onComplete
+        }}
+      />
+    </>
+  );
+};
 
 export default InitializationWizard;

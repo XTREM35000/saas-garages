@@ -1,0 +1,222 @@
+/* ============================= */
+/* MODAL STYLES & ANIMATIONS     */
+/* ============================= */
+
+/* Scrollbar personnalisée pour les modaux */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Animation de brillance pour les headers */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Animation de pulse-glow améliorée */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translateX(100%) skewX(-12deg);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+/* Animation d'entrée pour les modaux */
+@keyframes modal-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modal-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+}
+
+.modal-enter {
+  animation: modal-enter 0.3s ease-out;
+}
+
+.modal-exit {
+  animation: modal-exit 0.2s ease-in;
+}
+
+/* Styles pour les champs de formulaire dans les modaux */
+.modal-input {
+  @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200;
+}
+
+.modal-input:focus {
+  @apply shadow-lg shadow-green-500/20;
+}
+
+.modal-label {
+  @apply block text-sm font-medium text-gray-700 mb-2;
+}
+
+.modal-button {
+  @apply w-full py-3 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95;
+}
+
+.modal-button-primary {
+  @apply bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl;
+}
+
+.modal-button-secondary {
+  @apply bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300;
+}
+
+/* Effet de focus pour les modaux */
+.modal-focus-visible {
+  @apply outline-none ring-2 ring-green-500 ring-offset-2;
+}
+
+/* Animation pour les icônes dans les headers */
+.header-icon {
+  @apply transition-all duration-300;
+}
+
+.header-icon:hover {
+  @apply transform scale-110 rotate-3;
+}
+
+/* Styles pour les messages d'erreur dans les modaux */
+.modal-error {
+  @apply text-red-500 text-sm mt-1 flex items-center gap-1;
+}
+
+.modal-success {
+  @apply text-green-600 text-sm mt-1 flex items-center gap-1;
+}
+
+/* Animation de chargement pour les boutons */
+@keyframes button-loading {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.button-loading {
+  animation: button-loading 1s linear infinite;
+}
+
+/* Styles pour les sections d'information */
+.modal-info-section {
+  @apply bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4;
+}
+
+.modal-warning-section {
+  @apply bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4;
+}
+
+.modal-success-section {
+  @apply bg-green-50 border border-green-200 rounded-lg p-4 mt-4;
+}
+
+/* Responsive design pour les modaux */
+@media (max-width: 640px) {
+  .modal-responsive {
+    @apply mx-2 max-w-[calc(100vw-1rem)];
+  }
+
+  .modal-header-responsive {
+    @apply p-4;
+  }
+
+  .modal-content-responsive {
+    @apply p-4;
+  }
+}
+
+/* Animation de rebond pour les éléments interactifs */
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.bounce-in {
+  animation: bounce-in 0.6s ease-out;
+}
+
+/* Effet de glassmorphism pour les modaux */
+.modal-glass {
+  @apply backdrop-blur-md bg-white/95 border border-white/20;
+}
+
+/* Animation de fade pour les transitions */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.4s ease-out;
+}

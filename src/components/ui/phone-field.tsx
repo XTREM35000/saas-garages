@@ -39,7 +39,7 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
-    
+
     if (touched) {
       setIsValid(validatePhone(newValue));
     }
@@ -62,22 +62,22 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
   const formatPhoneNumber = (input: string): string => {
     // Supprimer tous les caractères non numériques sauf + et espace
     const cleaned = input.replace(/[^\d\s+]/g, '');
-    
+
     // Si commence par 0, remplacer par +33
     if (cleaned.startsWith('0')) {
       return '+33 ' + cleaned.substring(1).replace(/(\d{2})(?=\d)/g, '$1 ');
     }
-    
+
     // Si commence par +33, formater avec espaces
     if (cleaned.startsWith('+33')) {
       return cleaned.replace(/(\+33)(\d{1})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5 $6');
     }
-    
+
     // Si commence par 33, ajouter +
     if (cleaned.startsWith('33')) {
       return '+' + cleaned.replace(/(\d{2})(?=\d)/g, '$1 ');
     }
-    
+
     // Sinon, formater avec espaces tous les 2 chiffres
     return cleaned.replace(/(\d{2})(?=\d)/g, '$1 ');
   };
@@ -93,13 +93,13 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
   return (
     <div className={`space-y-2 ${className}`}>
       {label && (
-        <Label htmlFor="phone" className="flex items-center gap-2 text-sm font-medium text-gray-700">
-          <Phone className="w-4 h-4 text-gray-500" />
+        <Label htmlFor="phone" className="modal-label flex items-center gap-2">
+          <Phone className="w-4 h-4 text-blue-600" />
           {label}
           {required && <span className="text-red-500">*</span>}
         </Label>
       )}
-      
+
       <div className="relative">
         <Input
           id="phone"
@@ -110,16 +110,16 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
           placeholder={placeholder}
           disabled={disabled}
           className={`
-            pr-10 transition-all duration-200
-            ${hasError 
-              ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
+            modal-input pr-10 transition-all duration-200
+            ${hasError
+              ? 'border-red-500 focus:border-red-500 focus:ring-red-200'
               : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200'
             }
             ${disabled ? 'bg-gray-50 cursor-not-allowed' : ''}
           `}
           autoComplete="tel"
         />
-        
+
         {/* Indicateur de validation */}
         {touched && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -138,8 +138,7 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
 
       {/* Messages d'erreur */}
       {hasError && (
-        <p className="text-red-500 text-sm flex items-center gap-1">
-          <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+        <p className="modal-error">
           {error || "Format de téléphone invalide (ex: 06 12 34 56 78)"}
         </p>
       )}
@@ -152,4 +151,4 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
       )}
     </div>
   );
-};
+}

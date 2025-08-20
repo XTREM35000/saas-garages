@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from "react";
-// import { Mail } from 'react-feather';import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { User, Mail, Phone, Eye, EyeOff, Shield, Key, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { User, Shield, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminData } from "@/types/admin";
-import { AnimatedLogo } from "./AnimatedLogo";
 import { useWorkflow } from "@/contexts/WorkflowProvider";
+import { BaseModal } from "@/components/ui/base-modal";
+import { ModalFormField } from "@/components/ui/modal-form-field";
+import { ModalButton } from "@/components/ui/modal-button";
 import { EmailField } from "@/components/ui/email-field";
 import { PhoneField } from "@/components/ui/phone-field";
 import { PasswordField } from "@/components/ui/password-field";
@@ -37,7 +34,7 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
 }) => {
   const { completeStep } = useWorkflow();
   const [error, setError] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     email: { value: "", error: "", isValid: false },
@@ -45,6 +42,18 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
     name: { value: "", error: "", isValid: false },
     phone: { value: "", error: "", isValid: true } // optionnel
   });
+
+  // Initialiser les données du formulaire
+  useEffect(() => {
+    if (isOpen && adminData) {
+      setFormData({
+        email: { value: adminData.email || "", error: "", isValid: !!adminData.email },
+        password: { value: adminData.password || "", error: "", isValid: !!adminData.password },
+        name: { value: adminData.name || "", error: "", isValid: !!adminData.name },
+        phone: { value: adminData.phone || "", error: "", isValid: true }
+      });
+    }
+  }, [isOpen, adminData]);
 
   const handleFieldChange = (field: keyof typeof formData, value: string) => {
     const validation = validateField(field, value);
@@ -55,7 +64,8 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
   const validateField = (field: keyof typeof formData, value: string) => {
     switch (field) {
       case "email":
-        const validEmail = value.includes("@") && value.length > 3;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const validEmail = emailRegex.test(value);
         return { error: validEmail ? "" : "Format email invalide", isValid: validEmail };
       case "password":
         return { error: value.length >= PASSWORD_MIN_LENGTH ? "" : `Minimum ${PASSWORD_MIN_LENGTH} caractères`, isValid: value.length >= PASSWORD_MIN_LENGTH };
@@ -75,143 +85,172 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    if (!isFormValid() || isSubmitting) return;
+
     setIsSubmitting(true);
+
     try {
-      // Utiliser la fonction RPC avec typage flexible
-      const { data, error } = await (supabase as any).rpc('create_admin_complete', {
-        p_email: formData.email.value,
-        p_password: formData.password.value,
-        p_name: formData.name.value,
-        p_phone: formData.phone.value || null
+      // Créer l'utilisateur dans auth.users
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email.value,
+        password: formData.password.value,
+        options: {
+          data: {
+            name: formData.name.value,
+            phone: formData.phone.value,
+            role: 'admin'
+          }
+        }
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
 
-      // Traiter la réponse JSON
-      const result = data as any;
-      if (!result?.success) {
-        throw new Error(result?.error || 'Erreur lors de la création');
+      if (!authData.user?.id) {
+        throw new Error("Impossible de créer l'utilisateur");
       }
 
-      toast.success("Administrateur créé avec succès!");
-      await completeStep("admin_creation");
+      // Créer le profil dans public.profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          first_name: formData.name.value.split(' ')[0] || formData.name.value,
+          last_name: formData.name.value.split(' ').slice(1).join(' ') || '',
+          email: formData.email.value,
+          phone: formData.phone.value,
+          role: 'admin',
+          is_active: true,
+          created_at: new Date().toISOString()
+        });
+
+      if (profileError) throw profileError;
+
+      // Créer l'admin dans public.admins
+      const { error: adminError } = await supabase
+        .from('admins')
+        .insert({
+          user_id: authData.user.id,
+          email: formData.email.value,
+          name: formData.name.value,
+          phone: formData.phone.value,
+          est_actif: true,
+          created_at: new Date().toISOString()
+        });
+
+      if (adminError) throw adminError;
+
+      toast.success("Administrateur créé avec succès !");
       onComplete();
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la création");
-      toast.error(err.message || "Erreur lors de la création");
+
+    } catch (error: any) {
+      console.error("Erreur création Admin:", error);
+
+      let errorMessage = "Erreur lors de la création de l'Administrateur";
+      if (error.message?.includes('RLS')) {
+        errorMessage = "Erreur de sécurité RLS. Contactez l'administrateur.";
+      } else if (error.message?.includes('duplicate')) {
+        errorMessage = "Un utilisateur avec cet email existe déjà.";
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        email: { value: "", error: "", isValid: false },
-        password: { value: "", error: "", isValid: false },
-        name: { value: "", error: "", isValid: false },
-        phone: { value: "", error: "", isValid: true }
-      });
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/50"
-          />
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onComplete}
+      title="Création d'Administrateur"
+      subtitle="Ajoutez un nouvel administrateur à votre organisation"
+      maxWidth="max-w-md"
+      headerGradient="from-blue-500 to-blue-600"
+      logoSize={60}
+      draggable={true}
+      dragConstraints={{ top: -400, bottom: 400 }}
+      isFirstModal={true}
+    >
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Nom complet */}
+        <ModalFormField
+          id="name"
+          label="Nom complet"
+          type="text"
+          value={formData.name.value}
+          onChange={(value) => handleFieldChange("name", value)}
+          placeholder="Prénom Nom"
+          error={formData.name.error}
+          isValid={formData.name.isValid}
+          disabled={isLoading}
+          required
+          icon={<User className="w-4 h-4" />}
+        />
 
-          <div className="fixed inset-0 z-50 flex justify-center items-center p-4">
-            <motion.div
-              initial={{ y: 50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 50, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="w-full max-w-md bg-white rounded-2xl shadow-lg"
-            >
-              <div className="flex flex-col items-center p-6 bg-gradient-to-br from-green-500 via-green-600 to-green-700 rounded-t-2xl text-white">
-                <AnimatedLogo mainIcon={User} secondaryIcon={Shield} mainColor="text-white" secondaryColor="text-yellow-200" />
-                <h2 className="mt-2 text-xl font-bold">Création Administrateur</h2>
-                <p className="text-sm text-white/80">Cet administrateur gérera une organisation cliente</p>
+        {/* Email */}
+        <EmailField
+          label="Email"
+          value={formData.email.value}
+          onChange={(value) => handleFieldChange("email", value)}
+          error={formData.email.error}
+          required
+          disabled={isLoading}
+        />
+
+        {/* Téléphone */}
+        <PhoneField
+          label="Téléphone (optionnel)"
+          value={formData.phone.value}
+          onChange={(value) => handleFieldChange("phone", value)}
+          error={formData.phone.error}
+          disabled={isLoading}
+        />
+
+        {/* Mot de passe */}
+        <PasswordField
+          label="Mot de passe"
+          value={formData.password.value}
+          onChange={(value) => handleFieldChange("password", value)}
+          required
+          disabled={isLoading}
+        />
+
+        {/* Message d'erreur global */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-red-800">
+                <p className="font-medium mb-1">Erreur</p>
+                <p>{error}</p>
               </div>
-
-              <div className="p-6 space-y-4">
-                {error && (
-                  <div className="p-3 rounded bg-red-50 border border-red-200 text-red-600 flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-2" />
-                    {error}
-                  </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="name" className="flex items-center gap-2 mb-2">
-                      <User className="w-4 h-4" /> Nom complet
-                    </Label>
-                    <Input
-                      id="name"
-                      value={formData.name.value}
-                      onChange={e => handleFieldChange("name", e.target.value)}
-                      disabled={isLoading}
-                      placeholder="Nom complet"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="email" className="flex items-center gap-2 mb-2">
-                      <Mail className="w-4 h-4" /> Email
-                    </Label>
-                    <EmailField
-                      id="email"
-                      value={formData.email.value}
-                      onChange={val => handleFieldChange("email", val)}
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <div>
-                    <PhoneField
-                      label="Téléphone (optionnel)"
-                      value={formData.phone.value}
-                      onChange={(value) => handleFieldChange('phone', value)}
-                      error={formData.phone.error}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="password" className="flex items-center gap-2 mb-2">
-                      <Key className="w-4 h-4" /> Mot de passe
-                    </Label>
-                    <PasswordField
-                      value={formData.password.value}
-                      onChange={val => handleFieldChange("password", val)}
-                      onValidationChange={(isValid) => {
-                        setFormData(prev => ({ ...prev, password: { ...prev.password, isValid } }));
-                      }}
-                      showStrengthIndicator
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={!isFormValid() || isLoading}>
-                    {isSubmitting ? "Création en cours..." : "Créer Administrateur"}
-                  </Button>
-                </form>
-              </div>
-            </motion.div>
+            </div>
           </div>
-        </>
-      )}
-    </AnimatePresence>
+        )}
+
+        {/* Bouton de soumission */}
+        <ModalButton
+          type="submit"
+          disabled={!isFormValid() || isSubmitting || isLoading}
+          loading={isSubmitting}
+          loadingText="Création en cours..."
+          icon={<Shield className="w-5 h-5" />}
+        >
+          Créer l'Administrateur
+        </ModalButton>
+
+        {/* Informations */}
+        <div className="modal-info-section">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-800">
+              <p className="font-medium mb-1">Gestion des accès</p>
+              <p>Cet administrateur aura accès à la gestion de votre organisation et de ses garages.</p>
+            </div>
+          </div>
+        </div>
+      </form>
+    </BaseModal>
   );
 };
 
