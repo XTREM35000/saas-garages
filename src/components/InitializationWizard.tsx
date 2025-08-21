@@ -6,7 +6,6 @@ import { useWorkflow } from "@/contexts/WorkflowProvider";
 import { WorkflowStep } from "@/types/workflow.types";
 import { cn } from "@/lib/utils";
 import { AnimatedLogo } from "./AnimatedLogo";
-import { SuperAdminModal } from "./modals/SuperAdminModal";
 import { AdminModal } from "./modals/AdminModal";
 import { OrganizationModal } from "./modals/OrganizationModal";
 import PricingModal from "./PricingModal";
@@ -172,7 +171,6 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
   const [isNavigating, setIsNavigating] = useState(false);
 
   // États pour les modals spécifiques
-  const [isSuperAdminModalOpen, setIsSuperAdminModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isOrganizationModalOpen, setIsOrganizationModalOpen] = useState(false);
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
@@ -297,7 +295,8 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
 
     switch (stepId) {
       case 'super_admin_check':
-        setIsSuperAdminModalOpen(true);
+        // Super Admin intégré dans le workflow principal - passer à la suite
+        handleNextStep();
         break;
       case 'pricing_selection':
         setIsPricingModalOpen(true);
@@ -326,9 +325,6 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
 
     // Fermer le modal spécifique
     switch (stepId) {
-      case 'super_admin_check':
-        setIsSuperAdminModalOpen(false);
-        break;
       case 'admin_creation':
         setIsAdminModalOpen(false);
         break;
@@ -683,12 +679,6 @@ export const InitializationWizard: React.FC<InitializationWizardProps> = ({
       </BaseModal>
 
       {/* Modals spécifiques */}
-      <SuperAdminModal
-        isOpen={isSuperAdminModalOpen}
-        onClose={() => setIsSuperAdminModalOpen(false)}
-        onComplete={(data) => handleStepComplete('super_admin_check', data)}
-      />
-
       <AdminModal
         isOpen={isAdminModalOpen}
         onClose={() => setIsAdminModalOpen(false)}

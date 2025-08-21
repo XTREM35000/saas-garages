@@ -126,18 +126,17 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
       if (profileError) throw profileError;
 
       // Créer l'admin dans public.admins
-      const { error: adminError } = await supabase
-        .from('admins')
-        .insert({
-          user_id: authData.user.id,
-          email: formData.email.value,
-          name: formData.name.value,
-          phone: formData.phone.value,
-          est_actif: true,
-          created_at: new Date().toISOString()
-        });
+      // Utiliser RPC function pour créer admin complet
+      const { data: result, error: rpcError } = await (supabase as any).rpc('create_admin_complete', {
+        p_email: formData.email.value,
+        p_password: formData.password.value,
+        p_name: formData.name.value,
+        p_phone: formData.phone.value || null,
+        p_pricing_plan: 'starter'
+      });
 
-      if (adminError) throw adminError;
+      if (rpcError) throw rpcError;
+      if (!result.success) throw new Error(result.error);
 
       toast.success("Administrateur créé avec succès !");
       onComplete();

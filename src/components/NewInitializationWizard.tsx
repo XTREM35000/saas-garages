@@ -2,7 +2,7 @@ import React from 'react';
 import { useWorkflow } from '@/contexts/WorkflowProvider';
 import { useAuthWorkflow } from '@/hooks/useAuthWorkflow';
 import { WorkflowStep } from '@/types/workflow.types';
-import SuperAdminSetupModal from '@/components/SuperAdminSetupModal';
+// import SuperAdminSetupModal from '@/components/SuperAdminSetupModal'; // Supprimé
 import PricingModal from '@/components/PricingModal';
 import OrganizationSetupModal from '@/components/OrganizationSetupModal';
 import SmsValidationModal from '@/components/SmsValidationModal';
@@ -119,24 +119,9 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
 
     switch (state.currentStep) {
       case 'super_admin_check':
-        return (
-          <SuperAdminSetupModal
-            isOpen={isOpen}
-            onComplete={handleStepComplete}
-            mode="super-admin"
-            adminData={{
-              email: '',
-              password: '',
-              phone: '',
-              name: '',
-              avatarFile: null
-            }}
-            onAdminDataChange={() => { }}
-            showPassword={false}
-            onToggleShowPassword={() => { }}
-            isLoading={false}
-          />
-        );
+        // Super Admin est maintenant géré dans le workflow principal
+        handleStepComplete();
+        return null;
 
       case 'admin_creation':
         return (
@@ -165,25 +150,7 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
           />
         );
 
-      case 'admin_creation':
-        return (
-          <SuperAdminSetupModal
-            isOpen={isOpen}
-            onComplete={handleStepComplete}
-            mode="normal"
-            adminData={{
-              email: '',
-              password: '',
-              phone: '',
-              name: '',
-              avatarFile: null
-            }}
-            onAdminDataChange={() => { }}
-            showPassword={false}
-            onToggleShowPassword={() => { }}
-            isLoading={false}
-          />
-        );
+      // Dupliquer admin_creation supprimé
 
       case 'org_creation':
         return (
