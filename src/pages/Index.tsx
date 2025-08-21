@@ -1,20 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Calendar, 
-  Clock, 
-  Users, 
-  Car, 
-  Wrench, 
-  Package, 
-  CreditCard, 
+import PricingModal from '@/components/PricingModal';
+import {
+  Calendar,
+  Clock,
+  Users,
+  Car,
+  Wrench,
+  Package,
+  CreditCard,
   Plus,
   ArrowRight,
-  TrendingUp 
+  TrendingUp,
+  Crown
 } from 'lucide-react';
 
 const QuickActions = () => {
@@ -102,67 +104,52 @@ const TodaySchedule = () => {
 };
 
 const Index = () => {
-  const { theme, currentUser } = useApp();
-  
+  const { user } = useApp();
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
+
+  const handlePlanSelect = async (planId: string) => {
+    console.log('Plan sélectionné:', planId);
+    setIsPricingOpen(false);
+  };
+
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+    <div className="container mx-auto p-6 space-y-6">
+      {/* En-tête avec bouton de test */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">
-            Bienvenue, {currentUser?.name || 'Admin'} 👋
+          <h1 className="text-3xl font-bold text-gray-900">
+            Tableau de bord
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Voici un aperçu de votre activité aujourd'hui
+          <p className="text-gray-600">
+            Bienvenue, {user?.email || 'Utilisateur'}
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Badge 
-            variant="outline" 
-            className={`px-3 py-1 ${
-              theme === 'icloud' 
-                ? 'border-blue-200 text-blue-600 bg-blue-50' 
-                : 'border-green-200 text-green-600 bg-green-50'
-            }`}
-          >
-            <div className="w-2 h-2 rounded-full bg-current mr-2"></div>
-            Thème {theme === 'icloud' ? 'iCloud' : 'WhatsApp'}
-          </Badge>
-          <Button size="sm" className="shadow-sm">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Voir Rapports
-          </Button>
-        </div>
+
+        {/* Bouton de test PricingModal */}
+        <Button
+          onClick={() => setIsPricingOpen(true)}
+          className="bg-gradient-to-r from-[#128C7E] to-[#25D366] hover:from-[#075E54] hover:to-[#128C7E] text-white border-0 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+        >
+          <Crown className="w-4 h-4 mr-2" />
+          Tester PricingModal WhatsApp
+        </Button>
       </div>
 
-      {/* Dashboard Stats */}
+      {/* Stats */}
       <DashboardStats />
 
-      {/* Quick Actions & Today Schedule */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* Grille principale */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <QuickActions />
-        <div className="lg:col-span-2">
-          <TodaySchedule />
-        </div>
+        <TodaySchedule />
       </div>
 
-      {/* Bottom CTA */}
-      <Card className="bg-gradient-primary text-primary-foreground border-0">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-            <div>
-              <h3 className="text-lg font-semibold">Optimisez votre garage</h3>
-              <p className="text-primary-foreground/80 text-sm">
-                Découvrez toutes les fonctionnalités pour améliorer votre productivité
-              </p>
-            </div>
-            <Button variant="secondary" className="shadow-lg">
-              Explorer les modules
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* PricingModal pour test */}
+      <PricingModal
+        isOpen={isPricingOpen}
+        onSelectPlan={handlePlanSelect}
+        onClose={() => setIsPricingOpen(false)}
+      />
     </div>
   );
 };

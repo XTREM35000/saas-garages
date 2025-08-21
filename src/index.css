@@ -4,8 +4,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import des styles modaux */
-@import './styles/modal-styles.css';
+/* ============================= */
+/* STYLES GLOBAUX                */
+/* ============================= */
+
+/* Import des composants Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* ============================= */
 /* GARAGE SaaS DESIGN SYSTEM     */

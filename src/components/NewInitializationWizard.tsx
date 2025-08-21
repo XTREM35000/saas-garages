@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWorkflow } from '@/contexts/WorkflowProvider';
 import { useAuthWorkflow } from '@/hooks/useAuthWorkflow';
 import { WorkflowStep } from '@/types/workflow.types';
-// import SuperAdminSetupModal from '@/components/SuperAdminSetupModal'; // Supprimé
+import { WorkflowProgressBar } from '@/components/WorkflowProgressBar';
+import { SuperAdminCreationModal } from '@/components/SuperAdminCreationModal';
 import PricingModal from '@/components/PricingModal';
 import OrganizationSetupModal from '@/components/OrganizationSetupModal';
 import SmsValidationModal from '@/components/SmsValidationModal';
 import GarageSetupModal from '@/components/GarageSetupModal';
 import AdminCreationModal from '@/components/AdminCreationModal';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NewInitializationWizardProps {
   isOpen: boolean;
@@ -21,8 +23,47 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
 }) => {
   const { state, completeStep, isLoading, error } = useWorkflow();
   const { session } = useAuthWorkflow();
+  const [isCheckingSuperAdmin, setIsCheckingSuperAdmin] = useState(false);
+  const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
 
   console.log('🎭 [NewInitializationWizard] État actuel:', state);
+
+  // Vérifier si un Super Admin existe déjà
+  useEffect(() => {
+    const checkSuperAdminExists = async () => {
+      if (state.currentStep === 'super_admin_check' && !isCheckingSuperAdmin) {
+        setIsCheckingSuperAdmin(true);
+
+        try {
+          // Vérifier si un Super Admin existe déjà
+          const { data: superAdminExists, error: checkError } = await supabase.rpc('is_super_admin');
+
+          if (checkError) {
+            console.error('❌ Erreur vérification Super Admin:', checkError);
+            toast.error('Erreur lors de la vérification Super Admin');
+            return;
+          }
+
+          if (superAdminExists) {
+            // Un Super Admin existe déjà, passer à l'étape suivante
+            console.log('✅ Super Admin existe déjà, passage à l\'étape suivante');
+            await completeStep('super_admin_check');
+          } else {
+            // Aucun Super Admin, afficher le modal de création
+            console.log('ℹ️ Aucun Super Admin trouvé, affichage du modal de création');
+            setShowSuperAdminModal(true);
+          }
+        } catch (err) {
+          console.error('❌ Erreur lors de la vérification Super Admin:', err);
+          toast.error('Erreur lors de la vérification Super Admin');
+        } finally {
+          setIsCheckingSuperAdmin(false);
+        }
+      }
+    };
+
+    checkSuperAdminExists();
+  }, [state.currentStep, isCheckingSuperAdmin, completeStep]);
 
   // Gestionnaire de progression
   const handleStepComplete = async (stepData?: any) => {
@@ -44,57 +85,35 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
     }
   };
 
-  // Calcul progression
-  const progress = {
-    current: state.completedSteps.length + 1,
-    total: 6,
-    stepName: getStepDisplayName(state.currentStep)
+  // Gestionnaire de création du Super Admin
+  const handleSuperAdminCreated = async (userData: any) => {
+    try {
+      console.log('✅ Super Admin créé:', userData);
+      setShowSuperAdminModal(false);
+
+      // Compléter l'étape super_admin_check
+      await completeStep('super_admin_check');
+
+      toast.success('Super Administrateur créé avec succès ! 🎉');
+    } catch (err) {
+      console.error('❌ Erreur lors de la création du Super Admin:', err);
+      toast.error('Erreur lors de la création du Super Admin');
+    }
   };
-
-  // Affichage du nom de l'étape
-  function getStepDisplayName(step: WorkflowStep): string {
-    const names = {
-      'super_admin_check': 'Vérification Super Admin',
-      'pricing_selection': 'Sélection Plan',
-      'admin_creation': 'Création Admin',
-      'org_creation': 'Création Organisation',
-      'sms_validation': 'Validation SMS',
-      'garage_setup': 'Configuration Garage',
-      'dashboard': 'Terminé'
-    };
-    return names[step] || step;
-  }
-
-  // Barre de progression
-  const ProgressBar = () => (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-      <div className="max-w-4xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-medium text-primary">
-            Étape {progress.current} sur {progress.total}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {progress.stepName}
-          </div>
-        </div>
-        <div className="w-full bg-secondary rounded-full h-2">
-          <div
-            className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${(progress.current / progress.total) * 100}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
 
   // Rendu de l'étape courante
   const renderCurrentStep = () => {
-    if (isLoading) {
+    if (isLoading || isCheckingSuperAdmin) {
       return (
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Chargement du workflow...</p>
+            <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto mb-6"></div>
+            <h3 className="text-xl font-semibold text-[#128C7E] mb-2">
+              {isCheckingSuperAdmin ? 'Vérification Super Admin...' : 'Chargement du workflow...'}
+            </h3>
+            <p className="text-gray-600">
+              {isCheckingSuperAdmin ? 'Vérification en cours...' : 'Préparation de votre espace de gestion'}
+            </p>
           </div>
         </div>
       );
@@ -102,15 +121,18 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
 
     if (error) {
       return (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="text-destructive text-lg mb-4">Erreur Workflow</div>
-            <p className="text-muted-foreground mb-4">{error}</p>
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50 to-red-100">
+          <div className="text-center max-w-md mx-auto p-8">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="text-red-500 text-2xl">⚠️</div>
+            </div>
+            <h3 className="text-xl font-semibold text-red-700 mb-4">Erreur Workflow</h3>
+            <p className="text-red-600 mb-6">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
+              className="bg-[#128C7E] text-white px-6 py-3 rounded-xl hover:bg-[#075E54] transition-colors duration-200 font-medium"
             >
-              Recharger
+              Recharger la page
             </button>
           </div>
         </div>
@@ -119,9 +141,16 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
 
     switch (state.currentStep) {
       case 'super_admin_check':
-        // Super Admin est maintenant géré dans le workflow principal
-        handleStepComplete();
-        return null;
+        // Afficher un message d'attente pendant la vérification
+        return (
+          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto mb-6"></div>
+              <h3 className="text-xl font-semibold text-[#128C7E] mb-2">Vérification Super Admin...</h3>
+              <p className="text-gray-600">Configuration automatique en cours</p>
+            </div>
+          </div>
+        );
 
       case 'admin_creation':
         return (
@@ -141,7 +170,6 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
           />
         );
 
-
       case 'pricing_selection':
         return (
           <PricingModal
@@ -149,8 +177,6 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
             onSelectPlan={handleStepComplete}
           />
         );
-
-      // Dupliquer admin_creation supprimé
 
       case 'org_creation':
         return (
@@ -183,12 +209,18 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
 
       default:
         return (
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-              <div className="text-lg text-muted-foreground">Workflow terminé</div>
+          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-green-100">
+            <div className="text-center max-w-md mx-auto p-8">
+              <div className="w-20 h-20 bg-gradient-to-r from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="text-white text-3xl">🎉</div>
+              </div>
+              <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Workflow terminé !</h3>
+              <p className="text-gray-600 mb-6">
+                Félicitations ! Votre système est maintenant entièrement configuré et prêt à l'emploi.
+              </p>
               <button
                 onClick={onComplete}
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 mt-4"
+                className="bg-gradient-to-r from-[#128C7E] to-[#25D366] text-white px-8 py-4 rounded-xl hover:from-[#075E54] hover:to-[#128C7E] transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
                 Accéder au Dashboard
               </button>
@@ -200,10 +232,23 @@ const NewInitializationWizard: React.FC<NewInitializationWizardProps> = ({
 
   return (
     <>
-      <ProgressBar />
-      <div className="pt-20">
+      {/* Barre de progression avec thème WhatsApp */}
+      <WorkflowProgressBar
+        currentStep={state.currentStep}
+        completedSteps={state.completedSteps}
+      />
+
+      {/* Contenu principal - SANS padding */}
+      <div>
         {renderCurrentStep()}
       </div>
+
+      {/* Modal de création du Super Admin */}
+      <SuperAdminCreationModal
+        isOpen={showSuperAdminModal}
+        onComplete={handleSuperAdminCreated}
+        onClose={() => setShowSuperAdminModal(false)}
+      />
     </>
   );
 };

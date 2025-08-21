@@ -10,8 +10,9 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { SplashScreenManager } from "@/components/SplashScreenManager";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import TestWhatsApp from "./pages/TestWhatsApp";
 import { useWorkflowCheck } from "@/hooks/useWorkflowCheck";
-import InitializationWizard from "@/components/InitializationWizard";
+import NewInitializationWizard from "@/components/NewInitializationWizard";
 import { WorkflowStep } from "@/types/workflow.types";
 
 const queryClient = new QueryClient();
@@ -33,16 +34,12 @@ const AppContent = () => {
 
   // Debug du workflow
   useEffect(() => {
-    console.log("🚦 Workflow debug:", {
-      currentStep,
-      env: import.meta.env.MODE,
-      supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-    });
+    console.log("🚦 Workflow debug:", { currentStep, env: import.meta.env.MODE });
   }, [currentStep]);
 
   if (isChecking || currentStep === "loading") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-500 to-green-700">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E] to-[#25D366]">
         <div className="text-center text-white">
           <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-xl font-semibold">⏳ Chargement du workflow...</p>
@@ -53,10 +50,9 @@ const AppContent = () => {
 
   if (currentStep !== "dashboard") {
     return (
-      <InitializationWizard
+      <NewInitializationWizard
         isOpen={true}
         onComplete={() => console.log("🎉 Workflow terminé")}
-        startStep={currentStep as WorkflowStep}
       />
     );
   }
@@ -65,6 +61,7 @@ const AppContent = () => {
     <MainLayout>
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/test-whatsapp" element={<TestWhatsApp />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </MainLayout>
