@@ -28,24 +28,30 @@ const CompletionSummaryModal: React.FC<CompletionSummaryModalProps> = ({
         if (!user) return;
 
         // Charger les données du résumé
-        const { data } = await supabase
-          .from('onboarding_workflow_states')
-          .select(`
-            organisation:organisations(name, subscription_plan),
-            admin:profiles(name),
-            garage:garages(name)
-          `)
-          .eq('user_id', user.id)
-          .single();
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .maybeSingle();
 
-        if (data) {
-          setSummary({
-            adminName: data.admin?.[0]?.name || '',
-            organisationName: data.organisation?.[0]?.name || '',
-            garageName: data.garage?.[0]?.name || '',
-            plan: data.organisation?.[0]?.subscription_plan || '',
-          });
-        }
+        // Récupérer les organisations de l'utilisateur
+        const { data: userOrgs } = await supabase
+          .from('user_organisations')
+          .select('organisations!inner(name, subscription_type)')
+          .eq('user_id', user.id)
+          .limit(1);
+
+        const { data: garages } = await supabase
+          .from('garages')
+          .select('name')
+          .limit(1);
+
+        setSummary({
+          adminName: profile?.name || 'Admin',
+          organisationName: userOrgs?.[0]?.organisations?.name || 'Organisation',
+          garageName: garages?.[0]?.name || 'Garage',
+          plan: userOrgs?.[0]?.organisations?.subscription_type || 'free',
+        });
       } catch (error) {
         console.error('Erreur chargement résumé:', error);
       }

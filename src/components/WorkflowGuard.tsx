@@ -64,7 +64,7 @@ const WorkflowGuard: React.FC<WorkflowGuardProps> = ({ children }) => {
   };
 
   if (loading) {
-    return <SplashScreen visible onComplete={() => setLoading(false)} />;
+    return <SplashScreen onComplete={() => setLoading(false)} />;
   }
 
   if (isCompleted) {

@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Building, Key, Loader2, AlertCircle } from 'lucide-react';
-import { getAvailableOrganizations, supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface Organization {
@@ -52,14 +52,42 @@ const OrganizationSelect: React.FC<OrganizationSelectProps> = ({ onSelect }) => 
       let isSuper = false;
       let fetchError = null;
 
-      try {
-        const result = await getAvailableOrganizations();
-        orgs = result?.data || [];
-        isSuper = false;
-        fetchError = result?.error;
-      } catch (error) {
-        console.error('❌ Erreur getAvailableOrganizations:', error);
-        fetchError = error.message;
+      // Vérifier si c'est un super admin
+      const { data: isSuperAdminResult } = await supabase.rpc('is_super_admin');
+      isSuper = !!isSuperAdminResult;
+
+      if (isSuper) {
+        // Super admin peut voir toutes les organisations
+        if (directOrgs && !directError) {
+          orgs = directOrgs.map(org => ({
+            id: org.id,
+            nom: org.name,
+            code: org.slug || org.name,
+            description: org.description
+          }));
+        }
+      } else {
+        // Utilisateur normal voit seulement ses organisations
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          try {
+            const { data: userOrgs, error: userOrgError } = await supabase
+              .from('user_organisations')
+              .select('organisations!inner(id, name, slug, description)')
+              .eq('user_id', user.id);
+            
+            if (userOrgs && !userOrgError) {
+              orgs = userOrgs.map(item => ({
+                id: item.organisations.id,
+                nom: item.organisations.name,
+                code: item.organisations.slug || item.organisations.name,
+                description: item.organisations.description
+              }));
+            }
+          } catch (error) {
+            console.error('Erreur récupération organisations utilisateur:', error);
+          }
+        }
       }
 
       console.log('🔍 OrganizationSelect: Résultat récupération:', {
@@ -69,14 +97,14 @@ const OrganizationSelect: React.FC<OrganizationSelectProps> = ({ onSelect }) => 
         orgsDetails: orgs
       });
 
-      // Si aucune organisation n'est trouvée via getAvailableOrganizations, utiliser les organisations directes
+      // Si aucune organisation n'est trouvée, utiliser les organisations directes en fallback
       if (!orgs || orgs.length === 0) {
-        console.log('🔄 Aucune organisation trouvée via getAvailableOrganizations, utilisation des organisations directes...');
+        console.log('🔄 Aucune organisation trouvée, utilisation des organisations directes...');
         if (!directError && directOrgs && directOrgs.length > 0) {
           const mappedOrgs = directOrgs.map(org => ({
             id: org.id,
             nom: org.name,
-            code: org.code,
+            code: org.slug || org.name,
             description: org.description
           }));
           console.log('✅ Organisations récupérées directement:', mappedOrgs);

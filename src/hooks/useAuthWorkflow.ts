@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useWorkflow } from '@/contexts/WorkflowProvider';
-import { WorkflowStep } from '@/types/workflow.d';
+import { WorkflowStep } from '@/types/workflow.types';
 
 export function useAuthWorkflow() {
   const { user, session, isAuthenticated } = useAuthSession();

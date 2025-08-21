@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkflow } from '@/contexts/WorkflowProvider';
 import { useAuthSession } from '@/hooks/useAuthSession';
-import { WorkflowStep } from '@/types/workflow';
+import { WorkflowStep } from '@/types/workflow.types';
 
 interface WorkflowSyncOptions {
   enableAutoProgress?: boolean;
