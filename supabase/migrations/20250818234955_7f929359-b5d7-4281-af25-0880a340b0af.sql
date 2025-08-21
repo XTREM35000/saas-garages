@@ -145,9 +145,9 @@ DECLARE
   v_super_admin_id uuid;
 BEGIN
   -- Récupérer le premier super admin
-  SELECT user_id INTO v_super_admin_id 
-  FROM public.super_admins 
-  WHERE est_actif = true 
+  SELECT user_id INTO v_super_admin_id
+  FROM public.super_admins
+  WHERE est_actif = true
   LIMIT 1;
 
   IF v_super_admin_id IS NULL THEN

@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { Crown, Shield, CheckCircle, AlertCircle } from 'lucide-react';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
 import { WhatsAppFormField } from '@/components/ui/whatsapp-form-field';
+import { EmailFieldPro } from '@/components/ui/email-field-pro';
+import { PhoneFieldPro } from '@/components/ui/phone-field-pro';
+import { PasswordFieldPro } from '@/components/ui/password-field-pro';
 import { WhatsAppButton } from '@/components/ui/whatsapp-button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -22,17 +25,28 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
     name: '',
     email: '',
     password: '',
-    phone: ''
+    phone: '',
+    avatarFile: null as File | null,
+    avatarPreview: ''
   });
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPhoneValid, setIsPhoneValid] = useState<boolean>(false);
 
   const handleFieldChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Effacer l'erreur du champ modifié
     if (fieldErrors[field]) {
       setFieldErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      const preview = URL.createObjectURL(file);
+      setFormData(prev => ({ ...prev, avatarFile: file, avatarPreview: preview }));
     }
   };
 
@@ -55,6 +69,10 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
       errors.password = 'Le mot de passe doit contenir au moins 8 caractères';
     }
 
+    if (!formData.phone.trim() || !isPhoneValid) {
+      errors.phone = 'Téléphone invalide';
+    }
+
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -69,56 +87,41 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
     setIsSubmitting(true);
 
     try {
-      // Créer l'utilisateur dans Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            name: formData.name,
-            phone: formData.phone,
-            role: 'super_admin'
-          }
-        }
+      let avatarUrl: string | null = null;
+      if (formData.avatarFile) {
+        const fileExt = formData.avatarFile.name.split('.').pop();
+        const filePath = `super_admin/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, formData.avatarFile, {
+          upsert: true
+        });
+        if (uploadError) throw uploadError;
+        const { data: publicUrl } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        avatarUrl = publicUrl.publicUrl;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/setup-super-admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          nom: formData.name.split(' ').slice(-1).join(' ') || formData.name,
+          prenom: formData.name.split(' ')[0] || formData.name,
+          display_name: formData.name,
+          avatar_url: avatarUrl
+        })
       });
 
-      if (authError) {
-        throw new Error(authError.message);
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Erreur création Super Admin');
       }
 
-      if (authData.user) {
-        // Créer le profil utilisateur
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: authData.user.id,
-              email: formData.email,
-              name: formData.name,
-              phone: formData.phone,
-              role: 'super_admin',
-              is_active: true
-            }
-          ]);
-
-        if (profileError) {
-          console.warn('Erreur création profil:', profileError);
-        }
-
-        toast.success('Super Administrateur créé avec succès ! 🎉');
-
-        // Appeler le callback de succès
-        onComplete({
-          user: authData.user,
-          profile: {
-            id: authData.user.id,
-            email: formData.email,
-            name: formData.name,
-            phone: formData.phone,
-            role: 'super_admin'
-          }
-        });
-      }
+      toast.success('Super Administrateur créé avec succès ! 🎉');
+      onComplete(result);
     } catch (error: any) {
       console.error('Erreur création Super Admin:', error);
       toast.error(error.message || 'Erreur lors de la création du Super Admin');
@@ -216,7 +219,7 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
           </div>
         </motion.div>
 
-        {/* Formulaire */}
+
         <motion.form
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -224,6 +227,26 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
           onSubmit={handleSubmit}
           className="space-y-4"
         >
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Photo de profil</label>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 border">
+                {formData.avatarPreview ? (
+                  <img src={formData.avatarPreview} alt="Aperçu" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">Aperçu</div>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="text-sm"
+              />
+            </div>
+          </div>
+
           <WhatsAppFormField
             label="Nom complet"
             type="text"
@@ -235,35 +258,28 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
             isValid={!fieldErrors.name && formData.name.length > 0}
           />
 
-          <WhatsAppFormField
+          <EmailFieldPro
             label="Adresse email"
-            type="email"
             value={formData.email}
-            onChange={(value) => handleFieldChange('email', value)}
-            placeholder="votre@email.com"
-            required={true}
+            onChange={(val) => handleFieldChange('email', val)}
             error={fieldErrors.email}
-            isValid={!fieldErrors.email && formData.email.includes('@')}
+            required
           />
 
-          <WhatsAppFormField
+          <PhoneFieldPro
             label="Numéro de téléphone"
-            type="tel"
             value={formData.phone}
-            onChange={(value) => handleFieldChange('phone', value)}
-            placeholder="+33 6 12 34 56 78"
-            required={false}
+            onChange={(val) => handleFieldChange('phone', val)}
+            required
+            onValidationChange={setIsPhoneValid}
           />
 
-          <WhatsAppFormField
+          <PasswordFieldPro
             label="Mot de passe"
-            type="password"
             value={formData.password}
-            onChange={(value) => handleFieldChange('password', value)}
-            placeholder="Minimum 8 caractères"
-            required={true}
+            onChange={(val) => handleFieldChange('password', val)}
+            required
             error={fieldErrors.password}
-            isValid={!fieldErrors.password && formData.password.length >= 8}
           />
 
           {/* Bouton de soumission */}

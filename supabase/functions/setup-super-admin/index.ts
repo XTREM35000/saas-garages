@@ -19,7 +19,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { email, password, phone, nom, prenom } = await req.json()
+    const { email, password, phone, nom, prenom, display_name, avatar_url } = await req.json()
 
     // Validation des données
     if (!email || !password || !phone || !nom || !prenom) {
@@ -33,90 +33,26 @@ serve(async (req) => {
 
     let userId: string
 
-    // 1. Vérifier si l'utilisateur existe déjà
-    const { data: existingUser } = await supabase.auth.admin.listUsers()
-    const user = existingUser.users.find(u => u.email === email)
+    // Utiliser la RPC transactionnelle pour créer Super Admin + profil + pricing
+    const { data: rpcData, error: rpcError } = await (supabase as any).rpc('create_super_admin_complete', {
+      p_email: email,
+      p_password: password,
+      p_name: display_name || `${prenom} ${nom}`,
+      p_phone: phone,
+      p_avatar_url: avatar_url || null
+    })
 
-    if (user) {
-      // L'utilisateur existe, vérifier le mot de passe
-      try {
-        const { data: signInData } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: password
-        })
-
-        if (signInData.user) {
-          userId = signInData.user.id
-          console.log('✅ Utilisateur existant, connexion réussie:', email)
-        } else {
-          throw new Error('Mot de passe incorrect')
-        }
-      } catch (error) {
-        return new Response(
-          JSON.stringify({ error: 'Utilisateur existant mais mot de passe incorrect' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-    } else {
-      // Créer un nouvel utilisateur
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: email,
-        password: password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: `${prenom} ${nom}`,
-          phone: phone,
-          role: 'superadmin'
-        }
-      })
-
-      if (authError || !authData.user) {
-        console.error('❌ Erreur création utilisateur:', authError)
-        return new Response(
-          JSON.stringify({ error: `Erreur création utilisateur: ${authError?.message}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      userId = authData.user.id
-      console.log('✅ Nouveau compte créé:', email)
-    }
-
-    // 2. Vérifier si l'utilisateur est déjà super admin
-    const { data: existingSuperAdmin } = await supabase
-      .from('super_admins')
-      .select('id')
-      .eq('user_id', userId)
-      .single()
-
-    if (existingSuperAdmin) {
+    if (rpcError || !rpcData?.success) {
+      const message = rpcError?.message || rpcData?.error || 'Echec création Super Admin'
       return new Response(
-        JSON.stringify({ error: 'Cet utilisateur est déjà Super-Admin' }),
+        JSON.stringify({ error: message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // 3. Création dans super_admins (avec service role, contourne RLS)
-    const { error: insertError } = await supabase
-      .from('super_admins')
-      .insert({
-        user_id: userId,
-        email: email,
-        nom: nom,
-        prenom: prenom,
-        phone: phone,
-        est_actif: true
-      })
+    userId = rpcData.user_id
 
-    if (insertError) {
-      console.error('❌ Erreur insertion super_admins:', insertError)
-      return new Response(
-        JSON.stringify({ error: `Erreur insertion: ${insertError.message}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // 4. Créer la relation user_organizations pour le Super-Admin
+    // 3. Créer la relation user_organizations pour le Super-Admin (best-effort)
     const { data: orgs } = await supabase
       .from('organisations')
       .select('id')

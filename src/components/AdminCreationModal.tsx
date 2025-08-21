@@ -7,9 +7,9 @@ import { useWorkflow } from "@/contexts/WorkflowProvider";
 import { BaseModal } from "@/components/ui/base-modal";
 import { ModalFormField } from "@/components/ui/modal-form-field";
 import { ModalButton } from "@/components/ui/modal-button";
-import { EmailField } from "@/components/ui/email-field";
-import { PhoneField } from "@/components/ui/phone-field";
-import { PasswordField } from "@/components/ui/password-field";
+import { EmailFieldPro } from "@/components/ui/email-field-pro";
+import { PhoneFieldPro } from "@/components/ui/phone-field-pro";
+import { PasswordFieldPro } from "@/components/ui/password-field-pro";
 
 const PASSWORD_MIN_LENGTH = 8;
 
@@ -40,7 +40,9 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
     email: { value: "", error: "", isValid: false },
     password: { value: "", error: "", isValid: false },
     name: { value: "", error: "", isValid: false },
-    phone: { value: "", error: "", isValid: true } // optionnel
+    phone: { value: "", error: "", isValid: true }, // optionnel
+    avatarFile: { value: null as File | null, error: "", isValid: true },
+    avatarPreview: { value: "", error: "", isValid: true }
   });
 
   // Initialiser les données du formulaire
@@ -59,6 +61,15 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
     const validation = validateField(field, value);
     setFormData(prev => ({ ...prev, [field]: { value, ...validation } }));
     onAdminDataChange(field as keyof AdminData, value);
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[1] ? e.target.files?.[1] : e.target.files?.[0] || null;
+    setFormData(prev => ({
+      ...prev,
+      avatarFile: { value: file, error: "", isValid: true },
+      avatarPreview: { value: file ? URL.createObjectURL(file) : "", error: "", isValid: true }
+    }));
   };
 
   const validateField = (field: keyof typeof formData, value: string) => {
@@ -90,49 +101,25 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Créer l'utilisateur dans auth.users
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email.value,
-        password: formData.password.value,
-        options: {
-          data: {
-            name: formData.name.value,
-            phone: formData.phone.value,
-            role: 'admin'
-          }
-        }
-      });
-
-      if (authError) throw authError;
-
-      if (!authData.user?.id) {
-        throw new Error("Impossible de créer l'utilisateur");
+      let avatarUrl: string | null = null;
+      if (formData.avatarFile.value) {
+        const fileExt = formData.avatarFile.value.name.split('.').pop();
+        const filePath = `admins/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, formData.avatarFile.value, {
+          upsert: true
+        });
+        if (uploadError) throw uploadError;
+        const { data: publicUrl } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        avatarUrl = publicUrl.publicUrl;
       }
 
-      // Créer le profil dans public.profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          first_name: formData.name.value.split(' ')[0] || formData.name.value,
-          last_name: formData.name.value.split(' ').slice(1).join(' ') || '',
-          email: formData.email.value,
-          phone: formData.phone.value,
-          role: 'admin',
-          is_active: true,
-          created_at: new Date().toISOString()
-        });
-
-      if (profileError) throw profileError;
-
-      // Créer l'admin dans public.admins
-      // Utiliser RPC function pour créer admin complet
       const { data: result, error: rpcError } = await (supabase as any).rpc('create_admin_complete', {
         p_email: formData.email.value,
         p_password: formData.password.value,
         p_name: formData.name.value,
         p_phone: formData.phone.value || null,
-        p_pricing_plan: 'starter'
+        p_pricing_plan: 'starter',
+        p_avatar_url: avatarUrl
       });
 
       if (rpcError) throw rpcError;
@@ -187,7 +174,7 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
         />
 
         {/* Email */}
-        <EmailField
+        <EmailFieldPro
           label="Email"
           value={formData.email.value}
           onChange={(value) => handleFieldChange("email", value)}
@@ -197,7 +184,7 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
         />
 
         {/* Téléphone */}
-        <PhoneField
+        <PhoneFieldPro
           label="Téléphone (optionnel)"
           value={formData.phone.value}
           onChange={(value) => handleFieldChange("phone", value)}
@@ -206,7 +193,7 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
         />
 
         {/* Mot de passe */}
-        <PasswordField
+        <PasswordFieldPro
           label="Mot de passe"
           value={formData.password.value}
           onChange={(value) => handleFieldChange("password", value)}

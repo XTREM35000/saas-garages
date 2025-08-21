@@ -13,67 +13,41 @@ serve(async (req) => {
   }
 
   try {
-    // Create a Supabase client with the Auth context of the function
+    // Use service role for elevated actions
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     // Get the request body
-    const { email, password, nom, prenom, role } = await req.json()
+    const { email, password, nom, prenom, role, phone, avatar_url, name } = await req.json()
 
     // Validate input
     if (!email || !password) {
       throw new Error('Email et mot de passe requis')
     }
 
-    // Create the user in Supabase Auth
-    const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
-      email: email,
-      password: password,
-      email_confirm: true,
-      user_metadata: {
-        nom: nom || 'Admin',
-        prenom: prenom || 'Utilisateur',
-        role: role || 'proprietaire'
-      }
+    // Use RPC to create admin fully (auth + profiles + admins)
+    const { data: result, error: rpcError } = await (supabaseClient as any).rpc('create_admin_complete', {
+      p_email: email,
+      p_password: password,
+      p_name: name || `${prenom ?? ''} ${nom ?? ''}`.trim(),
+      p_phone: phone ?? null,
+      p_pricing_plan: 'starter',
+      p_avatar_url: avatar_url ?? null
     })
 
-    if (authError) {
-      throw new Error(`Erreur création utilisateur: ${authError.message}`)
-    }
-
-    if (!authData.user) {
-      throw new Error('Aucun utilisateur créé')
-    }
-
-    // Update the profile with additional information
-    const { error: profileError } = await supabaseClient
-      .from('profiles')
-      .update({
-        nom: nom || 'Admin',
-        prenom: prenom || 'Utilisateur',
-        role: role || 'proprietaire',
-        statut: 'actif'
-      })
-      .eq('id', authData.user.id)
-
-    if (profileError) {
-      console.error('Erreur mise à jour profil:', profileError)
+    if (rpcError || !result?.success) {
+      throw new Error(rpcError?.message || result?.error || 'Erreur création admin')
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         user: {
-          id: authData.user.id,
-          email: authData.user.email,
-          role: role || 'proprietaire'
+          id: result.user_id,
+          email: email,
+          role: role || 'admin'
         }
       }),
       {

@@ -3,7 +3,7 @@ import { Building, MapPin, Globe, Users, Shield, CheckCircle } from 'lucide-reac
 import { BaseModal } from '@/components/ui/base-modal';
 import { ModalFormField } from '@/components/ui/modal-form-field';
 import { ModalButton } from '@/components/ui/modal-button';
-import { EmailField } from '@/components/ui/email-field';
+import { EmailFieldPro } from '@/components/ui/email-field-pro';
 import { PhoneField } from '@/components/ui/phone-field';
 import { toast } from 'sonner';
 
@@ -170,7 +170,7 @@ export const OrganizationModal: React.FC<OrganizationModalProps> = ({
         />
 
         {/* Email */}
-        <EmailField
+        <EmailFieldPro
           label="Email"
           value={formData.email.value}
           onChange={(value) => handleFieldChange("email", value)}

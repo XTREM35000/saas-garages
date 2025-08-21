@@ -6,7 +6,7 @@ import { useWorkflow } from "@/contexts/WorkflowProvider";
 import { BaseModal } from "@/components/ui/base-modal";
 import { ModalFormField } from "@/components/ui/modal-form-field";
 import { ModalButton } from "@/components/ui/modal-button";
-import { EmailField } from "@/components/ui/email-field";
+import { EmailFieldPro } from "@/components/ui/email-field-pro";
 import "../styles/whatsapp-theme.css";
 
 interface OrganizationSetupModalProps {
@@ -21,7 +21,8 @@ interface FormData {
   description: { value: string; error: string; isValid: boolean };
   slug: { value: string; error: string; isValid: boolean };
   email: { value: string; error: string; isValid: boolean };
-  subscription_type: { value: string; error: string; isValid: boolean };
+  plan_type: { value: string; error: string; isValid: boolean };
+  custom_domain: { value: string; error: string; isValid: boolean };
 }
 
 const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
@@ -38,7 +39,8 @@ const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
     description: { value: "", error: "", isValid: false },
     slug: { value: "", error: "", isValid: false },
     email: { value: "", error: "", isValid: false },
-    subscription_type: { value: "starter", error: "", isValid: true }
+    plan_type: { value: "free_trial", error: "", isValid: true },
+    custom_domain: { value: "", error: "", isValid: true }
   });
 
   // Validation des champs
@@ -65,7 +67,9 @@ const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
           isValid: emailRegex.test(value),
           error: !emailRegex.test(value) ? "Email invalide" : ""
         };
-      case 'subscription_type':
+      case 'plan_type':
+        return { isValid: ['free_trial','mensuel_standard','mensuel_pro','annuel_pro'].includes(value), error: "" };
+      case 'custom_domain':
         return { isValid: true, error: "" };
       default:
         return { isValid: false, error: "" };
@@ -93,16 +97,17 @@ const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Utilisateur non connecté');
 
-      // Créer l'organisation
-      const { error: orgError } = await supabase.rpc('create_organization', {
-        org_name: formData.name.value,
-        org_code: formData.description.value,
-        org_slug: formData.slug.value,
-        org_email: formData.email.value,
-        org_subscription_type: formData.subscription_type.value
+      // Provisionner l'organisation (slug + sous-domaine, plan, domaine custom éventuel)
+      const { data: result, error: orgError } = await (supabase as any).rpc('provision_organization', {
+        p_name: formData.name.value,
+        p_email: formData.email.value,
+        p_plan: formData.plan_type.value,
+        p_slug: formData.slug.value,
+        p_custom_domain: formData.custom_domain.value || null
       });
 
       if (orgError) throw orgError;
+      if (!result?.success) throw new Error(result?.error || 'Provisioning échoué');
 
       toast.success("Organisation créée avec succès !");
       await completeStep('org_creation');
@@ -186,7 +191,7 @@ const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
         />
 
         {/* Email de contact */}
-        <EmailField
+        <EmailFieldPro
           label="Email de contact"
           value={formData.email.value}
           onChange={(value) => handleFieldChange("email", value)}
@@ -195,23 +200,38 @@ const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
           disabled={isSubmitting}
         />
 
-        {/* Type d'abonnement */}
+        {/* Plan */}
         <div className="space-y-2">
           <label className="modal-label flex items-center gap-2">
             <Shield className="w-4 h-4 text-blue-600" />
-            Type d'abonnement
+            Plan d'abonnement
           </label>
           <select
-            value={formData.subscription_type.value}
-            onChange={(e) => handleFieldChange("subscription_type", e.target.value)}
+            value={formData.plan_type.value}
+            onChange={(e) => handleFieldChange("plan_type", e.target.value)}
             disabled={isSubmitting}
             className="modal-input"
           >
-            <option value="starter">Starter - 1 garage</option>
-            <option value="professional">Professional - 5 garages</option>
-            <option value="enterprise">Enterprise - Illimité</option>
+            <option value="free_trial">Free Trial (1 semaine)</option>
+            <option value="mensuel_standard">Mensuel Standard</option>
+            <option value="mensuel_pro">Mensuel Pro</option>
+            <option value="annuel_pro">Annuel Pro</option>
           </select>
         </div>
+
+        {/* Domaine personnalisé (option premium) */}
+        <ModalFormField
+          id="custom_domain"
+          label="Domaine personnalisé (option premium)"
+          type="text"
+          value={formData.custom_domain.value}
+          onChange={(value) => handleFieldChange("custom_domain", value)}
+          placeholder="ex: titoh-garage.com"
+          error={formData.custom_domain.error}
+          isValid={formData.custom_domain.isValid}
+          disabled={isSubmitting}
+          icon={<Globe className="w-4 h-4" />}
+        />
 
         {/* Bouton de soumission */}
         <ModalButton
