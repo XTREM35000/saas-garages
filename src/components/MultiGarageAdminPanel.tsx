@@ -62,7 +62,8 @@ export const MultiGarageAdminPanel: React.FC = () => {
         ...org,
         nb_utilisateurs: 0,
         nb_clients: 0,
-        nb_vehicules: 0
+        nb_vehicules: 0,
+        is_active: true
       })) || [];
       setOrganisations(mappedData);
     } catch (error) {
@@ -101,7 +102,7 @@ export const MultiGarageAdminPanel: React.FC = () => {
     try {
       const { error } = await supabase
         .from('organisations')
-        .update({ is_active: !currentStatus })
+        .update({ updated_at: new Date().toISOString() })
         .eq('id', orgId);
 
       if (error) throw error;

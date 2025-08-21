@@ -58,34 +58,36 @@ const OrganizationSelect: React.FC<OrganizationSelectProps> = ({ onSelect }) => 
 
       if (isSuper) {
         // Super admin peut voir toutes les organisations
-        if (directOrgs && !directError) {
+        if (directOrgs && !directError && Array.isArray(directOrgs)) {
           orgs = directOrgs.map(org => ({
             id: org.id,
             nom: org.name,
-            code: org.slug || org.name,
-            description: org.description
+            code: org.code || org.slug || org.name,
+            description: org.description || ''
           }));
         }
       } else {
         // Utilisateur normal voit seulement ses organisations
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          try {
-            const { data: userOrgs, error: userOrgError } = await supabase
-              .from('user_organisations')
-              .select('organisations!inner(id, name, slug, description)')
-              .eq('user_id', user.id);
-            
-            if (userOrgs && !userOrgError) {
-              orgs = userOrgs.map(item => ({
-                id: item.organisations.id,
-                nom: item.organisations.name,
-                code: item.organisations.slug || item.organisations.name,
-                description: item.organisations.description
-              }));
-            }
-          } catch (error) {
-            console.error('Erreur récupération organisations utilisateur:', error);
+        const { data: userOrgs, error: userError } = await supabase
+          .from('user_organisations')
+          .select('organisation_id, role')
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+
+        if (userOrgs && !userError && Array.isArray(userOrgs)) {
+          // Récupérer les détails des organisations séparément
+          const orgIds = userOrgs.map(uo => uo.organisation_id);
+          const { data: orgDetails } = await supabase
+            .from('organisations')
+            .select('id, name, slug, code, description')
+            .in('id', orgIds);
+          
+          if (orgDetails) {
+            orgs = orgDetails.map(org => ({
+              id: org.id,
+              nom: org.name,
+              code: org.code || org.slug || org.name,
+              description: org.description || ''
+            }));
           }
         }
       }
@@ -100,12 +102,12 @@ const OrganizationSelect: React.FC<OrganizationSelectProps> = ({ onSelect }) => 
       // Si aucune organisation n'est trouvée, utiliser les organisations directes en fallback
       if (!orgs || orgs.length === 0) {
         console.log('🔄 Aucune organisation trouvée, utilisation des organisations directes...');
-        if (!directError && directOrgs && directOrgs.length > 0) {
+        if (!directError && directOrgs && directOrgs.length > 0 && Array.isArray(directOrgs)) {
           const mappedOrgs = directOrgs.map(org => ({
             id: org.id,
             nom: org.name,
-            code: org.slug || org.name,
-            description: org.description
+            code: org.code || org.slug || org.name,
+            description: org.description || ''
           }));
           console.log('✅ Organisations récupérées directement:', mappedOrgs);
           setOrganizations(mappedOrgs);

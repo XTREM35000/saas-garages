@@ -43,11 +43,34 @@ const { data: result, error } = await (supabase as any).rpc('create_super_admin_
 - **Anon Key** : Partagée entre les deux environnements
 - **Pas de variables VITE_*** : Utilisation des URLs directes dans client.ts
 
-### 4. Workflow Super Admin
+## 4. Résolution conflit RPC `create_super_admin_complete`
+
+**Problème** : Erreur lors de la soumission du formulaire
+```
+Could not choose the best candidate function between: 
+public.create_super_admin_complete(p_email => text, p_password => text, p_name => text, p_phone => text), 
+public.create_super_admin_complete(p_email => text, p_password => text, p_name => text, p_phone => text, p_avatar_url => text)
+```
+
+**Solution** :
+1. **Migration Supabase** : Suppression de l'ancienne fonction avec `avatar_url`
+2. **Fonction unifiée** : Une seule version sans `p_avatar_url` 
+3. **Correction SuperAdminCreationModal** : Appel RPC unifié
+4. **Corrections TypeScript** : Réparation erreurs de build multiples
+
+**Fichiers modifiés** :
+- Migration : `supabase/migrations/20250821232915_ecdb4867-d11e-4d5f-a086-de77f598b9e4.sql` - Nettoyage RPC
+- `src/components/SuperAdminCreationModal.tsx` : Appel RPC unifié
+- `src/components/OrganizationSelect.tsx` : Gestion erreurs `code` column
+- `src/components/MultiGarageAdminPanel.tsx` : Correction interface `Organisation`
+- `src/components/SimpleOrganizationModal.tsx` : Fix onOpenChange type
+- Corrections multiples des erreurs de compilation TypeScript
+
+### 5. Workflow Super Admin
 
 #### Étapes actuelles
 1. **SuperAdminCreationModal** → Formulaire de création
-2. **create_super_admin_complete** → RPC function Supabase
+2. **create_super_admin_complete** → RPC function Supabase (UNIFIÉE)
 3. **Insertion dans tables** :
    - `auth.users` (authentification)
    - `profiles` (profil utilisateur)

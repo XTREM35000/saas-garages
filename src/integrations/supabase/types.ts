@@ -1511,20 +1511,12 @@ export type Database = {
         }[]
       }
       create_super_admin_complete: {
-        Args:
-          | {
-              p_avatar_url?: string
-              p_email: string
-              p_name: string
-              p_password: string
-              p_phone?: string
-            }
-          | {
-              p_email: string
-              p_name: string
-              p_password: string
-              p_phone?: string
-            }
+        Args: {
+          p_email: string
+          p_name: string
+          p_password: string
+          p_phone?: string
+        }
         Returns: Json
       }
       create_super_admin_v2: {

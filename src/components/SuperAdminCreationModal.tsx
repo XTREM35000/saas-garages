@@ -113,7 +113,7 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
         avatarUrl = publicUrl.publicUrl;
       }
 
-      // Utilisation de la nouvelle RPC function
+      // Utilisation de la fonction RPC unifiée
       const { data: result, error } = await (supabase as any).rpc('create_super_admin_complete', {
         p_email: formData.email,
         p_password: formData.password,
