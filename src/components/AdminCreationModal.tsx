@@ -52,7 +52,9 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
         email: { value: adminData.email || "", error: "", isValid: !!adminData.email },
         password: { value: adminData.password || "", error: "", isValid: !!adminData.password },
         name: { value: adminData.name || "", error: "", isValid: !!adminData.name },
-        phone: { value: adminData.phone || "", error: "", isValid: true }
+        phone: { value: adminData.phone || "", error: "", isValid: true },
+        avatarFile: { value: null as File | null, error: "", isValid: true },
+        avatarPreview: { value: "", error: "", isValid: true }
       });
     }
   }, [isOpen, adminData]);

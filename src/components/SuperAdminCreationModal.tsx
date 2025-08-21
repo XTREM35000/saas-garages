@@ -113,25 +113,17 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
         avatarUrl = publicUrl.publicUrl;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/setup-super-admin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          phone: formData.phone,
-          nom: formData.name.split(' ').slice(-1).join(' ') || formData.name,
-          prenom: formData.name.split(' ')[0] || formData.name,
-          display_name: formData.name,
-          avatar_url: avatarUrl
-        })
+      // Utilisation de la nouvelle RPC function
+      const { data: result, error } = await (supabase as any).rpc('create_super_admin_complete', {
+        p_email: formData.email,
+        p_password: formData.password,
+        p_name: formData.name,
+        p_phone: formData.phone
       });
 
-      const result = await response.json();
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.error || 'Erreur création Super Admin');
+      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error);
       }
 
       toast.success('Super Administrateur créé avec succès ! 🎉');

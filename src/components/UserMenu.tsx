@@ -70,7 +70,7 @@ const UserMenu: React.FC = () => {
 
         // Récupérer l'organisation de l'utilisateur
         const { data: orgData, error: orgError } = await supabase
-          .from('user_organizations')
+          .from('user_organisations')
           .select(`
             *,
             organisations (*)
@@ -81,7 +81,7 @@ const UserMenu: React.FC = () => {
         console.log('🔍 Debug UserMenu - Organization data:', orgData);
         console.log('🔍 Debug UserMenu - Organization error:', orgError);
 
-        if (orgData) {
+        if (orgData && !orgError) {
           setUserOrganization(orgData);
         }
 

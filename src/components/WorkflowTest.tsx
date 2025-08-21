@@ -59,7 +59,7 @@ const WorkflowTest: React.FC = () => {
 
         // 4. Récupérer l'organisation de l'utilisateur
         const { data: orgData, error: orgError } = await supabase
-          .from('user_organizations')
+          .from('user_organisations')
           .select(`
             *,
             organisations (*)
