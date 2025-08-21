@@ -95,7 +95,7 @@ export class DemoService {
    */
   static async getDemoStats() {
     try {
-      const { data, error } = await supabase.rpc('get_dashboard_stats');
+      const { data, error } = await (supabase as any).rpc('get_dashboard_stats');
 
       if (error) {
         throw new Error(error.message);

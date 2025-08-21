@@ -27,18 +27,17 @@ const CompletionSummaryModal: React.FC<CompletionSummaryModalProps> = ({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Charger les données du résumé
+        // Load basic summary data
         const { data: profile } = await supabase
           .from('profiles')
           .select('name')
           .eq('id', user.id)
           .maybeSingle();
 
-        // Récupérer les organisations de l'utilisateur
-        const { data: userOrgs } = await supabase
-          .from('user_organisations')
-          .select('organisations!inner(name, subscription_type)')
-          .eq('user_id', user.id)
+        // Get organizations through direct query
+        const { data: orgs } = await supabase
+          .from('organisations')
+          .select('name, subscription_type')
           .limit(1);
 
         const { data: garages } = await supabase
@@ -48,9 +47,9 @@ const CompletionSummaryModal: React.FC<CompletionSummaryModalProps> = ({
 
         setSummary({
           adminName: profile?.name || 'Admin',
-          organisationName: userOrgs?.[0]?.organisations?.name || 'Organisation',
+          organisationName: orgs?.[0]?.name || 'Organisation',
           garageName: garages?.[0]?.name || 'Garage',
-          plan: userOrgs?.[0]?.organisations?.subscription_type || 'free',
+          plan: orgs?.[0]?.subscription_type || 'free',
         });
       } catch (error) {
         console.error('Erreur chargement résumé:', error);

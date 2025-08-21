@@ -498,6 +498,7 @@ export type Database = {
       }
       organisations: {
         Row: {
+          code: string | null
           created_at: string | null
           description: string | null
           email: string
@@ -509,6 +510,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          code?: string | null
           created_at?: string | null
           description?: string | null
           email: string
@@ -520,6 +522,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          code?: string | null
           created_at?: string | null
           description?: string | null
           email?: string
@@ -962,7 +965,11 @@ export type Database = {
           nom: string | null
           phone: string | null
           prenom: string | null
+          pricing_plan: Database["public"]["Enums"]["pricing_plan_type"]
           role: string
+          trial_consumed: boolean
+          trial_ends_at: string
+          trial_started_at: string
           user_id: string
         }
         Insert: {
@@ -975,7 +982,11 @@ export type Database = {
           nom?: string | null
           phone?: string | null
           prenom?: string | null
+          pricing_plan?: Database["public"]["Enums"]["pricing_plan_type"]
           role?: string
+          trial_consumed?: boolean
+          trial_ends_at?: string
+          trial_started_at?: string
           user_id: string
         }
         Update: {
@@ -988,7 +999,11 @@ export type Database = {
           nom?: string | null
           phone?: string | null
           prenom?: string | null
+          pricing_plan?: Database["public"]["Enums"]["pricing_plan_type"]
           role?: string
+          trial_consumed?: boolean
+          trial_ends_at?: string
+          trial_started_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1288,13 +1303,22 @@ export type Database = {
         Returns: Json
       }
       create_admin_complete: {
-        Args: {
-          p_email: string
-          p_name: string
-          p_password: string
-          p_phone?: string
-          p_pricing_plan?: string
-        }
+        Args:
+          | {
+              p_avatar_url?: string
+              p_email: string
+              p_name: string
+              p_password: string
+              p_phone?: string
+              p_pricing_plan?: string
+            }
+          | {
+              p_email: string
+              p_name: string
+              p_password: string
+              p_phone?: string
+              p_pricing_plan?: string
+            }
         Returns: Json
       }
       create_admin_user: {
@@ -1487,12 +1511,20 @@ export type Database = {
         }[]
       }
       create_super_admin_complete: {
-        Args: {
-          p_email: string
-          p_name: string
-          p_password: string
-          p_phone?: string
-        }
+        Args:
+          | {
+              p_avatar_url?: string
+              p_email: string
+              p_name: string
+              p_password: string
+              p_phone?: string
+            }
+          | {
+              p_email: string
+              p_name: string
+              p_password: string
+              p_phone?: string
+            }
         Returns: Json
       }
       create_super_admin_v2: {
@@ -1559,6 +1591,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      ensure_unique_user: {
+        Args: { p_email: string; p_phone: string }
+        Returns: undefined
+      }
       execute_in_transaction: {
         Args: { queries: Json[] }
         Returns: Json
@@ -1566,6 +1602,10 @@ export type Database = {
       generate_org_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_dashboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       get_profile: {
         Args: { profile_id: string }
@@ -1581,6 +1621,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_super_admin_subscription_state: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       get_user_organisations: {
         Args: { user_uuid: string }
         Returns: {
@@ -1590,6 +1634,10 @@ export type Database = {
       }
       init_saas_schema: {
         Args: Record<PropertyKey, never> | { org_code: string }
+        Returns: undefined
+      }
+      initialize_saas_schema: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       initialize_system: {
@@ -1606,6 +1654,10 @@ export type Database = {
       }
       is_super_admin: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_valid_phone: {
+        Args: { p_phone: string }
         Returns: boolean
       }
       quick_downgrade_to_admin: {
@@ -1644,6 +1696,13 @@ export type Database = {
       update_profile_role: {
         Args: { new_role: string; profile_id: string }
         Returns: undefined
+      }
+      update_super_admin_plan: {
+        Args: {
+          p_plan: Database["public"]["Enums"]["pricing_plan_type"]
+          p_user_id: string
+        }
+        Returns: Json
       }
       update_user_role: {
         Args: { p_email: string; p_role: string }
@@ -1689,9 +1748,13 @@ export type Database = {
         Args: { p_email: string; p_user_id?: string }
         Returns: Json
       }
+      verify_sms_code: {
+        Args: { p_code: string; p_phone?: string }
+        Returns: Json
+      }
     }
     Enums: {
-      [_ in never]: never
+      pricing_plan_type: "free" | "mensuel" | "annuel"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1818,6 +1881,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      pricing_plan_type: ["free", "mensuel", "annuel"],
+    },
   },
 } as const
