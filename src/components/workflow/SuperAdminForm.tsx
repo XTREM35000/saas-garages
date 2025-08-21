@@ -25,39 +25,67 @@ export const SuperAdminForm: React.FC<SuperAdminFormProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('📝 Tentative de soumission du formulaire...');
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Le nom est requis';
+    if (!validateForm()) {
+      console.log('❌ Validation échouée');
+      return;
     }
 
+    try {
+      console.log('✨ Données formulaire:', formData);
+      setErrors({}); // Réinitialiser les erreurs
+      await onSubmit({
+        ...formData,
+        phone: formData.phone.trim() || null // Gestion du téléphone optionnel
+      });
+    } catch (error) {
+      console.error('❌ Erreur soumission:', error);
+      // Afficher l'erreur globale
+      setErrors(prev => ({
+        ...prev,
+        submit: error instanceof Error ? error.message : 'Erreur lors de la création'
+      }));
+    }
+  };
+
+  // Ajouter une validation plus stricte
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+
+    // Validation du nom
+    if (!formData.name.trim()) {
+      newErrors.name = 'Le nom est requis';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Le nom doit contenir au moins 2 caractères';
+    }
+
+    // Validation de l'email
     if (!formData.email.trim()) {
       newErrors.email = 'L\'email est requis';
-    } else if (!formData.email.includes('@')) {
+    } else if (!emailRegex.test(formData.email)) {
       newErrors.email = 'Format email invalide';
     }
 
+    // Validation du mot de passe
     if (!formData.password) {
       newErrors.password = 'Le mot de passe est requis';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Minimum 8 caractères';
+    } else if (!passwordRegex.test(formData.password)) {
+      newErrors.password = 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre';
     }
 
+    // Validation optionnelle du téléphone si renseigné
+    if (formData.phone && !/^[0-9+\s()-]{8,}$/.test(formData.phone)) {
+      newErrors.phone = 'Format de téléphone invalide';
+    }
+
+    console.log('🔍 Erreurs de validation:', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
-    try {
-      await onSubmit(formData);
-    } catch (error) {
-      console.error('Erreur soumission:', error);
-    }
   };
 
   return (
@@ -190,10 +218,18 @@ export const SuperAdminForm: React.FC<SuperAdminFormProps> = ({
               )}
             </div>
 
+            {/* Affichage des erreurs globales */}
+            {errors.submit && (
+              <p className="text-sm text-destructive bg-destructive/10 p-2 rounded flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                {errors.submit}
+              </p>
+            )}
+
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || Object.keys(errors).length > 0}
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">

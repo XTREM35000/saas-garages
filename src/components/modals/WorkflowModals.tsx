@@ -395,7 +395,11 @@ export const OrganizationModal: React.FC<ModalProps & { onComplete: () => void }
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               />
             </div>
-            <Button type="submit" className="w-full">
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={!formData.name.trim() || !formData.address.trim()}
+            >
               Créer Organisation
             </Button>
           </form>
@@ -567,7 +571,11 @@ export const GarageModal: React.FC<ModalProps & { onComplete: () => void }> = ({
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
-            <Button type="submit" className="w-full">
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={!formData.name.trim()}
+            >
               Créer Garage
             </Button>
           </form>

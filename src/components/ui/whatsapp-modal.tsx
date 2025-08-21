@@ -32,7 +32,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
   const dragConstraints = useBreakpointDragConstraints();
 
   // Valeurs de test fixes pour déboguer
-  const testConstraints = { top: -400, bottom: 300 };
+  const testConstraints = { top: -100, bottom: 300 };
 
   // Gestion du drag vertical
   const handleDragStart = () => {
@@ -96,17 +96,17 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
           initial={{
             scale: 0.95,
             opacity: 0,
-            y: 280
+            y: 400
           }}
           animate={{
             scale: 1,
             opacity: 1,
-            y: 280
+            y: 400
           }}
           exit={{
             scale: 0.95,
             opacity: 0,
-            y: 280
+            y: 400
           }}
           transition={{
             type: "spring",

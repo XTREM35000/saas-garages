@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Crown, Shield, CheckCircle, AlertCircle } from 'lucide-react';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
@@ -33,6 +33,12 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPhoneValid, setIsPhoneValid] = useState<boolean>(false);
+  const [isFormValid, setIsFormValid] = useState<boolean>(false);
+
+  // Validation initiale
+  useEffect(() => {
+    validateFormRealTime();
+  }, [isPhoneValid]);
 
   const handleFieldChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -40,6 +46,8 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
     if (fieldErrors[field]) {
       setFieldErrors(prev => ({ ...prev, [field]: '' }));
     }
+    // Valider le formulaire en temps réel
+    validateFormRealTime();
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,7 +58,7 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
     }
   };
 
-  const validateForm = () => {
+  const validateFormRealTime = () => {
     const errors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
@@ -74,7 +82,13 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
     }
 
     setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    const isValid = Object.keys(errors).length === 0;
+    setIsFormValid(isValid);
+    return isValid;
+  };
+
+  const validateForm = () => {
+    return validateFormRealTime();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -290,7 +304,7 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
               size="lg"
               loading={isSubmitting}
               fullWidth={true}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isFormValid}
             >
               <Crown className="w-5 h-5 mr-2" />
               Créer le Super Administrateur

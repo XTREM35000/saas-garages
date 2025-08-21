@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Modal Scroll</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+
+        .test-button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+
+        .test-button:hover {
+            background: #1d4ed8;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #128C7E, #075E54);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .modal-content {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+
+        .modal-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .modal-content::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .content-section {
+            background: #f8fafc;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .close-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Modal Scroll avec Roulette</h1>
+    <p>Cliquez sur le bouton pour tester le modal avec défilement contrôlé par la roulette de souris.</p>
+
+    <button class="test-button" onclick="openModal()">Ouvrir Modal de Test</button>
+
+    <div id="modal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Modal de Test - Scroll avec Roulette</h2>
+                <p>Utilisez la roulette de souris pour faire défiler le contenu</p>
+                <button class="close-button" onclick="closeModal()">×</button>
+            </div>
+
+            <div class="modal-content" data-modal-content>
+                <div class="content-section">
+                    <h3>Section 1 - Introduction</h3>
+                    <p>Ceci est un test du défilement avec la roulette de souris dans un modal. Le contenu doit défiler naturellement sans affecter la position du modal.</p>
+                </div>
+
+                <div class="content-section">
+                    <h3>Section 2 - Fonctionnalités</h3>
+                    <p>✅ Défilement fluide avec la roulette<br>
+                    ✅ Scroll contrôlé aux extrémités<br>
+                    ✅ Position du modal préservée<br>
+                    ✅ Header et footer toujours visibles</p>
+                </div>
+
+                <div class="content-section">
+                    <h3>Section 3 - Contenu Long</h3>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+                </div>
+
+                <div class="content-section">
+                    <h3>Section 4 - Plus de Contenu</h3>
+                    <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+                    <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.</p>
+                </div>
+
+                <div class="content-section">
+                    <h3>Section 5 - Encore Plus</h3>
+                    <p>Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.</p>
+                    <p>Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur.</p>
+                </div>
+
+                <div class="content-section">
+                    <h3>Section 6 - Presque Fini</h3>
+                    <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.</p>
+                    <p>Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.</p>
+                </div>
+
+                <div class="content-section">
+                    <h3>Section 7 - Dernière Section</h3>
+                    <p>Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus.</p>
+                    <p>Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal() {
+            document.getElementById('modal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            // Test du scroll avec la roulette
+            const modalContent = document.querySelector('[data-modal-content]');
+            if (modalContent) {
+                modalContent.addEventListener('wheel', handleWheel, { passive: false });
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+            document.body.style.overflow = 'unset';
+        }
+
+        function handleWheel(e) {
+            e.preventDefault();
+            const modal = e.currentTarget;
+            const scrollTop = modal.scrollTop;
+            const scrollHeight = modal.scrollHeight;
+            const clientHeight = modal.clientHeight;
+
+            // Permettre le scroll seulement si on n'est pas aux extrémités
+            if ((scrollTop <= 0 && e.deltaY < 0) ||
+                (scrollTop + clientHeight >= scrollHeight && e.deltaY > 0)) {
+                return;
+            }
+
+            // Scroll plus fluide avec la roulette
+            const scrollAmount = e.deltaY * 0.5;
+            modal.scrollTop += scrollAmount;
+        }
+
+        // Fermer le modal en cliquant sur l'overlay
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Fermer avec Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

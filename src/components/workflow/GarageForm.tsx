@@ -35,7 +35,7 @@ export const GarageForm: React.FC<GarageFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     try {
@@ -130,7 +130,7 @@ export const GarageForm: React.FC<GarageFormProps> = ({
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || !validateForm()}
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">

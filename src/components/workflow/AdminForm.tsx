@@ -62,7 +62,7 @@ export const AdminForm: React.FC<AdminFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     try {
@@ -208,8 +208,8 @@ export const AdminForm: React.FC<AdminFormProps> = ({
                 <CreditCard className="h-4 w-4" />
                 Plan tarifaire
               </Label>
-              <Select 
-                value={formData.pricingPlan} 
+              <Select
+                value={formData.pricingPlan}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, pricingPlan: value }))}
                 disabled={isLoading}
               >
@@ -238,7 +238,7 @@ export const AdminForm: React.FC<AdminFormProps> = ({
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || !validateForm()}
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
