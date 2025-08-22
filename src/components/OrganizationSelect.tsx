@@ -42,7 +42,7 @@ const OrganizationSelect: React.FC<OrganizationSelectProps> = ({ onSelect }) => 
       console.log('🧪 Test direct des organisations...');
       const { data: directOrgs, error: directError } = await supabase
         .from('organisations')
-        .select('id, name, code, description')
+        .select('id, name, slug, description')
         .order('name');
       
       console.log('🔍 Organisations directes:', directOrgs);
@@ -62,7 +62,7 @@ const OrganizationSelect: React.FC<OrganizationSelectProps> = ({ onSelect }) => 
           orgs = directOrgs.map(org => ({
             id: org.id,
             nom: org.name,
-            code: org.code || org.slug || org.name,
+            code: org.slug || org.name,
             description: org.description || ''
           }));
         }
@@ -78,14 +78,14 @@ const OrganizationSelect: React.FC<OrganizationSelectProps> = ({ onSelect }) => 
           const orgIds = userOrgs.map(uo => uo.organisation_id);
           const { data: orgDetails } = await supabase
             .from('organisations')
-            .select('id, name, slug, code, description')
+            .select('id, name, slug, description')
             .in('id', orgIds);
           
           if (orgDetails) {
             orgs = orgDetails.map(org => ({
               id: org.id,
               nom: org.name,
-              code: org.code || org.slug || org.name,
+              code: org.slug || org.name,
               description: org.description || ''
             }));
           }
@@ -106,7 +106,7 @@ const OrganizationSelect: React.FC<OrganizationSelectProps> = ({ onSelect }) => 
           const mappedOrgs = directOrgs.map(org => ({
             id: org.id,
             nom: org.name,
-            code: org.code || org.slug || org.name,
+            code: org.slug || org.name,
             description: org.description || ''
           }));
           console.log('✅ Organisations récupérées directement:', mappedOrgs);

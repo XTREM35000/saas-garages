@@ -120,8 +120,7 @@ const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
         p_password: formData.password.value,
         p_name: formData.name.value,
         p_phone: formData.phone.value || null,
-        p_pricing_plan: 'starter',
-        p_avatar_url: avatarUrl
+        p_pricing_plan: 'starter'
       });
 
       if (rpcError) throw rpcError;

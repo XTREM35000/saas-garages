@@ -1741,8 +1741,10 @@ export type Database = {
         Returns: Json
       }
       verify_sms_code: {
-        Args: { p_code: string; p_phone?: string }
-        Returns: Json
+        Args:
+          | { p_code: string; p_phone?: string }
+          | { p_code: string; p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
