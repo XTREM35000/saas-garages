@@ -113,8 +113,8 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
         avatarUrl = publicUrl.publicUrl;
       }
 
-      // Utilisation de la fonction RPC unifiée
-      const { data: result, error } = await (supabase as any).rpc('create_super_admin_complete', {
+      // Utilisation de la fonction RPC d'urgence
+      const { data: result, error } = await (supabase as any).rpc('emergency_create_super_admin', {
         p_email: formData.email,
         p_password: formData.password,
         p_name: formData.name,
@@ -122,8 +122,8 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
       });
 
       if (error) throw error;
-      if (!result.success) {
-        throw new Error(result.error);
+      if (!result?.success) {
+        throw new Error(result?.error || 'Erreur lors de la création');
       }
 
       toast.success('Super Administrateur créé avec succès ! 🎉');

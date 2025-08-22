@@ -1575,6 +1575,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      emergency_create_super_admin: {
+        Args: {
+          p_email: string
+          p_name: string
+          p_password: string
+          p_phone?: string
+        }
+        Returns: Json
+      }
       enable_rls_after_org_creation: {
         Args: Record<PropertyKey, never>
         Returns: undefined
