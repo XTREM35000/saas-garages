@@ -6,11 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmailFieldPro } from '@/components/ui/email-field-pro';
+import { EmailAuthInput } from '@/components/ui/email-auth-input';
 import { PasswordFieldPro } from '@/components/ui/password-field-pro';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
 import AnimatedLogo from '@/components/AnimatedLogo';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import ModalForgotPassword from './ModalForgotPassword';
+import ModalVerifyEmail from './ModalVerifyEmail';
+import ModalVerifyPhone from './ModalVerifyPhone';
+import ModalResetPassword from './ModalResetPassword';
 import '../styles/whatsapp-theme.css';
 
 interface GeneralAuthModalProps {
@@ -30,6 +35,16 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
   const [formData, setFormData] = useState({
     email: '',
     password: ''
+  });
+
+  // États pour les modals de récupération de mot de passe
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showVerifyEmail, setShowVerifyEmail] = useState(false);
+  const [showVerifyPhone, setShowVerifyPhone] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [recoveryData, setRecoveryData] = useState({
+    email: '',
+    phone: ''
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -114,6 +129,33 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
     }
   };
 
+  // Gestionnaires pour la récupération de mot de passe
+  const handleForgotPassword = () => {
+    setShowForgotPassword(true);
+  };
+
+  const handleEmailSent = (email: string, phone: string) => {
+    setRecoveryData({ email, phone });
+    setShowForgotPassword(false);
+    setShowVerifyEmail(true);
+  };
+
+  const handleEmailVerified = () => {
+    setShowVerifyEmail(false);
+    setShowVerifyPhone(true);
+  };
+
+  const handlePhoneVerified = () => {
+    setShowVerifyPhone(false);
+    setShowResetPassword(true);
+  };
+
+  const handleResetSuccess = () => {
+    setShowResetPassword(false);
+    setRecoveryData({ email: '', phone: '' });
+    toast.success('Vous pouvez maintenant vous connecter avec votre nouveau mot de passe');
+  };
+
   return (
     <WhatsAppModal isOpen={isOpen} onClose={onClose} size="xl">
       <div className="max-w-4xl mx-auto">
@@ -189,6 +231,15 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
                 value={formData.password}
                 onChange={(value) => handleInputChange('password', value)}
               />
+              {/* Lien mot de passe oublié */}
+              <div className="text-right">
+                <button
+                  onClick={handleForgotPassword}
+                  className="text-[#128C7E] hover:text-[#25D366] text-sm font-medium transition-colors"
+                >
+                  👉 Mot de passe oublié ?
+                </button>
+              </div>
             </div>
 
             {/* Bouton de connexion */}
@@ -239,6 +290,36 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Modals de récupération de mot de passe */}
+      <ModalForgotPassword
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        onEmailSent={handleEmailSent}
+      />
+
+      <ModalVerifyEmail
+        isOpen={showVerifyEmail}
+        onClose={() => setShowVerifyEmail(false)}
+        onVerifySuccess={handleEmailVerified}
+        email={recoveryData.email}
+        phone={recoveryData.phone}
+      />
+
+      <ModalVerifyPhone
+        isOpen={showVerifyPhone}
+        onClose={() => setShowVerifyPhone(false)}
+        onVerifySuccess={handlePhoneVerified}
+        phone={recoveryData.phone}
+      />
+
+      <ModalResetPassword
+        isOpen={showResetPassword}
+        onClose={() => setShowResetPassword(false)}
+        onResetSuccess={handleResetSuccess}
+        email={recoveryData.email}
+        phone={recoveryData.phone}
+      />
     </WhatsAppModal>
   );
 };

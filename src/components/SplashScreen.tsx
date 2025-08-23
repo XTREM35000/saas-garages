@@ -1,305 +1,146 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { AnimatedLogo } from "./AnimatedLogo";
-import { Car, Wrench, Settings, Shield, Database, Zap } from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import AnimatedLogo from './AnimatedLogo';
 
 interface SplashScreenProps {
   onComplete: () => void;
   duration?: number;
-  skipKey?: string;
-  showSkipButton?: boolean;
-  className?: string;
-}
-
-interface TestStep {
-  id: string;
-  name: string;
-  icon: React.ComponentType<{ className?: string }>;
-  duration: number;
-  status: 'pending' | 'running' | 'completed' | 'failed';
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
   onComplete,
-  duration = 5000, // 5 secondes pour les tests
-  skipKey = "Escape",
-  showSkipButton = true,
-  className = ""
+  duration = 3000
 }) => {
-  const [progress, setProgress] = useState(0);
-  const [isCompleting, setIsCompleting] = useState(false);
-  const [currentTest, setCurrentTest] = useState(0);
-
-  const testSteps: TestStep[] = [
-    {
-      id: 'init',
-      name: 'Initialisation système',
-      icon: Zap,
-      duration: 800,
-      status: 'pending'
-    },
-    {
-      id: 'auth',
-      name: 'Vérification authentification',
-      icon: Shield,
-      duration: 600,
-      status: 'pending'
-    },
-    {
-      id: 'database',
-      name: 'Connexion base de données',
-      icon: Database,
-      duration: 1000,
-      status: 'pending'
-    },
-    {
-      id: 'workflow',
-      name: 'Chargement workflow',
-      icon: Settings,
-      duration: 700,
-      status: 'pending'
-    },
-    {
-      id: 'garage',
-      name: 'Configuration garage',
-      icon: Car,
-      duration: 900,
-      status: 'pending'
-    },
-    {
-      id: 'tools',
-      name: 'Outils de réparation',
-      icon: Wrench,
-      duration: 600,
-      status: 'pending'
-    }
-  ];
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    console.log('🎬 Démarrage SplashScreen pour cette session');
-    
-    // Animation des tests étape par étape
-    let currentStepIndex = 0;
-    let totalProgress = 0;
-    
-    const runTests = async () => {
-      for (let i = 0; i < testSteps.length; i++) {
-        const step = testSteps[i];
-        setCurrentTest(i);
-        
-        // Simuler le test en cours
-        await new Promise(resolve => {
-          const stepDuration = step.duration;
-          const stepProgress = 100 / testSteps.length;
-          
-          const interval = setInterval(() => {
-            totalProgress += (stepProgress / (stepDuration / 16)); // 16ms = 60fps
-            setProgress(Math.min(totalProgress, 100));
-            
-            if (totalProgress >= (i + 1) * stepProgress) {
-              clearInterval(interval);
-              resolve(true);
-            }
-          }, 16);
-        });
-      }
-      
-      // Tous les tests sont terminés
-      setTimeout(() => {
-        handleComplete();
-      }, 500);
-    };
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+      setTimeout(onComplete, 500); // Attendre la fin de l'animation de sortie
+    }, duration);
 
-    runTests();
-  }, []);
-
-  // Gestion des touches clavier
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === skipKey || e.key === "Escape") {
-        handleComplete();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyPress);
-    return () => document.removeEventListener("keydown", handleKeyPress);
-  }, [skipKey]);
-
-  const handleComplete = () => {
-    if (isCompleting) return;
-    
-    console.log('✅ SplashScreen terminé');
-    setIsCompleting(true);
-    
-    // Délai pour l'animation de sortie
-    setTimeout(() => {
-      onComplete();
-    }, 500);
-  };
-
-  const handleSkip = () => {
-    handleComplete();
-  };
+    return () => clearTimeout(timer);
+  }, [duration, onComplete]);
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.5 }}
-        className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-green-500 via-green-600 to-green-700 ${className}`}
-      >
-        {/* Logo animé centré */}
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ 
-            duration: 0.8, 
-            type: "spring", 
-            damping: 15, 
-            stiffness: 100 
-          }}
-          className="mb-8"
-        >
-          <AnimatedLogo 
-            size={120}
-            mainColor="text-white"
-            secondaryColor="text-yellow-200"
-            className="drop-shadow-2xl"
-          />
-        </motion.div>
-
-        {/* Titre principal */}
-        <motion.h1
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="text-4xl md:text-6xl font-bold text-white text-center mb-4"
-        >
-          Multi-Garages
-        </motion.h1>
-
-        {/* Sous-titre */}
-        <motion.p
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          className="text-xl md:text-2xl text-green-100 text-center mb-8 max-w-2xl px-4"
-        >
-          Tests de fonctionnalités en cours...
-        </motion.p>
-
-        {/* Étapes de test */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, duration: 0.6 }}
-          className="w-full max-w-md mx-4 mb-6"
-        >
-          <div className="space-y-3">
-            {testSteps.map((step, index) => {
-              const StepIcon = step.icon;
-              const isActive = index === currentTest;
-              const isCompleted = index < currentTest;
-              const isPending = index > currentTest;
-
-              return (
-                <motion.div
-                  key={step.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.8 + index * 0.1, duration: 0.4 }}
-                  className={`
-                    flex items-center gap-3 p-3 rounded-lg transition-all duration-300
-                    ${isActive ? 'bg-white/20 border border-white/30' : ''}
-                    ${isCompleted ? 'bg-green-500/20 border border-green-300/30' : ''}
-                    ${isPending ? 'bg-white/10 border border-white/20' : ''}
-                  `}
-                >
-                  {/* Icône de l'étape */}
-                  <div className={`
-                    w-8 h-8 rounded-full flex items-center justify-center
-                    ${isActive ? 'bg-white text-green-600' : ''}
-                    ${isCompleted ? 'bg-green-500 text-white' : ''}
-                    ${isPending ? 'bg-white/30 text-white/50' : ''}
-                  `}>
-                    <StepIcon className="w-4 h-4" />
-                  </div>
-
-                  {/* Nom de l'étape */}
-                  <span className={`
-                    text-sm font-medium
-                    ${isActive ? 'text-white' : ''}
-                    ${isCompleted ? 'text-green-200' : ''}
-                    ${isPending ? 'text-white/70' : ''}
-                  `}>
-                    {step.name}
-                  </span>
-
-                  {/* Statut */}
-                  <div className="ml-auto">
-                    {isActive && (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    )}
-                    {isCompleted && (
-                      <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                        <div className="w-2 h-2 bg-white rounded-full" />
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </motion.div>
-
-        {/* Barre de progression globale */}
-        <motion.div
-          initial={{ scaleX: 0, opacity: 0 }}
-          animate={{ scaleX: 1, opacity: 1 }}
-          transition={{ delay: 1.2, duration: 0.8 }}
-          className="w-full max-w-md mx-4 mb-6"
-        >
-          <div className="bg-green-400/30 rounded-full h-3 overflow-hidden">
-            <motion.div
-              className="h-full bg-white rounded-full"
-              style={{ width: `${progress}%` }}
-              transition={{ duration: 0.1 }}
-            />
-          </div>
-          <div className="text-center mt-2">
-            <span className="text-white/80 text-sm font-mono">
-              {Math.round(progress)}% - Tests en cours
-            </span>
-          </div>
-        </motion.div>
-
-        {/* Bouton de saut */}
-        {showSkipButton && (
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.5, duration: 0.5 }}
-            onClick={handleSkip}
-            className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-lg border border-white/30 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white/50"
-          >
-            Appuyez sur {skipKey} pour passer
-          </motion.button>
-        )}
-
-        {/* Informations de version */}
+      {isVisible && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 2.0, duration: 0.5 }}
-          className="absolute bottom-6 left-6 right-6 text-center"
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5"
         >
-          <p className="text-green-200 text-sm">
-            Version 2.0 • Tests automatisés • Système sécurisé
-          </p>
+          <div className="text-center">
+            {/* Logo animé */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ 
+                duration: 0.8, 
+                ease: "easeOut",
+                delay: 0.2
+              }}
+              className="mb-8"
+            >
+              <AnimatedLogo size="large" />
+            </motion.div>
+
+            {/* Titre */}
+            <motion.h1
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ 
+                duration: 0.6, 
+                ease: "easeOut",
+                delay: 0.4
+              }}
+              className="text-4xl font-bold text-[#128C7E] mb-4"
+            >
+              GarageConnect
+            </motion.h1>
+
+            {/* Sous-titre */}
+            <motion.p
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ 
+                duration: 0.6, 
+                ease: "easeOut",
+                delay: 0.6
+              }}
+              className="text-lg text-gray-600 mb-8"
+            >
+              Plateforme de gestion multi-garages professionnelle
+            </motion.p>
+
+            {/* Barre de progression */}
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: "100%" }}
+              transition={{ 
+                duration: duration / 1000, 
+                ease: "linear",
+                delay: 0.8
+              }}
+              className="w-64 h-2 bg-gray-200 rounded-full mx-auto overflow-hidden"
+            >
+              <div className="h-full bg-gradient-to-r from-[#128C7E] to-[#25D366] rounded-full" />
+            </motion.div>
+
+            {/* Texte de chargement */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ 
+                duration: 0.5,
+                delay: 1.0
+              }}
+              className="text-sm text-gray-500 mt-4"
+            >
+              Chargement de votre espace...
+            </motion.p>
+
+            {/* Icônes thématiques */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ 
+                duration: 0.6,
+                delay: 1.2
+              }}
+              className="flex justify-center space-x-8 mt-8"
+            >
+              <div className="text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-2">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-600">Gestion</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-2">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-600">Outils</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-2">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-600">Performance</p>
+              </div>
+            </motion.div>
+          </div>
         </motion.div>
-      </motion.div>
+      )}
     </AnimatePresence>
   );
 };

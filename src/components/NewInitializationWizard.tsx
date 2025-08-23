@@ -4,7 +4,7 @@ import { useAuthWorkflow } from '@/hooks/useAuthWorkflow';
 import { WorkflowStep } from '@/types/workflow.types';
 import WorkflowProgressBar from '@/components/WorkflowProgressBar';
 import { SuperAdminCreationModal } from '@/components/SuperAdminCreationModal';
-import PricingModal from '@/components/PricingModal';
+
 import ThankYouMessage from '@/components/ThankYouMessage';
 import { OrganizationSetupModal } from '@/components/OrganizationSetupModal';
 import SmsValidationModal from '@/components/SmsValidationModal';
@@ -12,6 +12,7 @@ import GarageSetupModal from '@/components/GarageSetupModal';
 import { AdminCreationModal } from '@/components/AdminCreationModal';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
 import '../styles/whatsapp-theme.css';
 
 interface NewInitializationWizardProps {
@@ -26,7 +27,7 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
   const { state, completeStep, isLoading, error } = useWorkflow();
   const { session } = useAuthWorkflow();
   const [isCheckingSystem, setIsCheckingSystem] = useState(false);
-  const [showPricingModal, setShowPricingModal] = useState(false);
+
   const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showOrgModal, setShowOrgModal] = useState(false);
@@ -198,7 +199,7 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
           // Afficher le bon modal selon l'état
           if (!hasSuperAdmin) {
             // NOUVEAU WORKFLOW : Commencer par le Pricing Plan
-            setShowPricingModal(true);
+            // Pricing modal removed - using existing workflow
           } else if (!hasAdmin) {
             setShowAdminModal(true);
           } else if (!hasOrg) {
@@ -231,7 +232,7 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
   const handlePlanSelected = async (planData: any) => {
     try {
       console.log('✅ Plan sélectionné:', planData);
-      setShowPricingModal(false);
+              // Pricing modal removed
 
       // Sauvegarder le plan sélectionné
       setSelectedPlan(planData.plan);
@@ -509,80 +510,81 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
     }
   };
 
+  // Ne rendre que si le modal est ouvert
+  if (!isOpen) {
+    return null;
+  }
+
   return (
-    <>
-      {/* Barre de progression avec thème WhatsApp */}
-      <WorkflowProgressBar
-        currentStep={state.currentStep}
-        completedSteps={state.completedSteps}
-      />
+    <WhatsAppModal isOpen={isOpen} onClose={() => {}} size="xl">
+      <div className="max-w-4xl mx-auto">
+        {/* Barre de progression avec thème WhatsApp */}
+        <WorkflowProgressBar
+          currentStep={state.currentStep}
+          completedSteps={state.completedSteps}
+        />
 
-      {/* Contenu principal */}
-      <div>
-        {renderCurrentStep()}
+        {/* Contenu principal */}
+        <div>
+          {renderCurrentStep()}
+        </div>
       </div>
+    </WhatsAppModal>
 
-      {/* Modals conditionnels */}
-      {showPricingModal && (
-        <PricingModal
-          isOpen={showPricingModal}
-          onSelectPlan={handlePlanSelected}
-          onClose={() => setShowPricingModal(false)}
-        />
-      )}
+    {/* Modals conditionnels */}
+    {showSuperAdminModal && (
+      <SuperAdminCreationModal
+        isOpen={showSuperAdminModal}
+        onComplete={handleSuperAdminCreated}
+        onClose={() => setShowSuperAdminModal(false)}
+      />
+    )}
 
-      {showSuperAdminModal && (
-        <SuperAdminCreationModal
-          isOpen={showSuperAdminModal}
-          onComplete={handleSuperAdminCreated}
-          onClose={() => setShowSuperAdminModal(false)}
-        />
-      )}
+    {showAdminModal && (
+      <AdminCreationModal
+        isOpen={showAdminModal}
+        onComplete={handleAdminCreated}
+        onClose={() => setShowAdminModal(false)}
+      />
+    )}
 
-      {showAdminModal && (
-        <AdminCreationModal
-          isOpen={showAdminModal}
-          onComplete={handleAdminCreated}
-          onClose={() => setShowAdminModal(false)}
-        />
-      )}
+    {showOrgModal && (
+      <OrganizationSetupModal
+        isOpen={showOrgModal}
+        onComplete={handleOrgCreated}
+        selectedPlan={selectedPlan || 'monthly'}
+      />
+    )}
 
-      {showOrgModal && (
-        <OrganizationSetupModal
-          isOpen={showOrgModal}
-          onComplete={handleOrgCreated}
-          selectedPlan={selectedPlan || 'monthly'}
-        />
-      )}
+    {showGarageModal && (
+      <GarageSetupModal
+        isOpen={showGarageModal}
+        onComplete={handleGarageCreated}
+        organizationName=""
+      />
+    )}
 
-      {showGarageModal && (
-        <GarageSetupModal
-          isOpen={showGarageModal}
-          onComplete={handleGarageCreated}
-          organizationName=""
-        />
-      )}
+    {showSmsModal && (
+      <SmsValidationModal
+        isOpen={showSmsModal}
+        onComplete={handleSmsValidated}
+        organizationName=""
+        organizationCode=""
+        adminCode=""
+        adminName=""
+      />
+    )}
 
-      {showSmsModal && (
-        <SmsValidationModal
-          isOpen={showSmsModal}
-          onComplete={handleSmsValidated}
-          organizationName=""
-          organizationCode=""
-          adminName=""
-        />
-      )}
-
-      {/* Message de remerciement après sélection du plan */}
-      {showThankYou && (
-        <ThankYouMessage
-          isOpen={showThankYou}
-          selectedPlan={selectedPlan}
-          superAdminInfo={superAdminInfo}
-          onContinue={handleContinueToSuperAdmin}
-        />
-      )}
-    </>
+    {/* Message de remerciement après sélection du plan */}
+    {showThankYou && (
+      <ThankYouMessage
+        isOpen={showThankYou}
+        selectedPlan={selectedPlan}
+        superAdminInfo={superAdminInfo}
+        onContinue={handleContinueToSuperAdmin}
+      />
+    )}
+  </>
   );
 };
 

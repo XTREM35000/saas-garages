@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SplashScreen from '@/components/SplashScreen';
-import PricingModal from '@/components/PricingModal';
+
 import OrganisationOnboarding from '@/components/OrganisationOnboarding';
 import BrandSetupWizard from '@/components/BrandSetupWizard';
 
@@ -45,7 +45,7 @@ const SimpleSetup: React.FC<SimpleSetupProps> = ({ onComplete, children }) => {
 
     case 'pricing':
       return (
-        <PricingModal
+        {/* PricingModal removed */}
           isOpen={true}
           onSelectPlan={handlePlanSelection}
         />
