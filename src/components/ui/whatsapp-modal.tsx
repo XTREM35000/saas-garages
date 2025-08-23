@@ -61,11 +61,11 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
       return;
     }
 
-    // Fermer seulement si le drag vertical est suffisant ET vers le bas
-    if (info.offset.y > 150 && info.velocity.y > 300) {
+    // Fermer seulement si le drag vertical est suffisant ET vers le bas avec une vitesse importante
+    if (info.offset.y > 200 && info.velocity.y > 500) {
       onClose();
     } else {
-      // Reset position
+      // Reset position avec animation fluide
       setDragY(0);
     }
   };
@@ -124,10 +124,6 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
             opacity: 1,
             y: 0
           }}
-          style={{
-            marginTop: '2rem',
-            marginBottom: '2rem'
-          }}
           exit={{
             scale: 0.95,
             opacity: 0,
@@ -141,10 +137,10 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
           }}
           // Drag avec limites responsives - RESTRICTIF sur l'axe horizontal
           drag="y"
-          dragConstraints={dragConstraints}
-          dragElastic={0.05}
+          dragConstraints={{ top: -50, bottom: 300 }}
+          dragElastic={0.1}
           dragMomentum={false}
-          dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+          dragTransition={{ bounceStiffness: 800, bounceDamping: 30 }}
           onDragStart={handleDragStart}
           onDrag={handleDrag}
           onDragEnd={handleDragEnd}
@@ -154,7 +150,9 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
             className
           )}
           style={{
-            y: dragY
+            y: dragY,
+            marginTop: '2rem',
+            marginBottom: '2rem'
           }}
         >
           {/* Handle de drag */}

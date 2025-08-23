@@ -123,8 +123,7 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
         p_email: formData.email,
         p_password: formData.password,
         p_name: `${formData.firstName} ${formData.lastName}`,
-        p_phone: formData.phone,
-        p_avatar_url: formData.avatarUrl || null
+        p_phone: formData.phone
       };
 
       console.log('🔍 Paramètres RPC:', rpcParams);

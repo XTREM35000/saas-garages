@@ -2,10 +2,12 @@ import React from 'react';
 import { Icons } from '@/components/ui/icons';
 import { cn } from '@/lib/utils';
 import { WorkflowStep } from '@/types/workflow.types';
+import { Lock, Unlock } from 'lucide-react';
 
 interface WorkflowProgressBarProps {
   currentStep: WorkflowStep;
   completedSteps: WorkflowStep[];
+  onStepClick?: (step: WorkflowStep) => void;
 }
 
 const WORKFLOW_STEPS = [
@@ -55,7 +57,8 @@ const WORKFLOW_STEPS = [
 
 const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
   currentStep,
-  completedSteps
+  completedSteps,
+  onStepClick
 }) => {
   const getStepStatus = (stepKey: WorkflowStep) => {
     if (completedSteps.includes(stepKey)) {
@@ -109,19 +112,26 @@ const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
               return (
                 <div key={step.key} className="flex flex-col items-center">
                   {/* Cercle de l'étape */}
-                  <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-all duration-300 relative z-10",
-                    {
-                      // Étape terminée
-                      "bg-gradient-to-r from-green-500 to-green-600 shadow-lg scale-110": isCompleted,
-                      // Étape actuelle
-                      "bg-gradient-to-r from-[#128C7E] to-[#25D366] shadow-lg scale-110 ring-4 ring-[#128C7E]/20": isCurrent,
-                      // Étape en attente
-                      "bg-gray-200 text-gray-400": isPending
-                    }
-                  )}>
+                  <div 
+                    className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-all duration-300 relative z-10",
+                      {
+                        // Étape terminée
+                        "bg-gradient-to-r from-green-500 to-green-600 shadow-lg scale-110 cursor-pointer hover:scale-125": isCompleted,
+                        // Étape actuelle
+                        "bg-gradient-to-r from-[#128C7E] to-[#25D366] shadow-lg scale-110 ring-4 ring-[#128C7E]/20": isCurrent,
+                        // Étape en attente
+                        "bg-gray-200 text-gray-400": isPending
+                      }
+                    )}
+                    onClick={() => onStepClick && onStepClick(step.key)}
+                  >
                     {isCompleted ? (
-                      <Icons.check className="w-6 h-6 text-white" />
+                      <div className="relative">
+                        <Icons.check className="w-6 h-6 text-white" />
+                        {/* Petit cadenas déverrouillé */}
+                        <Unlock className="w-3 h-3 text-white absolute -top-1 -right-1 bg-green-600 rounded-full p-0.5" />
+                      </div>
                     ) : (
                       <step.icon className={cn(
                         "w-6 h-6",

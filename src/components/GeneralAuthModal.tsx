@@ -10,7 +10,7 @@ import { PasswordFieldPro } from '@/components/ui/password-field-pro';
 import { generateSlug, isValidSlug } from '@/utils/slugGenerator';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
 import AnimatedLogo from '@/components/AnimatedLogo';
-import HomePage from '@/components/HomePage';
+import HomePageModal from '@/components/HomePageModal';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import ModalForgotPassword from './ModalForgotPassword';
@@ -167,10 +167,20 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
   return (
     <WhatsAppModal isOpen={isOpen} onClose={onClose} size="xl">
       <div className="max-w-4xl mx-auto">
-        {/* Header avec Logo Animé */}
+        {/* Header avec Logo Animé et bouton En savoir plus */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-6">
-            <AnimatedLogo size="large" />
+          <div className="flex items-center justify-between mb-6">
+            <div></div> {/* Spacer */}
+            <div className="flex justify-center">
+              <AnimatedLogo size="large" />
+            </div>
+            <Button
+              onClick={() => setShowHomePage(true)}
+              variant="ghost"
+              className="text-[#128C7E] hover:text-[#25D366] hover:bg-[#128C7E]/10 px-3 py-2"
+            >
+              👉 En savoir plus
+            </Button>
           </div>
           <h1 className="text-4xl font-bold text-[#128C7E] mb-2">
             Multi-Garage-Connect (MGC)
@@ -340,13 +350,6 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
           <p className="mt-1">
             Support : support@garageconnect.com
           </p>
-          <Button
-            onClick={() => setShowHomePage(true)}
-            variant="ghost"
-            className="mt-3 text-[#128C7E] hover:text-[#25D366] hover:bg-[#128C7E]/10"
-          >
-            👉 En savoir plus
-          </Button>
         </div>
       </div>
 
@@ -381,9 +384,10 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
       />
 
       {/* Page d'accueil */}
-      {showHomePage && (
-        <HomePage onClose={() => setShowHomePage(false)} />
-      )}
+      <HomePageModal
+        isOpen={showHomePage}
+        onClose={() => setShowHomePage(false)}
+      />
     </WhatsAppModal>
   );
 };

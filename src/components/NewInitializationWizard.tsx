@@ -53,6 +53,32 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
 
   console.log('🎭 [NewInitializationWizard] État actuel:', state);
 
+  // Fonction pour gérer le clic sur une étape
+  const handleStepClick = (step: WorkflowStep) => {
+    console.log('Clic sur l\'étape:', step);
+    
+    // Ouvrir le modal correspondant à l'étape cliquée
+    switch (step) {
+      case 'super_admin_check':
+        setShowSuperAdminModal(true);
+        break;
+      case 'admin_creation':
+        setShowAdminModal(true);
+        break;
+      case 'org_creation':
+        setShowOrgModal(true);
+        break;
+      case 'sms_validation':
+        setShowSmsModal(true);
+        break;
+      case 'garage_setup':
+        setShowGarageModal(true);
+        break;
+      default:
+        console.log('Étape non gérée:', step);
+    }
+  };
+
   // Vérifier l'état complet du système au chargement
   useEffect(() => {
     const checkCompleteSystemState = async () => {
@@ -527,6 +553,7 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
           <WorkflowProgressBar
             currentStep={state.currentStep}
             completedSteps={state.completedSteps}
+            onStepClick={handleStepClick}
           />
 
           {/* Contenu principal */}
