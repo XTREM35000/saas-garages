@@ -32,7 +32,7 @@ export const BaseModal: React.FC<BaseModalProps> = ({
   headerGradient = "from-blue-500 to-blue-600",
   className = "",
   draggable = false,
-  dragConstraints = { top: -180, bottom: 380 },
+  dragConstraints = { top: -350, bottom: 300 },
   isFirstModal = false
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -76,9 +76,9 @@ export const BaseModal: React.FC<BaseModalProps> = ({
       >
         <motion.div
           ref={modalRef}
-          initial={{ scale: 0.9, opacity: 0, y: -20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.9, opacity: 0, y: -20 }}
+          initial={{ scale: 0.9, opacity: 0, y: 200 }}
+          animate={{ scale: 1, opacity: 1, y: 200 }}
+          exit={{ scale: 0.9, opacity: 0, y: 200 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
           // Props de drag si activé
           {...(draggable && {
@@ -89,7 +89,7 @@ export const BaseModal: React.FC<BaseModalProps> = ({
             onDragStart: handleDragStart,
             onDrag: handleDrag,
             onDragEnd: handleDragEnd,
-            style: { y: dragY }
+            style: { y: dragY + 200 }
           })}
           className={`relative w-full ${maxWidth} mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden ${draggable ? 'touch-pan-y' : ''} ${className}`}
           onClick={(e) => e.stopPropagation()}

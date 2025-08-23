@@ -1,200 +1,207 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Crown, CreditCard, User, Building, MessageSquare, Wrench, CheckCircle } from 'lucide-react';
-import { WorkflowStep } from '@/types/workflow.types';
+import { Icons } from '@/components/ui/icons';
 import { cn } from '@/lib/utils';
+import { WorkflowStep } from '@/types/workflow.types';
 
 interface WorkflowProgressBarProps {
   currentStep: WorkflowStep;
   completedSteps: WorkflowStep[];
-  className?: string;
 }
 
-interface StepInfo {
-  key: WorkflowStep;
-  name: string;
-  icon: React.ComponentType<any>;
-  description: string;
-  color: string;
-}
-
-const WORKFLOW_STEPS: StepInfo[] = [
+const WORKFLOW_STEPS = [
   {
-    key: 'super_admin_check',
-    name: 'Super Admin',
-    icon: Crown,
-    description: 'Vérification Super Admin',
-    color: 'from-yellow-400 to-yellow-600'
+    key: 'super_admin_check' as WorkflowStep,
+    label: 'Super Admin',
+    description: 'Création du Super Administrateur',
+    icon: Icons.shield,
+    color: 'from-yellow-500 to-yellow-600'
   },
   {
-    key: 'pricing_selection',
-    name: 'Pricing',
-    icon: CreditCard,
-    description: 'Sélection Plan',
-    color: 'from-[#128C7E] to-[#075E54]'
+    key: 'pricing_selection' as WorkflowStep,
+    label: 'Plan',
+    description: 'Sélection du plan d\'abonnement',
+    icon: Icons.creditCard,
+    color: 'from-[#128C7E] to-[#25D366]'
   },
   {
-    key: 'admin_creation',
-    name: 'Admin',
-    icon: User,
-    description: 'Création Admin',
-    color: 'from-blue-500 to-blue-700'
+    key: 'admin_creation' as WorkflowStep,
+    label: 'Admin',
+    description: 'Création de l\'Administrateur',
+    icon: Icons.user,
+    color: 'from-blue-500 to-blue-600'
   },
   {
-    key: 'org_creation',
-    name: 'Organisation',
-    icon: Building,
-    description: 'Création Organisation',
-    color: 'from-purple-500 to-purple-700'
+    key: 'org_creation' as WorkflowStep,
+    label: 'Organisation',
+    description: 'Configuration de l\'organisation',
+    icon: Icons.building,
+    color: 'from-purple-500 to-purple-600'
   },
   {
-    key: 'sms_validation',
-    name: 'SMS',
-    icon: MessageSquare,
-    description: 'Validation SMS',
-    color: 'from-green-500 to-green-700'
+    key: 'sms_validation' as WorkflowStep,
+    label: 'SMS',
+    description: 'Validation par SMS',
+    icon: Icons.messageSquare,
+    color: 'from-green-500 to-green-600'
   },
   {
-    key: 'garage_setup',
-    name: 'Garage',
-    icon: Wrench,
-    description: 'Configuration Garage',
-    color: 'from-orange-500 to-orange-700'
+    key: 'garage_setup' as WorkflowStep,
+    label: 'Garage',
+    description: 'Configuration du premier garage',
+    icon: Icons.wrench,
+    color: 'from-orange-500 to-orange-600'
   }
 ];
 
-export const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
+const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
   currentStep,
-  completedSteps,
-  className = ''
+  completedSteps
 }) => {
-  // Calcul de la progression
-  const currentStepIndex = WORKFLOW_STEPS.findIndex(step => step.key === currentStep);
-  const progressPercentage = ((currentStepIndex + 1) / WORKFLOW_STEPS.length) * 100;
-
-  // Déterminer l'état de chaque étape
   const getStepStatus = (stepKey: WorkflowStep) => {
-    if (completedSteps.includes(stepKey)) return 'completed';
-    if (stepKey === currentStep) return 'current';
+    if (completedSteps.includes(stepKey)) {
+      return 'completed';
+    }
+    if (stepKey === currentStep) {
+      return 'current';
+    }
     return 'pending';
   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      className={cn(
-        "fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-lg",
-        className
-      )}
-    >
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        {/* Barre de progression principale */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-[#128C7E]">
-              Étape {currentStepIndex + 1} sur {WORKFLOW_STEPS.length}
-            </div>
-            <div className="text-sm text-gray-600">
-              {WORKFLOW_STEPS[currentStepIndex]?.description}
-            </div>
-          </div>
+  const getStepIndex = (stepKey: WorkflowStep) => {
+    return WORKFLOW_STEPS.findIndex(step => step.key === stepKey);
+  };
 
-          {/* Barre de progression */}
-          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPercentage}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-[#128C7E] to-[#25D366] rounded-full relative"
-            >
-              {/* Indicateur de progression */}
-              <div className="absolute right-0 top-0 w-3 h-3 bg-white rounded-full shadow-lg transform translate-x-1/2 -translate-y-1/2" />
-            </motion.div>
-          </div>
+  const currentStepIndex = getStepIndex(currentStep);
+
+  return (
+    <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Titre du workflow */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Configuration GarageConnect
+          </h1>
+          <p className="text-gray-600">
+            Suivez les étapes pour configurer votre instance SaaS
+          </p>
         </div>
 
-        {/* Étapes détaillées */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-          {WORKFLOW_STEPS.map((step, index) => {
-            const status = getStepStatus(step.key);
-            const isCompleted = status === 'completed';
-            const isCurrent = status === 'current';
+        {/* Barre de progression */}
+        <div className="relative">
+          {/* Ligne de connexion */}
+          <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-200">
+            <div 
+              className="h-full bg-gradient-to-r from-[#128C7E] to-[#25D366] transition-all duration-500 ease-in-out"
+              style={{
+                width: `${Math.max(0, (currentStepIndex / (WORKFLOW_STEPS.length - 1)) * 100)}%`
+              }}
+            />
+          </div>
 
-            return (
-              <motion.div
-                key={step.key}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                className={cn(
-                  "relative flex flex-col items-center p-3 rounded-lg transition-all duration-200",
-                  isCompleted
-                    ? "bg-green-50 border border-green-200"
-                    : isCurrent
-                    ? "bg-[#128C7E]/10 border border-[#128C7E]/30 shadow-md"
-                    : "bg-gray-50 border border-gray-200"
-                )}
-              >
-                {/* Indicateur de statut */}
-                <div className="relative mb-2">
+          {/* Étapes */}
+          <div className="relative flex justify-between">
+            {WORKFLOW_STEPS.map((step, index) => {
+              const status = getStepStatus(step.key);
+              const isCompleted = status === 'completed';
+              const isCurrent = status === 'current';
+              const isPending = status === 'pending';
+
+              return (
+                <div key={step.key} className="flex flex-col items-center">
+                  {/* Cercle de l'étape */}
                   <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200",
-                    isCompleted
-                      ? "bg-green-500 text-white"
-                      : isCurrent
-                      ? "bg-gradient-to-r from-[#128C7E] to-[#25D366] text-white shadow-lg"
-                      : "bg-gray-300 text-gray-500"
+                    "w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-all duration-300 relative z-10",
+                    {
+                      // Étape terminée
+                      "bg-gradient-to-r from-green-500 to-green-600 shadow-lg scale-110": isCompleted,
+                      // Étape actuelle
+                      "bg-gradient-to-r from-[#128C7E] to-[#25D366] shadow-lg scale-110 ring-4 ring-[#128C7E]/20": isCurrent,
+                      // Étape en attente
+                      "bg-gray-200 text-gray-400": isPending
+                    }
                   )}>
                     {isCompleted ? (
-                      <CheckCircle className="w-5 h-5" />
+                      <Icons.check className="w-6 h-6 text-white" />
                     ) : (
-                      <step.icon className="w-5 h-5" />
+                      <step.icon className={cn(
+                        "w-6 h-6",
+                        isCurrent ? "text-white" : "text-gray-400"
+                      )} />
                     )}
                   </div>
 
-                  {/* Ligne de connexion */}
-                  {index < WORKFLOW_STEPS.length - 1 && (
+                  {/* Label de l'étape */}
+                  <div className="text-center max-w-24">
                     <div className={cn(
-                      "absolute top-1/2 left-full w-4 h-0.5 transform -translate-y-1/2",
-                      isCompleted ? "bg-green-300" : "bg-gray-300"
-                    )} />
+                      "font-medium text-sm mb-1",
+                      {
+                        "text-gray-900": isCompleted || isCurrent,
+                        "text-gray-500": isPending
+                      }
+                    )}>
+                      {step.label}
+                    </div>
+                    <div className={cn(
+                      "text-xs",
+                      {
+                        "text-gray-700": isCompleted || isCurrent,
+                        "text-gray-400": isPending
+                      }
+                    )}>
+                      {step.description}
+                    </div>
+                  </div>
+
+                  {/* Indicateur de progression pour l'étape actuelle */}
+                  {isCurrent && (
+                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
+                      <div className="bg-[#128C7E] text-white px-3 py-1 rounded-full text-xs font-medium animate-pulse">
+                        En cours...
+                      </div>
+                    </div>
                   )}
                 </div>
+              );
+            })}
+          </div>
+        </div>
 
-                {/* Nom de l'étape */}
-                <div className="text-center">
-                  <div className={cn(
-                    "text-xs font-semibold mb-1",
-                    isCompleted
-                      ? "text-green-700"
-                      : isCurrent
-                      ? "text-[#128C7E]"
-                      : "text-gray-500"
-                  )}>
-                    {step.name}
-                  </div>
+        {/* Informations sur l'étape actuelle */}
+        {currentStep && currentStep !== 'dashboard' && (
+          <div className="mt-8 text-center">
+            <div className="inline-flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+              <Icons.info className="w-4 h-4 text-blue-600" />
+              <span className="text-sm text-blue-800">
+                Étape {currentStepIndex + 1} sur {WORKFLOW_STEPS.length} : {WORKFLOW_STEPS.find(s => s.key === currentStep)?.description}
+              </span>
+            </div>
+          </div>
+        )}
 
-                  {/* Description courte */}
-                  <div className="text-xs text-gray-500 leading-tight">
-                    {step.description}
-                  </div>
-                </div>
-
-                {/* Indicateur de progression */}
-                {isCurrent && (
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute -top-1 -right-1 w-3 h-3 bg-[#25D366] rounded-full border-2 border-white"
-                  />
-                )}
-              </motion.div>
-            );
-          })}
+        {/* Progression globale */}
+        <div className="mt-6 text-center">
+          <div className="inline-flex items-center space-x-3">
+            <div className="text-sm text-gray-600">
+              Progression globale
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-[#128C7E] to-[#25D366] transition-all duration-500 ease-in-out"
+                  style={{
+                    width: `${Math.max(0, (completedSteps.length / WORKFLOW_STEPS.length) * 100)}%`
+                  }}
+                />
+              </div>
+              <span className="text-sm font-medium text-gray-700 min-w-[3rem]">
+                {Math.round((completedSteps.length / WORKFLOW_STEPS.length) * 100)}%
+              </span>
+            </div>
+          </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
+
+export default WorkflowProgressBar;

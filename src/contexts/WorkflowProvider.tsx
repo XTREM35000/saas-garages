@@ -5,13 +5,10 @@ import {
   WorkflowState,
   WorkflowStep,
   DBWorkflowState,
-  WorkflowContextType,
-  getNextStep
+  WorkflowContextType
 } from '@/types/workflow.types';
-declare const RTCError: undefined;
 
 export const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
-
 
 const initialState: WorkflowState = {
   currentStep: 'super_admin_check',
@@ -21,33 +18,97 @@ const initialState: WorkflowState = {
   error: null
 };
 
-// Helper pour les erreurs courantes
-const handleSupabaseError = (error: any) => {
-  if (error.code === '42501') {
-    return {
-      shouldRetry: false,
-      userMessage: 'Vous ne disposez pas des permissions nécessaires'
-    };
-  }
-  // Ajouter d'autres codes d'erreur au besoin
-  return {
-    shouldRetry: true,
-    userMessage: 'Erreur temporaire, veuillez réessayer'
-  };
-};
-
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<WorkflowState>(initialState);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, isAuthenticated } = useAuthSession();
 
+  // Vérifier l'existence d'un super admin
+  const checkSuperAdminExists = useCallback(async () => {
+    try {
+      const { data: superAdmins, error } = await supabase
+        .from('super_admins')
+        .select('*')
+        .eq('est_actif', true);
+
+      if (error) {
+        console.error('❌ [WorkflowProvider] Erreur vérification super admin:', error);
+        return false;
+      }
+
+      const hasSuperAdmin = superAdmins && superAdmins.length > 0;
+      console.log('✅ [WorkflowProvider] Vérification super admin:', hasSuperAdmin ? 'Trouvé' : 'Non trouvé');
+      return hasSuperAdmin;
+    } catch (err) {
+      console.error('❌ [WorkflowProvider] Erreur inattendue:', err);
+      return false;
+    }
+  }, []);
+
+  // Créer l'état initial du workflow
+  const createInitialState = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      console.log('🔄 [WorkflowProvider] Création de l\'état initial...');
+
+      // Vérifier s'il existe déjà un super admin
+      const hasSuperAdmin = await checkSuperAdminExists();
+
+      let currentStep: WorkflowStep;
+      let completedSteps: WorkflowStep[];
+
+      if (hasSuperAdmin) {
+        // Si un super admin existe, passer directement à l'étape pricing
+        currentStep = 'pricing_selection';
+        completedSteps = ['super_admin_check'];
+        console.log('✅ [WorkflowProvider] Super admin trouvé, passage direct à pricing_selection');
+      } else {
+        // Aucun super admin, commencer par la création
+        currentStep = 'super_admin_check';
+        completedSteps = [];
+        console.log('ℹ️ [WorkflowProvider] Aucun super admin, création nécessaire');
+      }
+
+      const newState = {
+        ...initialState,
+        userId: user.id,
+        currentStep,
+        completedSteps
+      };
+
+      // Sauvegarder dans Supabase
+      const { error: insertError } = await supabase
+        .from('workflow_states')
+        .insert({
+          user_id: user.id,
+          current_step: newState.currentStep,
+          completed_steps: newState.completedSteps,
+          meta: { isDemo: newState.isDemo }
+        });
+
+      if (insertError) {
+        console.error('❌ [WorkflowProvider] Erreur insertion workflow state:', insertError);
+        throw insertError;
+      }
+
+      setState(newState);
+      console.log('✅ [WorkflowProvider] État initial créé et sauvegardé:', newState);
+    } catch (err) {
+      console.error('❌ [WorkflowProvider] Erreur création état initial:', err);
+      setError(err instanceof Error ? err.message : 'Erreur de création');
+    }
+  }, [user?.id, checkSuperAdminExists]);
+
   // Synchronisation avec Supabase
-  // interface WorkflowState {9
   const syncState = useCallback(async () => {
     if (!user?.id) return;
 
     try {
+      console.log('🔄 [WorkflowProvider] Synchronisation avec Supabase...');
+
+      // Vérifier s'il existe déjà un état de workflow pour cet utilisateur
       const { data, error: fetchError } = await supabase
         .from('workflow_states')
         .select('*')
@@ -59,7 +120,10 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data) {
+        // État existant trouvé, l'utiliser
         const workflowData = data as DBWorkflowState;
+        console.log('📋 [WorkflowProvider] État existant trouvé:', workflowData);
+
         setState({
           currentStep: workflowData.current_step as WorkflowStep,
           completedSteps: workflowData.completed_steps || [],
@@ -77,97 +141,142 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             : {}
         });
       } else {
+        // Aucun état existant, créer un nouvel état initial
+        console.log('🆕 [WorkflowProvider] Aucun état existant, création d\'un nouvel état...');
         await createInitialState();
       }
     } catch (err) {
+      console.error('❌ [WorkflowProvider] Erreur synchronisation:', err);
       setError(err instanceof Error ? err.message : 'Erreur de synchronisation');
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, createInitialState]);
 
-  // Créer l'état initial
-  const createInitialState = async () => {
+  // Interface pour la table workflow_states
+  interface WorkflowStateInsert {
+    current_step: string;
+    user_id: string;
+    completed_steps?: string[];
+    metadata?: Record<string, any>;
+    updated_at?: string;
+    created_at?: string;
+    is_completed?: boolean;
+  }
+
+  // Fonction pour créer ou mettre à jour l'état du workflow
+  const createOrUpdateWorkflowState = useCallback(async (workflowData: Partial<WorkflowStateInsert>) => {
     if (!user?.id) return;
 
     try {
-      // Vérifier si c'est un super admin
-      const { data: isSuperAdmin } = await supabase.rpc('is_super_admin');
-
-      const newState = {
-        ...initialState,
-        userId: user.id,
-        currentStep: isSuperAdmin ? ('pricing_selection' as WorkflowStep) : ('super_admin_check' as WorkflowStep)
+      const dataToUpsert: WorkflowStateInsert = {
+        user_id: user.id,
+        current_step: workflowData.current_step || 'super_admin_check',
+        completed_steps: workflowData.completed_steps || [],
+        metadata: {
+          ...(state.metadata || {}),
+          lastUpdate: new Date().toISOString(),
+          ...(workflowData.metadata || {})
+        },
+        updated_at: new Date().toISOString()
       };
 
-      const { error: insertError } = await supabase
+      const { data, error } = await supabase
         .from('workflow_states')
-        .insert({
-          user_id: user.id,
-          current_step: newState.currentStep,
-          completed_steps: newState.completedSteps,
-          meta: { isDemo: newState.isDemo }
-        });
+        .upsert(dataToUpsert)
+        .select()
+        .single();
 
-      if (insertError) throw insertError;
+      if (error) {
+        console.error('❌ [WorkflowProvider] Erreur upsert:', error);
+        throw error;
+      }
 
-      setState(newState);
-      console.log('✅ [WorkflowProvider] État initial créé:', newState);
-    } catch (err) {
-      console.error('❌ [WorkflowProvider] Erreur création état:', err);
-      setError(err instanceof Error ? err.message : 'Erreur de création');
+      console.log('✅ [WorkflowProvider] Workflow mis à jour:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ [WorkflowProvider] Erreur mise à jour workflow:', error);
+      throw error;
     }
-  };
+  }, [user?.id, state.metadata]);
 
-  // Compléter une étape
+  // Compléter une étape et passer à la suivante
   const completeStep = useCallback(async (step: WorkflowStep) => {
     if (!user?.id) return;
 
     try {
-      setIsLoading(true);
-      setError(null);
+      console.log('🎯 [WorkflowProvider] Complétion étape:', step);
 
-      const nextStep = getNextStep(step);
-      const newCompletedSteps = [...state.completedSteps];
+      // Ajouter l'étape aux étapes complétées
+      const newCompletedSteps = [...state.completedSteps, step];
 
-      if (!newCompletedSteps.includes(step)) {
-        newCompletedSteps.push(step);
+      // Déterminer la prochaine étape selon la logique du workflow
+      let nextStep: WorkflowStep;
+
+      switch (step) {
+        case 'super_admin_check':
+          nextStep = 'pricing_selection';
+          break;
+        case 'pricing_selection':
+          nextStep = 'admin_creation';
+          break;
+        case 'admin_creation':
+          nextStep = 'org_creation';
+          break;
+        case 'org_creation':
+          nextStep = 'garage_setup';
+          break;
+        case 'garage_setup':
+          nextStep = 'completed';
+          break;
+        default:
+          nextStep = 'completed';
       }
 
-      const { error: updateError } = await supabase
-        .from('workflow_states')
-        .upsert({
-          user_id: user.id,
-          current_step: nextStep,
-          completed_steps: newCompletedSteps,
-          metadata: {
-            ...state.metadata,
-            lastUpdate: new Date().toISOString()
-          },
-          updated_at: new Date().toISOString()
-        });
-
-      if (updateError) throw updateError;
-
-      setState(prev => ({
-        ...prev,
+      // Mettre à jour l'état local
+      const newState = {
+        ...state,
         currentStep: nextStep,
         completedSteps: newCompletedSteps
-      }));
+      };
+
+      setState(newState);
+
+      // Sauvegarder dans Supabase
+      await createOrUpdateWorkflowState({
+        current_step: nextStep,
+        completed_steps: newCompletedSteps,
+        metadata: {
+          lastCompletedStep: step,
+          completedAt: new Date().toISOString()
+        }
+      });
+
+      console.log('✅ [WorkflowProvider] Étape complétée, passage à:', nextStep);
+
+      // Si c'est la dernière étape, marquer comme terminé
+      if (nextStep === 'completed') {
+        await createOrUpdateWorkflowState({
+          current_step: 'completed',
+          completed_steps: newCompletedSteps,
+          metadata: {
+            ...newState.metadata,
+            completedAt: new Date().toISOString(),
+            is_completed: true
+          }
+        });
+      }
 
     } catch (err) {
-      console.error('❌ [WorkflowProvider] Erreur progression:', err);
-      setError(err instanceof Error ? err.message : 'Erreur de progression');
-    } finally {
-      setIsLoading(false);
+      console.error('❌ [WorkflowProvider] Erreur complétion étape:', err);
+      setError(err instanceof Error ? err.message : 'Erreur lors de la complétion');
     }
-  }, [state, user?.id]);
+  }, [user?.id, state, createOrUpdateWorkflowState]);
 
   // Validation flexible des champs
   const validateFormField = useCallback((field: string, value: string) => {
     switch (field) {
       case 'email':
-        // Validation souple : 2 caractères minimum, @ optionnel
         const isValid = value.length >= 2;
         return {
           isValid,
@@ -221,121 +330,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id]);
 
-  // Vérification et initialisation du workflow
-  const checkSuperAdmin = async () => {
-    try {
-      const { data: superAdmins, error } = await supabase
-        .from('super_admins')
-        .select('*');
-
-      if (error) {
-        console.error('❌ [WorkflowProvider] Erreur vérification super admin:', error);
-        return false;
-      }
-
-      console.log('✅ [WorkflowProvider] Nombre de super admins:', superAdmins?.length);
-      return superAdmins && superAdmins.length > 0;
-    } catch (err) {
-      console.error('❌ [WorkflowProvider] Erreur inattendue:', err);
-      return false;
-    }
-  };
-
-  // Interface pour la table workflow_states
-  interface WorkflowStateInsert {
-    current_step: string;
-    user_id: string;
-    completed_steps?: string[];
-    metadata?: Record<string, any>;
-    updated_at?: string;
-    created_at?: string;
-    is_completed?: boolean;
-  }
-
-  // Fonction pour créer ou mettre à jour l'état du workflow
-  const createOrUpdateWorkflowState = async (workflowData: Partial<WorkflowStateInsert>) => {
-    if (!user?.id) return;
-
-    try {
-      const dataToUpsert: WorkflowStateInsert = {
-        user_id: user.id,
-        current_step: workflowData.current_step || 'super_admin_check',
-        completed_steps: workflowData.completed_steps || [],
-        metadata: {
-          ...(state.metadata || {}),
-          lastUpdate: new Date().toISOString(),
-          ...(workflowData.metadata || {})
-        },
-        updated_at: new Date().toISOString()
-      };
-
-      const { data, error } = await supabase
-        .from('workflow_states')
-        .upsert(dataToUpsert)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ [WorkflowProvider] Erreur upsert:', error);
-        throw error;
-      }
-
-      console.log('✅ [WorkflowProvider] Workflow mis à jour:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ [WorkflowProvider] Erreur mise à jour workflow:', error);
-      throw error;
-    }
-  };
-
-  const initializeWorkflow = async () => {
-    if (!user) return;
-
-    try {
-      console.log('🔄 [WorkflowProvider] Initialisation du workflow...');
-
-      const hasSuperAdmin = await checkSuperAdmin();
-
-      if (hasSuperAdmin) {
-        console.log('✅ [WorkflowProvider] Super admin existe déjà');
-        await createOrUpdateWorkflowState({
-          current_step: 'admin_creation',
-          completed_steps: ['super_admin_check'],
-          metadata: {
-            lastUpdate: new Date().toISOString()
-          }
-        });
-
-        setState(prev => ({
-          ...prev,
-          currentStep: 'admin_creation',
-          completedSteps: ['super_admin_check']
-        }));
-      } else {
-        console.log('ℹ️ [WorkflowProvider] Pas de super admin, création nécessaire');
-        await createOrUpdateWorkflowState({
-          current_step: 'super_admin_check',
-          completed_steps: [],
-          metadata: {
-            lastUpdate: new Date().toISOString()
-          }
-        });
-
-        setState(prev => ({
-          ...prev,
-          currentStep: 'super_admin_check',
-          completedSteps: []
-        }));
-      }
-
-    } catch (error) {
-      console.error('❌ [WorkflowProvider] Erreur initialisation:', error);
-      setError(error instanceof Error ? error.message : 'Erreur d\'initialisation');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Sync automatique au changement d'utilisateur
   useEffect(() => {
     if (isAuthenticated && user?.id) {
@@ -369,35 +363,4 @@ export const useWorkflow = () => {
     throw new Error('useWorkflow must be used within a WorkflowProvider');
   }
   return context;
-};
-
-const createWorkflowState = async (userId: string, adminType = 'standard') => {
-  try {
-    console.log('📝 Création workflow state pour:', userId);
-
-    const { data, error } = await supabase
-      .from('workflow_states')
-      .insert({
-        user_id: userId,
-        current_step: 'admin_setup',
-        completed_steps: [],
-        admin_type: adminType,
-        metadata: {
-          created_at: new Date().toISOString(),
-          isDemo: false
-        }
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Erreur création workflow:', error);
-      throw error;
-    }
-
-    return data;
-  } catch (error) {
-    console.error('❌ Erreur WorkflowProvider:', error);
-    throw error;
-  }
 };

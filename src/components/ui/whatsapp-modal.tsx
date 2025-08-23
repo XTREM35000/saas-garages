@@ -40,13 +40,34 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
   };
 
   const handleDrag = (event: any, info: PanInfo) => {
-    setDragY(info.offset.y);
+    // Empêcher le drag horizontal excessif
+    if (Math.abs(info.offset.x) > 50) {
+      return;
+    }
+
+    // Limiter le drag vertical
+    const maxDragY = 200;
+    const clampedY = Math.max(-maxDragY, Math.min(maxDragY, info.offset.y));
+    setDragY(clampedY);
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (event: any, info: PanInfo) => {
     setIsDragging(false);
-    // Reset position après un délai
-    setTimeout(() => setDragY(0), 100);
+
+    // Empêcher la fermeture accidentelle lors du drag horizontal
+    if (Math.abs(info.offset.x) > 100) {
+      // Reset position sans fermer
+      setDragY(0);
+      return;
+    }
+
+    // Fermer seulement si le drag vertical est suffisant ET vers le bas
+    if (info.offset.y > 150 && info.velocity.y > 300) {
+      onClose();
+    } else {
+      // Reset position
+      setDragY(0);
+    }
   };
 
   // Gestion de la touche Escape
@@ -114,10 +135,12 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
             stiffness: 300,
             duration: 0.3
           }}
-          // Drag avec limites responsives
+          // Drag avec limites responsives - RESTRICTIF sur l'axe horizontal
           drag="y"
           dragConstraints={dragConstraints}
-          dragElastic={0.1}
+          dragElastic={0.05}
+          dragMomentum={false}
+          dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
           onDragStart={handleDragStart}
           onDrag={handleDrag}
           onDragEnd={handleDragEnd}

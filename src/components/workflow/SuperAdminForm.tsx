@@ -6,15 +6,18 @@ import { Label } from '@/components/ui/label';
 import { Crown, Settings, User, Mail, Phone, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { AnimatedLogo } from '@/components/AnimatedLogo';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { toast } from 'sonner';
 
 interface SuperAdminFormProps {
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: any) => Promise<{ success: boolean; user_id?: string; error?: string }>;
   isLoading?: boolean;
+  onComplete?: (data: any) => void;
 }
 
 export const SuperAdminForm: React.FC<SuperAdminFormProps> = ({
   onSubmit,
-  isLoading = false
+  isLoading = false,
+  onComplete
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -25,89 +28,82 @@ export const SuperAdminForm: React.FC<SuperAdminFormProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('📝 Tentative de soumission du formulaire...');
-
-    if (!validateForm()) {
-      console.log('❌ Validation échouée');
-      return;
-    }
-
-    try {
-      console.log('✨ Données formulaire:', formData);
-      setErrors({}); // Réinitialiser les erreurs
-      await onSubmit({
-        ...formData,
-        phone: formData.phone.trim() || null // Gestion du téléphone optionnel
-      });
-    } catch (error) {
-      console.error('❌ Erreur soumission:', error);
-      // Afficher l'erreur globale
-      setErrors(prev => ({
-        ...prev,
-        submit: error instanceof Error ? error.message : 'Erreur lors de la création'
-      }));
-    }
-  };
-
-  // Ajouter une validation plus stricte
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
 
-    // Validation du nom
-    if (!formData.name.trim()) {
-      newErrors.name = 'Le nom est requis';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Le nom doit contenir au moins 2 caractères';
-    }
+    if (!formData.name.trim()) newErrors.name = 'Le nom est requis';
+    else if (formData.name.trim().length < 2) newErrors.name = 'Le nom doit contenir au moins 2 caractères';
 
-    // Validation de l'email
-    if (!formData.email.trim()) {
-      newErrors.email = 'L\'email est requis';
-    } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Format email invalide';
-    }
+    if (!formData.email.trim()) newErrors.email = 'L\'email est requis';
+    else if (!emailRegex.test(formData.email)) newErrors.email = 'Format email invalide';
 
-    // Validation du mot de passe
-    if (!formData.password) {
-      newErrors.password = 'Le mot de passe est requis';
-    } else if (!passwordRegex.test(formData.password)) {
-      newErrors.password = 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre';
-    }
+    if (!formData.password) newErrors.password = 'Le mot de passe est requis';
+    else if (!passwordRegex.test(formData.password)) newErrors.password =
+      'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre';
 
-    // Validation optionnelle du téléphone si renseigné
-    if (formData.phone && !/^[0-9+\s()-]{8,}$/.test(formData.phone)) {
-      newErrors.phone = 'Format de téléphone invalide';
-    }
+    if (formData.phone && !/^[0-9+\s()-]{8,}$/.test(formData.phone)) newErrors.phone = 'Format de téléphone invalide';
 
-    console.log('🔍 Erreurs de validation:', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('📝 Tentative de soumission du formulaire...');
+
+    if (!validateForm()) {
+      console.log('❌ Validation échouée', errors);
+      return;
+    }
+
+    try {
+      setErrors({});
+      console.log('✨ Données envoyées au backend:', formData);
+
+      const result = await onSubmit({
+        ...formData,
+        phone: formData.phone.trim() || null
+      });
+
+      console.log('🔍 Résultat RPC:', result);
+
+      if (!result.success) {
+        setErrors(prev => ({ ...prev, submit: result.error || 'Erreur serveur inconnue' }));
+        toast.error(result.error || 'Erreur lors de la création du Super Admin');
+        return;
+      }
+
+      toast.success('Super Administrateur créé avec succès ! 🎉');
+      if (onComplete) onComplete(result);
+
+    } catch (error: any) {
+      console.error('❌ Erreur soumission:', error);
+      setErrors(prev => ({
+        ...prev,
+        submit: error instanceof Error ? error.message : 'Erreur lors de la création'
+      }));
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la création');
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-md bg-background border-border">
         <CardHeader className="text-center space-y-4">
-          {/* Theme Toggle */}
           <div className="flex justify-end">
             <ThemeToggle size="sm" />
           </div>
-
-          {/* Logo */}
           <div className="w-16 h-16 mx-auto">
             <AnimatedLogo
               mainIcon={Crown}
               secondaryIcon={Settings}
               mainColor="text-primary"
               secondaryColor="text-secondary"
-              waterDrop={true}
+              waterDrop
             />
           </div>
-
           <div className="space-y-2">
             <CardTitle className="text-xl font-bold text-foreground">
               Création Super Admin
@@ -120,6 +116,7 @@ export const SuperAdminForm: React.FC<SuperAdminFormProps> = ({
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+
             {/* Nom */}
             <div className="space-y-2">
               <Label htmlFor="name" className="flex items-center gap-2">
@@ -135,12 +132,7 @@ export const SuperAdminForm: React.FC<SuperAdminFormProps> = ({
                 className={errors.name ? 'border-destructive' : ''}
                 disabled={isLoading}
               />
-              {errors.name && (
-                <p className="text-sm text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.name}
-                </p>
-              )}
+              {errors.name && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.name}</p>}
             </div>
 
             {/* Email */}
@@ -158,12 +150,7 @@ export const SuperAdminForm: React.FC<SuperAdminFormProps> = ({
                 className={errors.email ? 'border-destructive' : ''}
                 disabled={isLoading}
               />
-              {errors.email && (
-                <p className="text-sm text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.email}
-                </p>
-              )}
+              {errors.email && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.email}</p>}
             </div>
 
             {/* Téléphone */}
@@ -203,45 +190,18 @@ export const SuperAdminForm: React.FC<SuperAdminFormProps> = ({
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.password}
-                </p>
-              )}
+              {errors.password && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.password}</p>}
             </div>
 
-            {/* Affichage des erreurs globales */}
-            {errors.submit && (
-              <p className="text-sm text-destructive bg-destructive/10 p-2 rounded flex items-center gap-1">
-                <AlertCircle className="h-4 w-4" />
-                {errors.submit}
-              </p>
-            )}
+            {/* Erreurs globales */}
+            {errors.submit && <p className="text-sm text-destructive bg-destructive/10 p-2 rounded flex items-center gap-1"><AlertCircle className="h-4 w-4" />{errors.submit}</p>}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading || Object.keys(errors).length > 0}
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  Création en cours...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Crown className="h-4 w-4" />
-                  Créer Super Admin
-                </div>
-              )}
+            <Button type="submit" className="w-full" disabled={isLoading || Object.keys(errors).length > 0}>
+              {isLoading ? <div className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />Création en cours...</div>
+                : <div className="flex items-center gap-2"><Crown className="h-4 w-4" />Créer Super Admin</div>}
             </Button>
           </form>
         </CardContent>

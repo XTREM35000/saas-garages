@@ -1,52 +1,25 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GaragePro - Gestion Multi-Tenant pour Garages Automobiles</title>
-    <meta name="description" content="Plateforme SaaS complète pour la gestion de garages automobiles : clients, véhicules, réparations, stock, facturation et planning." />
-    <meta name="author" content="GaragePro SaaS" />
-    <meta name="keywords" content="garage, automobile, réparation, gestion, SaaS, multi-tenant, facturation, planning, stock" />
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="GaragePro - Solution SaaS pour Garages Automobiles" />
-    <meta property="og:description" content="Optimisez la gestion de votre garage avec notre plateforme complète : suivi véhicules, planning, facturation et bien plus." />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-    <meta property="og:url" content="https://garagepro.app" />
-
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="GaragePro - Gestion Multi-Tenant pour Garages" />
-    <meta name="twitter:description" content="Plateforme SaaS complète pour optimiser la gestion de votre garage automobile." />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
-    <!-- Structured Data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "GaragePro",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "description": "Plateforme SaaS multi-tenant pour la gestion complète de garages automobiles",
-      "offers": {
-        "@type": "Offer",
-        "price": "29.00",
-        "priceCurrency": "EUR"
-      }
+<head>
+  <meta charset="UTF-8" />
+  <!-- Ajout du favicon -->
+  <link rel="icon" type="image/png" href="/Logo01.png" />
+  <!-- Ajout du style pour les bords arrondis -->
+  <style>
+    link[rel="icon"] {
+      border-radius: 50%;
+      -webkit-border-radius: 50%;
+      -moz-border-radius: 50%;
     }
-    </script>
+  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Garage 2025 - Gestion Multi-Garages</title>
+</head>
 
-    <!-- Theme and Performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"></noscript>
-  </head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 
-  <body class="icloud">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
 </html>

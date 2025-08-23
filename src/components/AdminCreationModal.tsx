@@ -1,245 +1,341 @@
-import React, { useState, useEffect } from "react";
-import { User, Shield, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { AdminData } from "@/types/admin";
-import { useWorkflow } from "@/contexts/WorkflowProvider";
-import { BaseModal } from "@/components/ui/base-modal";
-import { ModalFormField } from "@/components/ui/modal-form-field";
-import { ModalButton } from "@/components/ui/modal-button";
-import { EmailFieldPro } from "@/components/ui/email-field-pro";
-import { PhoneFieldPro } from "@/components/ui/phone-field-pro";
-import { PasswordFieldPro } from "@/components/ui/password-field-pro";
+import React, { useState, useEffect } from 'react';
+import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { EmailFieldPro } from '@/components/ui/email-field-pro';
+import { PhoneFieldPro } from '@/components/ui/phone-field-pro';
+import { PasswordFieldPro } from '@/components/ui/password-field-pro';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import AvatarUpload from '@/components/ui/avatar-upload';
+import '../styles/whatsapp-theme.css';
 
-const PASSWORD_MIN_LENGTH = 8;
-
-interface AdminSetupModalProps {
+interface AdminCreationModalProps {
   isOpen: boolean;
-  onComplete: () => void;
-  adminData: AdminData;
-  onAdminDataChange: (field: keyof AdminData, value: string) => void;
-  showPassword: boolean;
-  onToggleShowPassword: () => void;
-  isLoading: boolean;
+  onComplete: (adminData: any) => void;
+  onClose: () => void;
 }
 
-const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  avatarUrl: string;
+}
+
+export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
   isOpen,
   onComplete,
-  adminData,
-  onAdminDataChange,
-  showPassword,
-  onToggleShowPassword,
-  isLoading
+  onClose
 }) => {
-  const { completeStep } = useWorkflow();
-  const [error, setError] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [formData, setFormData] = useState({
-    email: { value: "", error: "", isValid: false },
-    password: { value: "", error: "", isValid: false },
-    name: { value: "", error: "", isValid: false },
-    phone: { value: "", error: "", isValid: true }, // optionnel
-    avatarFile: { value: null as File | null, error: "", isValid: true },
-    avatarPreview: { value: "", error: "", isValid: true }
+  const [currentStep, setCurrentStep] = useState(1);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [formData, setFormData] = useState<FormData>({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    avatarUrl: ''
   });
 
-  // Initialiser les données du formulaire
+  // Réinitialiser le formulaire quand le modal s'ouvre
   useEffect(() => {
-    if (isOpen && adminData) {
+    if (isOpen) {
       setFormData({
-        email: { value: adminData.email || "", error: "", isValid: !!adminData.email },
-        password: { value: adminData.password || "", error: "", isValid: !!adminData.password },
-        name: { value: adminData.name || "", error: "", isValid: !!adminData.name },
-        phone: { value: adminData.phone || "", error: "", isValid: true },
-        avatarFile: { value: null as File | null, error: "", isValid: true },
-        avatarPreview: { value: "", error: "", isValid: true }
+        name: '',
+        email: '',
+        phone: '',
+        password: '',
+        avatarUrl: ''
       });
+      setCurrentStep(1);
+      setShowSuccess(false);
+      setAvatarPreview(null);
     }
-  }, [isOpen, adminData]);
+  }, [isOpen]);
 
-  const handleFieldChange = (field: keyof typeof formData, value: string) => {
-    const validation = validateField(field, value);
-    setFormData(prev => ({ ...prev, [field]: { value, ...validation } }));
-    onAdminDataChange(field as keyof AdminData, value);
+  const handleAvatarChange = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setFormData(prev => ({ ...prev, avatarUrl: result }));
+      setAvatarPreview(result);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[1] ? e.target.files?.[1] : e.target.files?.[0] || null;
-    setFormData(prev => ({
-      ...prev,
-      avatarFile: { value: file, error: "", isValid: true },
-      avatarPreview: { value: file ? URL.createObjectURL(file) : "", error: "", isValid: true }
-    }));
-  };
-
-  const validateField = (field: keyof typeof formData, value: string) => {
+  const validateField = (field: string, value: string): { isValid: boolean; error?: string } => {
     switch (field) {
-      case "email":
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const validEmail = emailRegex.test(value);
-        return { error: validEmail ? "" : "Format email invalide", isValid: validEmail };
-      case "password":
-        return { error: value.length >= PASSWORD_MIN_LENGTH ? "" : `Minimum ${PASSWORD_MIN_LENGTH} caractères`, isValid: value.length >= PASSWORD_MIN_LENGTH };
-      case "name":
-        return { error: value.length >= 2 ? "" : "Nom trop court", isValid: value.length >= 2 };
-      case "phone":
-        return { error: "", isValid: true }; // facultatif
-      default:
-        return { error: "", isValid: false };
+      case 'name':
+        if (!value.trim()) return { isValid: false, error: 'Le nom complet est requis' };
+        if (value.length < 3) return { isValid: false, error: 'Le nom doit contenir au moins 3 caractères' };
+        break;
+      case 'email':
+        if (!value.trim()) return { isValid: false, error: 'L\'email est requis' };
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return { isValid: false, error: 'Format d\'email invalide' };
+        break;
+      case 'phone':
+        if (!value.trim()) return { isValid: false, error: 'Le téléphone est requis' };
+        if (!/^\+(\d{3,4})\s+\d{7,10}$/.test(value)) return { isValid: false, error: 'Format de téléphone invalide (+XXX XXXXXXXXX)' };
+        break;
+      case 'password':
+        if (!value.trim()) return { isValid: false, error: 'Le mot de passe est requis' };
+        if (value.length < 8) return { isValid: false, error: 'Le mot de passe doit contenir au moins 8 caractères' };
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) return { isValid: false, error: 'Le mot de passe doit contenir au moins une minuscule, une majuscule et un chiffre' };
+        break;
     }
+    return { isValid: true };
   };
 
-  const isFormValid = () => {
-    const { email, password, name } = formData;
-    return email.isValid && password.isValid && name.isValid;
+  const handleInputChange = (field: keyof FormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isFormValid() || isSubmitting) return;
+  const getErrorMessage = (error: any): string => {
+    if (typeof error === 'string') return error;
 
-    setIsSubmitting(true);
+    // Gestion des erreurs Supabase
+    if (error?.code === '23505') {
+      if (error.message.includes('email')) {
+        return 'Cette adresse email est déjà utilisée par un autre utilisateur.';
+      }
+      if (error.message.includes('phone')) {
+        return 'Ce numéro de téléphone est déjà utilisé par un autre utilisateur.';
+      }
+      return 'Une donnée similaire existe déjà dans le système.';
+    }
+
+    if (error?.code === '23503') {
+      return 'Impossible de créer l\'administrateur : données de référence manquantes.';
+    }
+
+    if (error?.code === '42501') {
+      return 'Permission refusée. Contactez votre administrateur système.';
+    }
+
+    if (error?.code === '23514') {
+      return 'Les données fournies ne respectent pas les contraintes de validation.';
+    }
+
+    if (error?.code === '42P01') {
+      return 'Erreur de configuration de la base de données.';
+    }
+
+    if (error?.code === '08000') {
+      return 'Erreur de connexion à la base de données.';
+    }
+
+    if (error?.code === '57014') {
+      return 'Opération annulée par l\'utilisateur.';
+    }
+
+    // Erreurs HTTP
+    if (error?.status === 400) {
+      return 'Requête invalide. Vérifiez les données saisies.';
+    }
+
+    if (error?.status === 401) {
+      return 'Non autorisé. Veuillez vous reconnecter.';
+    }
+
+    if (error?.status === 403) {
+      return 'Accès interdit. Permissions insuffisantes.';
+    }
+
+    if (error?.status === 404) {
+      return 'Service non trouvé. Contactez le support.';
+    }
+
+    if (error?.status === 500) {
+      return 'Erreur serveur interne. Réessayez plus tard.';
+    }
+
+    if (error?.status === 503) {
+      return 'Service temporairement indisponible.';
+    }
+
+    // Erreurs réseau
+    if (error?.message?.includes('fetch')) {
+      return 'Erreur de connexion réseau. Vérifiez votre connexion internet.';
+    }
+
+    if (error?.message?.includes('timeout')) {
+      return 'Délai d\'attente dépassé. Réessayez.';
+    }
+
+    // Erreurs de validation
+    if (error?.message?.includes('validation')) {
+      return 'Données invalides. Vérifiez les informations saisies.';
+    }
+
+    // Erreur par défaut
+    return error?.message || 'Une erreur inattendue s\'est produite. Contactez le support.';
+  };
+
+  const handleSubmit = async () => {
+    // Validation des champs
+    const fields: (keyof FormData)[] = ['name', 'email', 'phone', 'password'];
+    for (const field of fields) {
+      const validation = validateField(field, formData[field]);
+      if (!validation.isValid) {
+        toast.error(validation.error);
+      return;
+      }
+    }
 
     try {
-      let avatarUrl: string | null = null;
-      if (formData.avatarFile.value) {
-        const fileExt = formData.avatarFile.value.name.split('.').pop();
-        const filePath = `admins/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, formData.avatarFile.value, {
-          upsert: true
-        });
-        if (uploadError) throw uploadError;
-        const { data: publicUrl } = supabase.storage.from('avatars').getPublicUrl(filePath);
-        avatarUrl = publicUrl.publicUrl;
-      }
-
-      const { data: result, error: rpcError } = await (supabase as any).rpc('create_admin_complete', {
-        p_email: formData.email.value,
-        p_password: formData.password.value,
-        p_name: formData.name.value,
-        p_phone: formData.phone.value || null,
-        p_pricing_plan: 'starter'
+      // Appel RPC pour créer l'Admin
+      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('create_admin_complete', {
+        p_email: formData.email,
+        p_password: formData.password,
+        p_name: formData.name,
+        p_phone: formData.phone,
+        p_avatar_url: formData.avatarUrl || null
       });
 
-      if (rpcError) throw rpcError;
-      if (!result.success) throw new Error(result.error);
-
-      toast.success("Administrateur créé avec succès !");
-      onComplete();
-
-    } catch (error: any) {
-      console.error("Erreur création Admin:", error);
-
-      let errorMessage = "Erreur lors de la création de l'Administrateur";
-      if (error.message?.includes('RLS')) {
-        errorMessage = "Erreur de sécurité RLS. Contactez l'administrateur.";
-      } else if (error.message?.includes('duplicate')) {
-        errorMessage = "Un utilisateur avec cet email existe déjà.";
+      if (rpcError) {
+        console.error('❌ Erreur RPC:', rpcError);
+        toast.error(getErrorMessage(rpcError));
+        return;
       }
 
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
+      if (rpcData && rpcData.success) {
+        console.log('✅ Admin créé avec succès:', rpcData);
+
+        // Afficher le message de succès
+        setShowSuccess(true);
+
+        // Attendre 2 secondes puis continuer
+        setTimeout(() => {
+          setShowSuccess(false);
+          // Passer les données complètes pour la progression
+          onComplete({
+            admin_id: rpcData.admin_id,
+            user_id: rpcData.user_id,
+            profile_id: rpcData.profile_id,
+            admin_name: formData.name,
+            success: true
+          });
+        }, 2000);
+
+        toast.success('Administrateur créé avec succès ! 🎉');
+      } else {
+        console.error('❌ Erreur création Admin:', rpcData);
+        toast.error('Erreur lors de la création de l\'administrateur');
+      }
+    } catch (error) {
+      console.error('❌ Erreur inattendue:', error);
+      toast.error('Une erreur inattendue s\'est produite');
     }
   };
 
-  return (
-    <BaseModal
-      isOpen={isOpen}
-      onClose={onComplete}
-      title="Création d'Administrateur"
-      subtitle="Ajoutez un nouvel administrateur à votre organisation"
-      maxWidth="max-w-md"
-      headerGradient="from-blue-500 to-blue-600"
-      logoSize={60}
-      draggable={true}
-      dragConstraints={{ top: -400, bottom: 400 }}
-      isFirstModal={true}
-    >
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Nom complet */}
-        <ModalFormField
-          id="name"
-          label="Nom complet"
-          type="text"
-          value={formData.name.value}
-          onChange={(value) => handleFieldChange("name", value)}
-          placeholder="Prénom Nom"
-          error={formData.name.error}
-          isValid={formData.name.isValid}
-          disabled={isLoading}
-          required
-          icon={<User className="w-4 h-4" />}
-        />
-
-        {/* Email */}
-        <EmailFieldPro
-          label="Email"
-          value={formData.email.value}
-          onChange={(value) => handleFieldChange("email", value)}
-          error={formData.email.error}
-          required
-          disabled={isLoading}
-        />
-
-        {/* Téléphone */}
-        <PhoneFieldPro
-          label="Téléphone (optionnel)"
-          value={formData.phone.value}
-          onChange={(value) => handleFieldChange("phone", value)}
-          error={formData.phone.error}
-          disabled={isLoading}
-        />
-
-        {/* Mot de passe */}
-        <PasswordFieldPro
-          label="Mot de passe"
-          value={formData.password.value}
-          onChange={(value) => handleFieldChange("password", value)}
-          required
-          disabled={isLoading}
-        />
-
-        {/* Message d'erreur global */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-red-800">
-                <p className="font-medium mb-1">Erreur</p>
-                <p>{error}</p>
-              </div>
-            </div>
+  if (showSuccess) {
+    return (
+      <WhatsAppModal isOpen={isOpen} onClose={onClose}>
+        <div className="text-center p-8">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="text-green-500 text-3xl">✅</div>
           </div>
-        )}
-
-        {/* Bouton de soumission */}
-        <ModalButton
-          type="submit"
-          disabled={!isFormValid() || isSubmitting || isLoading}
-          loading={isSubmitting}
-          loadingText="Création en cours..."
-          icon={<Shield className="w-5 h-5" />}
-        >
-          Créer l'Administrateur
-        </ModalButton>
-
-        {/* Informations */}
-        <div className="modal-info-section">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-blue-800">
-              <p className="font-medium mb-1">Gestion des accès</p>
-              <p>Cet administrateur aura accès à la gestion de votre organisation et de ses garages.</p>
-            </div>
-          </div>
+          <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Administrateur créé !</h3>
+          <p className="text-gray-600 mb-6">
+            Félicitations ! Votre administrateur a été créé avec succès.
+          </p>
+          <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto mb-6"></div>
+          <p className="text-sm text-gray-500 mb-4">Redirection automatique vers la création de l'organisation...</p>
         </div>
-      </form>
-    </BaseModal>
+      </WhatsAppModal>
+    );
+  }
+
+  return (
+    <WhatsAppModal isOpen={isOpen} onClose={onClose}>
+      <div className="max-w-4xl mx-auto">
+        {/* Utilisation du composant AvatarUpload réutilisable */}
+        <AvatarUpload
+          avatarPreview={avatarPreview}
+          onAvatarChange={handleAvatarChange}
+          role="Administrateur"
+          roleColor="silver"
+          title="Création d'un Administrateur"
+          subtitle="Configurez un administrateur pour votre organisation"
+        />
+
+        <Card className="modal-whatsapp-card">
+          <CardContent className="space-y-6 p-6">
+            {/* Informations personnelles */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-2 h-2 bg-[#128C7E] rounded-full"></div>
+                <h3 className="text-lg font-semibold text-[#128C7E]">Informations personnelles</h3>
+                  </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-[#128C7E] font-medium">Nom complet</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className="modal-whatsapp-input"
+                    placeholder="Prénom et nom de l'administrateur"
+                  />
+                </div>
+              </div>
+                </div>
+
+            {/* Informations de contact */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-2 h-2 bg-[#25D366] rounded-full"></div>
+                <h3 className="text-lg font-semibold text-[#25D366]">Informations de contact</h3>
+                  </div>
+
+              <div className="space-y-4">
+                <EmailFieldPro
+                  value={formData.email}
+                  onChange={(value) => handleInputChange('email', value)}
+                  placeholder="Adresse email de l'administrateur"
+                />
+                <PhoneFieldPro
+                  value={formData.phone}
+                  onChange={(value) => handleInputChange('phone', value)}
+                />
+                  </div>
+                </div>
+
+            {/* Sécurité */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-2 h-2 bg-[#075E54] rounded-full"></div>
+                <h3 className="text-lg font-semibold text-[#075E54]">Sécurité</h3>
+                </div>
+
+              <PasswordFieldPro
+                value={formData.password}
+                onChange={(value) => handleInputChange('password', value)}
+              />
+                </div>
+
+            {/* Bouton de soumission */}
+            <div className="flex justify-end pt-4">
+              <Button
+                onClick={handleSubmit}
+                className="btn-whatsapp-primary"
+                disabled={!formData.name || !formData.email || !formData.phone || !formData.password}
+              >
+                    Créer l'Administrateur
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        </div>
+    </WhatsAppModal>
   );
 };
 
-export default AdminSetupModal;
+export default AdminCreationModal;
 

@@ -1,324 +1,167 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  CheckCircle,
-  AlertCircle,
-  User,
-  Shield,
-  Building,
-  RefreshCw
-} from 'lucide-react';
-import '../styles/whatsapp-theme.css';
+import React, { useState } from 'react';
+import { useWorkflow } from '@/contexts/WorkflowProvider';
+import { WorkflowStep } from '@/types/workflow.types';
 
 const WorkflowTest: React.FC = () => {
-  const [workflowState, setWorkflowState] = useState<string>('loading');
-  const [superAdminCount, setSuperAdminCount] = useState<number>(0);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [userOrganization, setUserOrganization] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { state, completeStep, reset } = useWorkflow();
+  const [logs, setLogs] = useState<string[]>([]);
 
-  const checkWorkflowStatus = async () => {
+  const addLog = (message: string) => {
+    setLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
+
+  const handleStepComplete = async (step: WorkflowStep) => {
     try {
-      setLoading(true);
-      console.log('🔍 Vérification du statut du workflow...');
-
-      // 1. Vérifier le nombre de super admins
-      const { count: superAdminCount, error: superAdminError } = await supabase
-        .from('super_admins')
-        .select('*', { count: 'exact' });
-
-      if (superAdminError) {
-        console.error('❌ Erreur vérification super admin:', superAdminError);
-      } else {
-        setSuperAdminCount(superAdminCount || 0);
-        console.log('👑 Nombre de super admins:', superAdminCount);
-      }
-
-      // 2. Vérifier l'utilisateur connecté
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        console.log('✅ Utilisateur connecté:', user.email);
-
-        // 3. Récupérer le profil utilisateur
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) {
-          console.error('❌ Erreur récupération profil:', profileError);
-        } else {
-          setUserProfile(profile);
-          console.log('👤 Profil utilisateur:', profile);
-        }
-
-        // 4. Récupérer l'organisation de l'utilisateur
-        const { data: orgData, error: orgError } = await supabase
-          .from('user_organisations')
-          .select(`
-            *,
-            organisations (*)
-          `)
-          .eq('user_id', user.id)
-          .single();
-
-        if (orgError && orgError.code !== 'PGRST116') {
-          console.error('❌ Erreur récupération organisation:', orgError);
-        } else if (orgData) {
-          setUserOrganization(orgData);
-          console.log('🏢 Organisation utilisateur:', orgData);
-        }
-
-        // 5. Déterminer l'état du workflow
-        if (superAdminCount === 0) {
-          setWorkflowState('needs-super-admin');
-        } else if (profile?.role === 'admin' && orgData?.status === 'tenant') {
-          setWorkflowState('ready-for-dashboard');
-        } else {
-          setWorkflowState('needs-onboarding');
-        }
-      } else {
-        console.log('⚠️ Aucun utilisateur connecté');
-        if (superAdminCount === 0) {
-          setWorkflowState('needs-super-admin');
-        } else {
-          setWorkflowState('needs-auth');
-        }
-      }
-
+      addLog(`🎯 Tentative de complétion de l'étape: ${step}`);
+      await completeStep(step);
+      addLog(`✅ Étape ${step} complétée avec succès`);
     } catch (error) {
-      console.error('❌ Erreur vérification workflow:', error);
-      setWorkflowState('error');
-    } finally {
-      setLoading(false);
+      addLog(`❌ Erreur lors de la complétion de l'étape ${step}: ${error}`);
     }
   };
 
-  useEffect(() => {
-    checkWorkflowStatus();
-  }, []);
-
-  const getWorkflowStatusInfo = () => {
-    switch (workflowState) {
-      case 'needs-super-admin':
-        return {
-          title: 'Création Super Admin Requise',
-          description: 'Aucun super admin n\'existe. Création du premier super admin nécessaire.',
-          icon: Shield,
-          color: 'text-orange-600',
-          bgColor: 'bg-orange-50',
-          borderColor: 'border-orange-200'
-        };
-
-      case 'needs-auth':
-        return {
-          title: 'Authentification Requise',
-          description: 'Super admin existe. Connexion utilisateur nécessaire pour continuer.',
-          icon: User,
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50',
-          borderColor: 'border-blue-200'
-        };
-
-      case 'needs-onboarding':
-        return {
-          title: 'Onboarding Requis',
-          description: 'Utilisateur connecté mais onboarding non terminé.',
-          icon: Building,
-          color: 'text-purple-600',
-          bgColor: 'bg-purple-50',
-          borderColor: 'border-purple-200'
-        };
-
-      case 'ready-for-dashboard':
-        return {
-          title: 'Prêt pour le Dashboard',
-          description: 'Utilisateur Admin/Tenant détecté. Accès au dashboard autorisé.',
-          icon: CheckCircle,
-          color: 'text-green-600',
-          bgColor: 'bg-green-50',
-          borderColor: 'border-green-200'
-        };
-
-      case 'error':
-        return {
-          title: 'Erreur de Vérification',
-          description: 'Erreur lors de la vérification du workflow.',
-          icon: AlertCircle,
-          color: 'text-red-600',
-          bgColor: 'bg-red-50',
-          borderColor: 'border-red-200'
-        };
-
-      default:
-        return {
-          title: 'Vérification en cours...',
-          description: 'Analyse du statut du workflow...',
-          icon: RefreshCw,
-          color: 'text-gray-600',
-          bgColor: 'bg-gray-50',
-          borderColor: 'border-gray-200'
-        };
+  const handleReset = async () => {
+    try {
+      addLog('🔄 Réinitialisation du workflow...');
+      await reset();
+      addLog('✅ Workflow réinitialisé');
+      setLogs([]);
+    } catch (error) {
+      addLog(`❌ Erreur lors de la réinitialisation: ${error}`);
     }
   };
 
-  const statusInfo = getWorkflowStatusInfo();
-  const StatusIcon = statusInfo.icon;
+  const getStepInfo = (step: WorkflowStep) => {
+    const stepInfo: Record<WorkflowStep, { title: string; description: string; icon: string }> = {
+      init: { title: 'Initialisation', description: 'Démarrage du workflow', icon: '🚀' },
+      loading: { title: 'Chargement', description: 'Chargement en cours', icon: '⏳' },
+      super_admin_check: { title: 'Super Admin', description: 'Vérification/Création du Super Admin', icon: '👑' },
+      pricing_selection: { title: 'Plan Tarifaire', description: 'Sélection du plan de prix', icon: '💰' },
+      admin_creation: { title: 'Administrateur', description: 'Création de l\'administrateur', icon: '👤' },
+      org_creation: { title: 'Organisation', description: 'Création de l\'organisation', icon: '🏢' },
+      sms_validation: { title: 'Validation SMS', description: 'Validation par SMS', icon: '📱' },
+      garage_setup: { title: 'Configuration Garage', description: 'Configuration du garage', icon: '🔧' },
+      dashboard: { title: 'Tableau de bord', description: 'Accès au dashboard', icon: '📊' },
+      completed: { title: 'Terminé', description: 'Workflow complété', icon: '🎉' }
+    };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="loading-whatsapp">
-          <div className="loading-whatsapp-spinner"></div>
-          <span>Vérification du workflow...</span>
-        </div>
-      </div>
-    );
-  }
+    return stepInfo[step];
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Test du Workflow - Garage 2025
-          </h1>
-          <p className="text-gray-600">
-            Vérification du statut du workflow et des permissions
-          </p>
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">🧪 Test du Workflow</h1>
+
+        {/* État actuel */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-3">État Actuel</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="text-sm text-blue-600 font-medium">Étape Courante</p>
+              <p className="text-lg font-bold text-blue-800">{state.currentStep}</p>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="text-sm text-green-600 font-medium">Étapes Complétées</p>
+              <p className="text-lg font-bold text-green-800">{state.completedSteps.length}</p>
+            </div>
+          </div>
         </div>
 
-        {/* Statut du Workflow */}
-        <Card className={`card-whatsapp border-2 ${statusInfo.borderColor} ${statusInfo.bgColor}`}>
-          <CardHeader className="card-whatsapp-header">
-            <div className="flex items-center space-x-3">
-              <StatusIcon className={`w-6 h-6 ${statusInfo.color}`} />
-              <CardTitle className={statusInfo.color}>
-                {statusInfo.title}
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="card-whatsapp-body">
-            <p className="text-gray-700 mb-4">{statusInfo.description}</p>
+        {/* Barre de progression */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-3">Progression du Workflow</h2>
+          <div className="flex items-center space-x-2">
+            {(['super_admin_check', 'pricing_selection', 'admin_creation', 'org_creation', 'garage_setup'] as WorkflowStep[]).map((step, index) => {
+              const isCompleted = state.completedSteps.includes(step);
+              const isCurrent = state.currentStep === step;
+              const stepInfo = getStepInfo(step);
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-white rounded-lg border">
-                <h4 className="font-semibold text-gray-800 mb-2">Super Admins</h4>
-                <div className="flex items-center space-x-2">
-                  <Shield className="w-5 h-5 text-orange-500" />
-                  <span className="text-lg font-bold">{superAdminCount}</span>
-                  <Badge variant={superAdminCount > 0 ? "default" : "destructive"}>
-                    {superAdminCount > 0 ? 'Existe' : 'Manquant'}
-                  </Badge>
+              return (
+                <div key={step} className="flex flex-col items-center">
+                  <div className={`
+                    w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold
+                    ${isCompleted ? 'bg-green-500 text-white' : isCurrent ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}
+                  `}>
+                    {isCompleted ? '✅' : stepInfo.icon}
+                  </div>
+                  <div className="text-xs text-center mt-1 max-w-16">
+                    <div className="font-medium">{stepInfo.title}</div>
+                    <div className="text-gray-500">{stepInfo.description}</div>
+                  </div>
+                  {index < 4 && (
+                    <div className={`w-16 h-1 mt-2 ${isCompleted ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  )}
                 </div>
-              </div>
-
-              <div className="p-4 bg-white rounded-lg border">
-                <h4 className="font-semibold text-gray-800 mb-2">Utilisateur</h4>
-                <div className="flex items-center space-x-2">
-                  <User className="w-5 h-5 text-blue-500" />
-                  <span className="text-sm">
-                    {userProfile ? userProfile.email : 'Non connecté'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Détails du Profil */}
-        {userProfile && (
-          <Card className="card-whatsapp">
-            <CardHeader className="card-whatsapp-header">
-              <CardTitle>Profil Utilisateur</CardTitle>
-            </CardHeader>
-            <CardContent className="card-whatsapp-body">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Rôle</label>
-                  <p className="text-lg font-semibold text-gray-900">{userProfile.role}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Email</label>
-                  <p className="text-lg font-semibold text-gray-900">{userProfile.email}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Nom</label>
-                  <p className="text-lg font-semibold text-gray-900">{userProfile.nom}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Détails de l'Organisation */}
-        {userOrganization && (
-          <Card className="card-whatsapp">
-            <CardHeader className="card-whatsapp-header">
-              <CardTitle>Organisation Utilisateur</CardTitle>
-            </CardHeader>
-            <CardContent className="card-whatsapp-body">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Rôle</label>
-                  <p className="text-lg font-semibold text-gray-900">{userOrganization.role}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Statut</label>
-                  <p className="text-lg font-semibold text-gray-900">{userOrganization.status}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Organisation ID</label>
-                  <p className="text-sm font-mono text-gray-600">{userOrganization.organisation_id}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              );
+            })}
+          </div>
+        </div>
 
         {/* Actions */}
-        <div className="flex justify-center space-x-4">
-          <Button
-            onClick={checkWorkflowStatus}
-            className="btn-whatsapp-primary"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Actualiser
-          </Button>
-
-          {workflowState === 'needs-super-admin' && (
-            <Button
-              onClick={() => window.location.reload()}
-              className="btn-whatsapp-success"
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-3">Actions de Test</h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleStepComplete('super_admin_check')}
+              disabled={state.completedSteps.includes('super_admin_check')}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-600"
             >
-              Démarrer l'Initialisation
-            </Button>
-          )}
+              Compléter Super Admin
+            </button>
+            <button
+              onClick={() => handleStepComplete('pricing_selection')}
+              disabled={!state.completedSteps.includes('super_admin_check')}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-green-600"
+            >
+              Compléter Pricing
+            </button>
+            <button
+              onClick={() => handleStepComplete('admin_creation')}
+              disabled={!state.completedSteps.includes('pricing_selection')}
+              className="px-4 py-2 bg-purple-500 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-purple-600"
+            >
+              Compléter Admin
+            </button>
+            <button
+              onClick={() => handleStepComplete('org_creation')}
+              disabled={!state.completedSteps.includes('admin_creation')}
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-orange-600"
+            >
+              Compléter Organisation
+            </button>
+            <button
+              onClick={() => handleStepComplete('garage_setup')}
+              disabled={!state.completedSteps.includes('org_creation')}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600"
+            >
+              Compléter Garage
+            </button>
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+            >
+              🔄 Reset
+            </button>
+          </div>
         </div>
 
-        {/* Instructions */}
-        <Card className="card-whatsapp">
-          <CardHeader className="card-whatsapp-header">
-            <CardTitle>Instructions de Test</CardTitle>
-          </CardHeader>
-          <CardContent className="card-whatsapp-body">
-            <div className="space-y-3 text-sm text-gray-700">
-              <p><strong>1. Super Admin manquant :</strong> L'application doit afficher le formulaire de création</p>
-              <p><strong>2. Super Admin existe :</strong> L'application doit rediriger vers le login ou l'onboarding</p>
-              <p><strong>3. Utilisateur Admin/Tenant :</strong> L'application doit afficher le dashboard</p>
-              <p><strong>4. Erreurs :</strong> Vérifier la console pour les détails techniques</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Logs */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-700 mb-3">Logs Console</h2>
+          <div className="bg-gray-100 p-4 rounded-lg max-h-64 overflow-y-auto">
+            {logs.length === 0 ? (
+              <p className="text-gray-500 text-sm">Aucun log pour le moment...</p>
+            ) : (
+              logs.map((log, index) => (
+                <div key={index} className="text-sm font-mono text-gray-700 mb-1">
+                  {log}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-
-export default WorkflowTest;

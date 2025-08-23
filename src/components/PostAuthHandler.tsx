@@ -44,7 +44,7 @@ const PostAuthHandler: React.FC<PostAuthHandlerProps> = ({ children }) => {
         } catch (error) {
           console.error('Erreur validation organisation:', error);
         }
-        
+
         // Si la validation échoue, nettoyer le localStorage
         localStorage.removeItem('current_org');
         localStorage.removeItem('org_code');

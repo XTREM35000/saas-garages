@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Crown, Shield, CheckCircle, AlertCircle } from 'lucide-react';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
-import { WhatsAppFormField } from '@/components/ui/whatsapp-form-field';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { EmailFieldPro } from '@/components/ui/email-field-pro';
 import { PhoneFieldPro } from '@/components/ui/phone-field-pro';
 import { PasswordFieldPro } from '@/components/ui/password-field-pro';
-import { WhatsAppButton } from '@/components/ui/whatsapp-button';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import AvatarUpload from '@/components/ui/avatar-upload';
+import '../styles/whatsapp-theme.css';
 
 interface SuperAdminCreationModalProps {
   isOpen: boolean;
@@ -16,313 +19,341 @@ interface SuperAdminCreationModalProps {
   onClose: () => void;
 }
 
+interface FormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  password: string;
+  avatarUrl: string;
+}
+
 export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = ({
   isOpen,
   onComplete,
   onClose
 }) => {
-  const [formData, setFormData] = useState({
-    name: '',
+  const [currentStep, setCurrentStep] = useState(1);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [formData, setFormData] = useState<FormData>({
+    firstName: '',
+    lastName: '',
     email: '',
-    password: '',
     phone: '',
-    avatarFile: null as File | null,
-    avatarPreview: ''
+    password: '',
+    avatarUrl: ''
   });
 
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPhoneValid, setIsPhoneValid] = useState<boolean>(false);
-  const [isFormValid, setIsFormValid] = useState<boolean>(false);
-
-  // Validation initiale
+  // Réinitialiser le formulaire quand le modal s'ouvre
   useEffect(() => {
-    validateFormRealTime();
-  }, [isPhoneValid]);
+    if (isOpen) {
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        password: '',
+        avatarUrl: ''
+      });
+      setCurrentStep(1);
+      setShowSuccess(false);
+      setAvatarPreview(null);
+    }
+  }, [isOpen]);
 
-  const handleFieldChange = (field: string, value: string) => {
+  const handleAvatarChange = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setFormData(prev => ({ ...prev, avatarUrl: result }));
+      setAvatarPreview(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const validateField = (field: string, value: string): { isValid: boolean; error?: string } => {
+    switch (field) {
+      case 'firstName':
+        if (!value.trim()) return { isValid: false, error: 'Le prénom est requis' };
+        if (value.length < 2) return { isValid: false, error: 'Le prénom doit contenir au moins 2 caractères' };
+        break;
+      case 'lastName':
+        if (!value.trim()) return { isValid: false, error: 'Le nom est requis' };
+        if (value.length < 2) return { isValid: false, error: 'Le nom doit contenir au moins 2 caractères' };
+        break;
+      case 'email':
+        if (!value.trim()) return { isValid: false, error: 'L\'email est requis' };
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return { isValid: false, error: 'Format d\'email invalide' };
+        break;
+      case 'phone':
+        if (!value.trim()) return { isValid: false, error: 'Le téléphone est requis' };
+        if (!/^\+(\d{3,4})\s+\d{7,10}$/.test(value)) return { isValid: false, error: 'Format de téléphone invalide (+XXX XXXXXXXXX)' };
+        break;
+      case 'password':
+        if (!value.trim()) return { isValid: false, error: 'Le mot de passe est requis' };
+        if (value.length < 8) return { isValid: false, error: 'Le mot de passe doit contenir au moins 8 caractères' };
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) return { isValid: false, error: 'Le mot de passe doit contenir au moins une minuscule, une majuscule et un chiffre' };
+        break;
+    }
+    return { isValid: true };
+  };
+
+  const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Effacer l'erreur du champ modifié
-    if (fieldErrors[field]) {
-      setFieldErrors(prev => ({ ...prev, [field]: '' }));
-    }
-    // Valider le formulaire en temps réel
-    validateFormRealTime();
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    if (file) {
-      const preview = URL.createObjectURL(file);
-      setFormData(prev => ({ ...prev, avatarFile: file, avatarPreview: preview }));
-    }
-  };
-
-  const validateFormRealTime = () => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      errors.name = 'Le nom est requis';
-    }
-
-    if (!formData.email.trim()) {
-      errors.email = 'L\'email est requis';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Format d\'email invalide';
-    }
-
-    if (!formData.password.trim()) {
-      errors.password = 'Le mot de passe est requis';
-    } else if (formData.password.length < 8) {
-      errors.password = 'Le mot de passe doit contenir au moins 8 caractères';
-    }
-
-    if (!formData.phone.trim() || !isPhoneValid) {
-      errors.phone = 'Téléphone invalide';
-    }
-
-    setFieldErrors(errors);
-    const isValid = Object.keys(errors).length === 0;
-    setIsFormValid(isValid);
-    return isValid;
-  };
-
-  const validateForm = () => {
-    return validateFormRealTime();
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
+  const handleSubmit = async () => {
+    // Validation des champs
+    const fields: (keyof FormData)[] = ['firstName', 'lastName', 'email', 'phone', 'password'];
+    for (const field of fields) {
+      const validation = validateField(field, formData[field]);
+      if (!validation.isValid) {
+        toast.error(validation.error);
       return;
+      }
     }
-
-    setIsSubmitting(true);
 
     try {
-      let avatarUrl: string | null = null;
-      if (formData.avatarFile) {
-        const fileExt = formData.avatarFile.name.split('.').pop();
-        const filePath = `super_admin/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, formData.avatarFile, {
-          upsert: true
-        });
-        if (uploadError) throw uploadError;
-        const { data: publicUrl } = supabase.storage.from('avatars').getPublicUrl(filePath);
-        avatarUrl = publicUrl.publicUrl;
-      }
+      // Vérifier que la fonction RPC est disponible
+      console.log('🔍 Vérification de la fonction RPC...');
 
-      // Utilisation de la fonction RPC d'urgence
-      const { data: result, error } = await (supabase as any).rpc('emergency_create_super_admin', {
+      // Appel RPC pour créer le Super Admin
+      const rpcParams = {
         p_email: formData.email,
         p_password: formData.password,
-        p_name: formData.name,
-        p_phone: formData.phone
-      });
+        p_name: `${formData.firstName} ${formData.lastName}`,
+        p_phone: formData.phone,
+        p_avatar_url: formData.avatarUrl || null
+      };
 
-      if (error) throw error;
-      if (!result?.success) {
-        throw new Error(result?.error || 'Erreur lors de la création');
+      console.log('🔍 Paramètres RPC:', rpcParams);
+
+      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('create_super_admin_complete', rpcParams);
+
+      if (rpcError) {
+        console.error('❌ Erreur RPC:', rpcError);
+        toast.error(`Erreur lors de la création: ${rpcError.message}`);
+        return;
       }
 
-      toast.success('Super Administrateur créé avec succès ! 🎉');
-      onComplete(result);
-    } catch (error: any) {
-      console.error('Erreur création Super Admin:', error);
-      toast.error(error.message || 'Erreur lors de la création du Super Admin');
-    } finally {
-      setIsSubmitting(false);
+      if (rpcData && rpcData.success) {
+        console.log('✅ Super Admin créé avec succès:', rpcData);
+
+        // Afficher le message de succès
+        setShowSuccess(true);
+
+        // Attendre 2 secondes puis continuer
+        setTimeout(() => {
+          setShowSuccess(false);
+          onComplete({
+            user: { id: rpcData.user_id },
+            profile: { id: rpcData.profile_id },
+            superAdmin: { id: rpcData.super_admin_id }
+          });
+        }, 2000);
+
+        toast.success('Super Administrateur créé avec succès ! 🎉');
+      } else {
+        console.error('❌ Erreur création Super Admin:', rpcData);
+        toast.error('Erreur lors de la création du Super Administrateur');
+      }
+    } catch (error) {
+      console.error('❌ Erreur inattendue:', error);
+      toast.error('Une erreur inattendue s\'est produite');
     }
   };
 
+  const getErrorMessage = (error: any): string => {
+    if (typeof error === 'string') return error;
+
+    // Gestion des erreurs Supabase
+    if (error?.code === '23505') {
+      if (error.message.includes('email')) {
+        return 'Cette adresse email est déjà utilisée par un autre utilisateur.';
+      }
+      if (error.message.includes('phone')) {
+        return 'Ce numéro de téléphone est déjà utilisé par un autre utilisateur.';
+      }
+      return 'Une donnée similaire existe déjà dans le système.';
+    }
+
+    if (error?.code === '23503') {
+      return 'Impossible de créer le Super Admin : données de référence manquantes.';
+    }
+
+    if (error?.code === '42501') {
+      return 'Permission refusée. Contactez votre administrateur système.';
+    }
+
+    if (error?.code === '23514') {
+      return 'Les données fournies ne respectent pas les contraintes de validation.';
+    }
+
+    if (error?.code === '42P01') {
+      return 'Erreur de configuration de la base de données.';
+    }
+
+    if (error?.code === '08000') {
+      return 'Erreur de connexion à la base de données.';
+    }
+
+    if (error?.code === '57014') {
+      return 'Opération annulée par l\'utilisateur.';
+    }
+
+    // Erreurs HTTP
+    if (error?.status === 400) {
+      return 'Requête invalide. Vérifiez les données saisies.';
+    }
+
+    if (error?.status === 401) {
+      return 'Non autorisé. Veuillez vous reconnecter.';
+    }
+
+    if (error?.status === 403) {
+      return 'Accès interdit. Permissions insuffisantes.';
+    }
+
+    if (error?.status === 404) {
+      return 'Service non trouvé. Contactez le support.';
+    }
+
+    if (error?.status === 500) {
+      return 'Erreur serveur interne. Réessayez plus tard.';
+    }
+
+    if (error?.status === 503) {
+      return 'Service temporairement indisponible.';
+    }
+
+    // Erreurs réseau
+    if (error?.message?.includes('fetch')) {
+      return 'Erreur de connexion réseau. Vérifiez votre connexion internet.';
+    }
+
+    if (error?.message?.includes('timeout')) {
+      return 'Délai d\'attente dépassé. Réessayez.';
+    }
+
+    // Erreurs de validation
+    if (error?.message?.includes('validation')) {
+      return 'Données invalides. Vérifiez les informations saisies.';
+    }
+
+    // Erreur par défaut
+    return error?.message || 'Une erreur inattendue s\'est produite. Contactez le support.';
+  };
+
+  if (showSuccess) {
+    return (
+      <WhatsAppModal isOpen={isOpen} onClose={onClose}>
+        <div className="text-center p-8">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="text-green-500 text-3xl">✅</div>
+          </div>
+          <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Super Administrateur créé !</h3>
+          <p className="text-gray-600 mb-6">
+            Félicitations ! Votre Super Administrateur a été créé avec succès.
+          </p>
+          <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto"></div>
+        </div>
+      </WhatsAppModal>
+    );
+  }
+
   return (
-    <WhatsAppModal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Création du Super Administrateur"
-      description="Première configuration du système - Création du compte principal"
-      size="xl"
-      showSuperAdminIndicator={true}
-    >
-      <div className="space-y-6">
-        {/* En-tête avec informations */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center space-y-3"
-        >
-          <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center shadow-lg">
-              <Crown className="w-8 h-8 text-yellow-900" />
-            </div>
-          </div>
+    <WhatsAppModal isOpen={isOpen} onClose={onClose}>
+      <div className="max-w-4xl mx-auto">
+        {/* Utilisation du composant AvatarUpload réutilisable */}
+        <AvatarUpload
+          avatarPreview={avatarPreview}
+          onAvatarChange={handleAvatarChange}
+          role="Super Admin"
+          roleColor="gold"
+          title="Création d'un Super Administrateur"
+          subtitle="Configurez le compte principal de votre système"
+        />
 
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Configuration Initiale du Système
-            </h3>
-            <p className="text-gray-600 text-sm max-w-2xl mx-auto">
-              Vous êtes le premier utilisateur de ce système. Vous deviendrez automatiquement
-              le Super Administrateur avec tous les privilèges de gestion.
-            </p>
-          </div>
-        </motion.div>
+        <Card className="modal-whatsapp-card">
+          <CardContent className="space-y-6 p-6">
+            {/* Informations personnelles */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-2 h-2 bg-[#128C7E] rounded-full"></div>
+                <h3 className="text-lg font-semibold text-[#128C7E]">Informations personnelles</h3>
+                  </div>
 
-        {/* Avantages du Super Admin */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="bg-gradient-to-r from-[#128C7E]/5 to-[#25D366]/5 rounded-xl p-4 border border-[#128C7E]/20"
-        >
-          <h4 className="text-base font-semibold text-[#128C7E] mb-3 flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            Privilèges Super Administrateur
-          </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="text-[#128C7E] font-medium">Prénom</Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    className="modal-whatsapp-input"
+                    placeholder="Votre prénom"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-[#128C7E] font-medium">Nom</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    className="modal-whatsapp-input"
+                    placeholder="Votre nom"
+                  />
+                </div>
+                  </div>
+                </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="flex items-start gap-2">
-              <div className="w-5 h-5 bg-[#128C7E] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <CheckCircle className="w-3 h-3 text-white" />
-              </div>
-              <div>
-                <div className="font-medium text-gray-900 text-sm">Gestion complète</div>
-                <div className="text-xs text-gray-600">Accès à toutes les fonctionnalités</div>
-              </div>
-            </div>
+            {/* Informations de contact */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-2 h-2 bg-[#25D366] rounded-full"></div>
+                <h3 className="text-lg font-semibold text-[#25D366]">Informations de contact</h3>
+                    </div>
 
-            <div className="flex items-start gap-2">
-              <div className="w-5 h-5 bg-[#128C7E] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <CheckCircle className="w-3 h-3 text-white" />
-              </div>
-              <div>
-                <div className="font-medium text-gray-900 text-sm">Organisations multiples</div>
-                <div className="text-xs text-gray-600">Créer et gérer plusieurs organisations</div>
-              </div>
-            </div>
+              <div className="space-y-4">
+                <EmailFieldPro
+                  value={formData.email}
+                  onChange={(value) => handleInputChange('email', value)}
+                  placeholder="Votre adresse email"
+                />
+                <PhoneFieldPro
+                  value={formData.phone}
+                  onChange={(value) => handleInputChange('phone', value)}
+                />
+                    </div>
+                  </div>
 
-            <div className="flex items-start gap-2">
-              <div className="w-5 h-5 bg-[#128C7E] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <CheckCircle className="w-3 h-3 text-white" />
-              </div>
-              <div>
-                <div className="font-medium text-gray-900 text-sm">Administrateurs</div>
-                <div className="text-xs text-gray-600">Nommer des administrateurs</div>
-              </div>
-            </div>
+            {/* Sécurité */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-2 h-2 bg-[#075E54] rounded-full"></div>
+                <h3 className="text-lg font-semibold text-[#075E54]">Sécurité</h3>
+                </div>
 
-            <div className="flex items-start gap-2">
-              <div className="w-5 h-5 bg-[#128C7E] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <CheckCircle className="w-3 h-3 text-white" />
-              </div>
-              <div>
-                <div className="font-medium text-gray-900 text-sm">Configuration système</div>
-                <div className="text-xs text-gray-600">Paramétrer les options globales</div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-
-        <motion.form
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          onSubmit={handleSubmit}
-          className="space-y-4"
-        >
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Photo de profil</label>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 border">
-                {formData.avatarPreview ? (
-                  <img src={formData.avatarPreview} alt="Aperçu" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">Aperçu</div>
-                )}
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                className="text-sm"
+              <PasswordFieldPro
+                value={formData.password}
+                onChange={(value) => handleInputChange('password', value)}
               />
+                </div>
+
+            {/* Bouton de soumission */}
+            <div className="flex justify-end pt-4">
+              <Button
+                onClick={handleSubmit}
+                className="btn-whatsapp-primary"
+                disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password}
+              >
+                Créer le Super Administrateur
+              </Button>
             </div>
-          </div>
-
-          <WhatsAppFormField
-            label="Nom complet"
-            type="text"
-            value={formData.name}
-            onChange={(value) => handleFieldChange('name', value)}
-            placeholder="Votre nom complet"
-            required={true}
-            error={fieldErrors.name}
-            isValid={!fieldErrors.name && formData.name.length > 0}
-          />
-
-          <EmailFieldPro
-            label="Adresse email"
-            value={formData.email}
-            onChange={(val) => handleFieldChange('email', val)}
-            error={fieldErrors.email}
-            required
-          />
-
-          <PhoneFieldPro
-            label="Numéro de téléphone"
-            value={formData.phone}
-            onChange={(val) => handleFieldChange('phone', val)}
-            required
-            onValidationChange={setIsPhoneValid}
-          />
-
-          <PasswordFieldPro
-            label="Mot de passe"
-            value={formData.password}
-            onChange={(val) => handleFieldChange('password', val)}
-            required
-            error={fieldErrors.password}
-          />
-
-          {/* Bouton de soumission */}
-          <div className="pt-3">
-            <WhatsAppButton
-              type="submit"
-              variant="primary"
-              size="lg"
-              loading={isSubmitting}
-              fullWidth={true}
-              disabled={isSubmitting || !isFormValid}
-            >
-              <Crown className="w-5 h-5 mr-2" />
-              Créer le Super Administrateur
-            </WhatsAppButton>
-          </div>
-        </motion.form>
-
-        {/* Informations de sécurité */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="bg-blue-50 border border-blue-200 rounded-xl p-4"
-        >
-          <div className="flex items-start gap-3">
-            <Shield className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-blue-800">
-              <div className="font-medium mb-1">Sécurité et confidentialité</div>
-              <p>
-                Vos informations sont protégées par un chiffrement de niveau bancaire.
-                Nous ne partageons jamais vos données avec des tiers.
-              </p>
-            </div>
-          </div>
-        </motion.div>
-      </div>
+          </CardContent>
+        </Card>
+        </div>
     </WhatsAppModal>
   );
 };
