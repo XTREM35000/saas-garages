@@ -7,12 +7,14 @@ import GeneralAuthModal from '@/components/GeneralAuthModal';
 import NewInitializationWizard from '@/components/NewInitializationWizard';
 import Dashboard from '@/components/Dashboard';
 import SplashScreen from '@/components/SplashScreen';
+import { SuperAdminCreationModal } from '@/components/SuperAdminCreationModal';
 import { supabase } from '@/integrations/supabase/client';
 import './styles/globals.css';
 
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -56,23 +58,26 @@ function App() {
         return;
       }
 
-      // 4. Vérifier s'il y a des utilisateurs dans la base
-      const { data: users, error: usersError } = await supabase
-        .from('profiles')
+      // 4. Vérifier s'il y a un Super Admin dans la base
+      const { data: superAdmins, error: superAdminError } = await supabase
+        .from('super_admins')
         .select('id')
         .limit(1);
 
-      if (usersError) {
-        console.error('❌ Erreur vérification utilisateurs:', usersError);
+      if (superAdminError) {
+        console.error('❌ Erreur vérification Super Admin:', superAdminError);
+        // En cas d'erreur, afficher le modal Super Admin par défaut
+        setShowSuperAdminModal(true);
+        return;
       }
 
-      // Nouveau workflow : vérifier s'il existe des utilisateurs
-      if (users && users.length > 0) {
-        console.log('✅ Utilisateurs existants, afficher auth modal');
+      // Workflow corrigé : vérifier s'il existe un Super Admin
+      if (superAdmins && superAdmins.length > 0) {
+        console.log('✅ Super Admin existant, afficher auth modal');
         setShowAuthModal(true);
       } else {
-        console.log('ℹ️ Base vide, lancer setup super-admin');
-        setShowOnboarding(true);
+        console.log('ℹ️ Aucun Super Admin, afficher modal de création Super Admin');
+        setShowSuperAdminModal(true);
       }
 
     } catch (error) {
@@ -104,6 +109,14 @@ function App() {
     console.log('🆕 Nouveau tenant demandé');
     setShowAuthModal(false);
     setShowOnboarding(true);
+  };
+
+  // Gestionnaire de création du Super Admin
+  const handleSuperAdminCreated = () => {
+    console.log('✅ Super Admin créé');
+    setShowSuperAdminModal(false);
+    // Recharger la page pour vérifier l'état
+    window.location.reload();
   };
 
   // Gestionnaire de fin d'onboarding
@@ -165,7 +178,7 @@ function App() {
           <div className="w-20 h-20 bg-gradient-to-br from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6">
             <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
-          <h2 className="text-2xl font-bold text-[#128C7E] mb-2">GarageConnect</h2>
+                      <h2 className="text-2xl font-bold text-[#128C7E] mb-2">Multi-Garage-Connect (MGC)</h2>
           <p className="text-gray-600">Vérification de votre espace...</p>
         </div>
       </div>
@@ -199,6 +212,15 @@ function App() {
               onClose={() => setShowAuthModal(false)}
               onNewTenant={handleNewTenant}
               onAuthSuccess={handleAuthSuccess}
+            />
+          )}
+
+          {/* Modal de création Super Admin */}
+          {showSuperAdminModal && (
+            <SuperAdminCreationModal
+              isOpen={showSuperAdminModal}
+              onComplete={handleSuperAdminCreated}
+              onClose={() => setShowSuperAdminModal(false)}
             />
           )}
 

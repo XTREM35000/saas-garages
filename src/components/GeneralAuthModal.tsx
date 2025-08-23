@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { EmailFieldPro } from '@/components/ui/email-field-pro';
 import { EmailAuthInput } from '@/components/ui/email-auth-input';
 import { PasswordFieldPro } from '@/components/ui/password-field-pro';
+import { generateSlug, isValidSlug } from '@/utils/slugGenerator';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
 import AnimatedLogo from '@/components/AnimatedLogo';
+import HomePage from '@/components/HomePage';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import ModalForgotPassword from './ModalForgotPassword';
@@ -33,6 +34,8 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
+    organization: '',
+    slug: '',
     email: '',
     password: ''
   });
@@ -42,6 +45,7 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
   const [showVerifyEmail, setShowVerifyEmail] = useState(false);
   const [showVerifyPhone, setShowVerifyPhone] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showHomePage, setShowHomePage] = useState(false);
   const [recoveryData, setRecoveryData] = useState({
     email: '',
     phone: ''
@@ -49,6 +53,14 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Générer automatiquement le slug quand l'organisation change
+    if (field === 'organization' && value.length >= 8) {
+      const generatedSlug = generateSlug(value);
+      if (generatedSlug) {
+        setFormData(prev => ({ ...prev, slug: generatedSlug }));
+      }
+    }
   };
 
   const extractOrganizationFromEmail = (email: string): string | null => {
@@ -62,7 +74,7 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
   };
 
   const handleAuth = async () => {
-    if (!formData.email || !formData.password) {
+    if (!formData.organization || !formData.slug || !formData.email || !formData.password) {
       toast.error('Veuillez remplir tous les champs');
       return;
     }
@@ -70,28 +82,24 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Extraire l'organisation depuis l'email
-      const orgSlug = extractOrganizationFromEmail(formData.email);
-      if (!orgSlug) {
-        toast.error('Format d\'email invalide. Utilisez votre email professionnel.');
-        return;
-      }
+      // Construire l'email complet avec le slug
+      const fullEmail = `${formData.email}@${formData.slug}.com`;
 
       // Vérifier que l'organisation existe
       const { data: org, error: orgError } = await supabase
         .from('organizations')
         .select('*')
-        .eq('slug', orgSlug)
+        .eq('slug', formData.slug)
         .single();
 
       if (orgError || !org) {
-        toast.error('Organisation non trouvée. Vérifiez votre email ou contactez votre administrateur.');
+        toast.error('Organisation non trouvée. Vérifiez le slug ou contactez votre administrateur.');
         return;
       }
 
       // Authentifier l'utilisateur
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
+        email: fullEmail,
         password: formData.password
       });
 
@@ -165,7 +173,7 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
             <AnimatedLogo size="large" />
           </div>
           <h1 className="text-4xl font-bold text-[#128C7E] mb-2">
-            GarageConnect
+            Multi-Garage-Connect (MGC)
           </h1>
           <p className="text-lg text-gray-600">
             Plateforme de gestion multi-garages professionnelle
@@ -207,18 +215,62 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
           </CardHeader>
           
           <CardContent className="space-y-6">
-            {/* Email avec validation domaine */}
+            {/* Organisation */}
+            <div className="space-y-2">
+              <Label htmlFor="organization" className="text-[#128C7E] font-medium">
+                Organisation
+              </Label>
+              <Input
+                id="organization"
+                type="text"
+                value={formData.organization}
+                onChange={(e) => handleInputChange('organization', e.target.value)}
+                placeholder="Nom de votre organisation"
+                className="w-full"
+              />
+            </div>
+
+            {/* Slug généré automatiquement */}
+            <div className="space-y-2">
+              <Label htmlFor="slug" className="text-[#128C7E] font-medium">
+                Slug (généré automatiquement)
+              </Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="slug"
+                  type="text"
+                  value={formData.slug}
+                  readOnly
+                  placeholder="Saisissez le nom de l'organisation"
+                  className="w-full bg-gray-50"
+                />
+                {formData.slug && (
+                  <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                    @{formData.slug}.com
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                {formData.organization.length < 8 
+                  ? 'Entrez au moins 8 caractères pour générer le slug'
+                  : 'Slug généré automatiquement à partir du nom de l\'organisation'
+                }
+              </p>
+            </div>
+
+            {/* Email interne membre */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-[#128C7E] font-medium">
-                Email professionnel
+                Email interne membre
               </Label>
-              <EmailFieldPro
+              <EmailAuthInput
+                slug={formData.slug}
                 value={formData.email}
                 onChange={(value) => handleInputChange('email', value)}
-                placeholder="connexion@votre-garage.com"
+                placeholder="prenom.nom"
               />
               <p className="text-xs text-gray-500">
-                Format : utilisateur@garage-slug.com
+                {formData.slug ? `Format : prenom.nom@${formData.slug}.com` : 'Entrez d\'abord le slug'}
               </p>
             </div>
 
@@ -245,7 +297,7 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
             {/* Bouton de connexion */}
             <Button
               onClick={handleAuth}
-              disabled={isLoading || !formData.email || !formData.password}
+              disabled={isLoading || !formData.organization || !formData.slug || !formData.email || !formData.password}
               className="btn-whatsapp-primary w-full py-3 text-lg"
             >
               {isLoading ? (
@@ -283,11 +335,18 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
         {/* Footer informatif */}
         <div className="text-center mt-6 text-sm text-gray-500">
           <p>
-            GarageConnect - Solution professionnelle de gestion multi-garages
+            Multi-Garage-Connect (MGC) - Solution professionnelle de gestion multi-garages
           </p>
           <p className="mt-1">
             Support : support@garageconnect.com
           </p>
+          <Button
+            onClick={() => setShowHomePage(true)}
+            variant="ghost"
+            className="mt-3 text-[#128C7E] hover:text-[#25D366] hover:bg-[#128C7E]/10"
+          >
+            👉 En savoir plus
+          </Button>
         </div>
       </div>
 
@@ -320,6 +379,11 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
         email={recoveryData.email}
         phone={recoveryData.phone}
       />
+
+      {/* Page d'accueil */}
+      {showHomePage && (
+        <HomePage onClose={() => setShowHomePage(false)} />
+      )}
     </WhatsAppModal>
   );
 };

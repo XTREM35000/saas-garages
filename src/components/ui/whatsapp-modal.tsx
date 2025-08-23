@@ -106,7 +106,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4"
+        className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto"
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         {/* Overlay avec backdrop blur */}
@@ -117,17 +117,21 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
           initial={{
             scale: 0.95,
             opacity: 0,
-            y: 400
+            y: 0
           }}
           animate={{
             scale: 1,
             opacity: 1,
-            y: 400
+            y: 0
+          }}
+          style={{
+            marginTop: '2rem',
+            marginBottom: '2rem'
           }}
           exit={{
             scale: 0.95,
             opacity: 0,
-            y: 400
+            y: 0
           }}
           transition={{
             type: "spring",
@@ -150,7 +154,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
             className
           )}
           style={{
-            y: dragY + 100
+            y: dragY
           }}
         >
           {/* Handle de drag */}

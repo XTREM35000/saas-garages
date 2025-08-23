@@ -79,7 +79,7 @@ const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
         {/* Titre du workflow */}
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Configuration GarageConnect
+            Configuration Multi-Garage-Connect (MGC)
           </h1>
           <p className="text-gray-600">
             Suivez les étapes pour configurer votre instance SaaS

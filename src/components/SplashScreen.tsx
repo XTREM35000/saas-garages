@@ -25,32 +25,32 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.5 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5"
-        >
+      >
           <div className="text-center">
             {/* Logo animé */}
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ 
-                duration: 0.8, 
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ 
+            duration: 0.8, 
                 ease: "easeOut",
                 delay: 0.2
-              }}
-              className="mb-8"
-            >
+          }}
+          className="mb-8"
+        >
               <AnimatedLogo size="large" />
-            </motion.div>
+        </motion.div>
 
             {/* Titre */}
-            <motion.h1
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
+        <motion.h1
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
               transition={{ 
                 duration: 0.6, 
                 ease: "easeOut",
@@ -58,13 +58,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
               }}
               className="text-4xl font-bold text-[#128C7E] mb-4"
             >
-              GarageConnect
-            </motion.h1>
+              Multi-Garage-Connect (MGC)
+        </motion.h1>
 
-            {/* Sous-titre */}
-            <motion.p
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
+        {/* Sous-titre */}
+        <motion.p
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
               transition={{ 
                 duration: 0.6, 
                 ease: "easeOut",
@@ -100,12 +100,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
               className="text-sm text-gray-500 mt-4"
             >
               Chargement de votre espace...
-            </motion.p>
+        </motion.p>
 
             {/* Icônes thématiques */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
               transition={{ 
                 duration: 0.6,
                 delay: 1.2
@@ -126,18 +126,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                </div>
+                  </div>
                 <p className="text-xs text-gray-600">Outils</p>
-              </div>
+                      </div>
               <div className="text-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-2">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                </div>
+                  </div>
                 <p className="text-xs text-gray-600">Performance</p>
-              </div>
-            </motion.div>
+          </div>
+        </motion.div>
           </div>
         </motion.div>
       )}

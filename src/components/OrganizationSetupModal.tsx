@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import AvatarUpload from '@/components/ui/avatar-upload';
+import { generateSlug, isValidSlug } from '@/utils/slugGenerator';
 import '../styles/whatsapp-theme.css';
 
 interface OrganizationSetupModalProps {
@@ -76,24 +77,19 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
 
   // Générer le slug, sous-domaine et email d'entreprise
   useEffect(() => {
-    if (formData.name) {
+    if (formData.name && formData.name.length >= 8) {
       const slug = generateSlug(formData.name);
-      setGeneratedSlug(slug);
-      setGeneratedSubdomain(`https://${slug}.garageconnect.com`);
-      setGeneratedEmail(`contact@${slug}.com`);
+      if (slug) {
+        setGeneratedSlug(slug);
+        setGeneratedSubdomain(`https://${slug}.garageconnect.com`);
+        setGeneratedEmail(`contact@${slug}.com`);
+      }
+    } else {
+      setGeneratedSlug('');
+      setGeneratedSubdomain('');
+      setGeneratedEmail('');
     }
   }, [formData.name]);
-
-  const generateSlug = (name: string): string => {
-    return name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-  };
 
   const handleLogoChange = (file: File) => {
     const reader = new FileReader();
