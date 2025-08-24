@@ -1,13 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Building2, 
-  Car, 
-  Wrench, 
-  Users, 
-  BarChart3, 
-  Shield, 
-  Zap, 
+import {
+  Building2,
+  Car,
+  Wrench,
+  Users,
+  BarChart3,
+  Shield,
+  Zap,
   Star,
   Play,
   MessageCircle,
@@ -59,21 +59,21 @@ export const HomePage: React.FC<HomePageProps> = ({ onClose }) => {
   const pricingPlans = [
     {
       name: "Basic",
-      price: "29€",
+      price: "29KFCA,
       period: "/mois",
       features: ["1 Garage", "5 Utilisateurs", "Support Email", "Stockage 10GB"],
       popular: false
     },
     {
       name: "Pro",
-      price: "79€",
+      price: "79KFCA,
       period: "/mois",
       features: ["5 Garages", "20 Utilisateurs", "Support Prioritaire", "Stockage 50GB"],
       popular: true
     },
     {
       name: "Enterprise",
-      price: "199€",
+      price: "199KFCA,
       period: "/mois",
       features: ["Garages Illimités", "Utilisateurs Illimités", "Support Dédié", "Stockage Illimité"],
       popular: false
@@ -135,7 +135,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onClose }) => {
               <span className="text-[#25D366]"> gérer vos garages</span>
             </h2>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              Simplifiez la gestion de vos garages automobiles avec notre plateforme SaaS multi-tenant. 
+              Simplifiez la gestion de vos garages automobiles avec notre plateforme SaaS multi-tenant.
               Performance, sécurité et simplicité au service de votre business.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -205,7 +205,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onClose }) => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
               >
-                <Card className={`h-full relative ${plan.popular ? 'ring-2 ring-[#25D366]' : ''}`}>
+                <Card className={`h-full relative KFCFA{plan.popular ? 'ring-2 ring-[#25D366]' : ''}`}>
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                       <span className="bg-[#25D366] text-white px-4 py-1 rounded-full text-sm font-medium">
@@ -231,8 +231,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onClose }) => {
                         </li>
                       ))}
                     </ul>
-                    <Button 
-                      className={`w-full ${plan.popular ? 'bg-[#25D366] hover:bg-[#128C7E]' : 'bg-[#128C7E] hover:bg-[#075E54]'}`}
+                    <Button
+                      className={`w-full KFCFA{plan.popular ? 'bg-[#25D366] hover:bg-[#128C7E]' : 'bg-[#128C7E] hover:bg-[#075E54]'}`}
                     >
                       Choisir ce plan
                     </Button>
