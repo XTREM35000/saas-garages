@@ -8,8 +8,8 @@ export type WorkflowStep =
   | 'pricing_selection'
   | 'admin_creation'
   | 'org_creation'
-  | 'sms_validation'
   | 'garage_setup'
+  | 'sms_validation'
   | 'dashboard'
   | 'completed';
 
@@ -55,8 +55,8 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
   'pricing_selection',
   'admin_creation',
   'org_creation',
-  'sms_validation',
   'garage_setup',
+  'sms_validation',
   'completed'
 ];
 

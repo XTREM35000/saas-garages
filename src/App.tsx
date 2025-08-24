@@ -73,8 +73,9 @@ function App() {
 
       // Workflow corrigé : vérifier s'il existe un Super Admin
       if (superAdmins && superAdmins.length > 0) {
-        console.log('✅ Super Admin existant, afficher auth modal');
-        setShowAuthModal(true);
+        console.log('✅ Super Admin existant, afficher le workflow d\'onboarding avec pricing');
+        // Afficher le workflow d'onboarding qui commencera par la sélection du plan
+        setShowOnboarding(true);
       } else {
         console.log('ℹ️ Aucun Super Admin, afficher modal de création Super Admin');
         setShowSuperAdminModal(true);

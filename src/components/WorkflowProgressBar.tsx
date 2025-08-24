@@ -40,18 +40,18 @@ const WORKFLOW_STEPS = [
     color: 'from-purple-500 to-purple-600'
   },
   {
-    key: 'sms_validation' as WorkflowStep,
-    label: 'SMS',
-    description: 'Validation par SMS',
-    icon: Icons.messageSquare,
-    color: 'from-green-500 to-green-600'
-  },
-  {
     key: 'garage_setup' as WorkflowStep,
     label: 'Garage',
     description: 'Configuration du premier garage',
     icon: Icons.wrench,
     color: 'from-orange-500 to-orange-600'
+  },
+  {
+    key: 'sms_validation' as WorkflowStep,
+    label: 'SMS',
+    description: 'Validation par SMS',
+    icon: Icons.messageSquare,
+    color: 'from-green-500 to-green-600'
   }
 ];
 
