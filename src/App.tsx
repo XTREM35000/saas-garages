@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { WorkflowProvider } from '@/contexts/WorkflowProvider';
 import { AuthProvider } from '@/contexts/AuthProvider';
@@ -7,13 +7,11 @@ import GeneralAuthModal from '@/components/GeneralAuthModal';
 import NewInitializationWizard from '@/components/NewInitializationWizard';
 import Dashboard from '@/components/Dashboard';
 import SplashScreen from '@/components/SplashScreen';
-//import {organizations} from '@/integrations/supabase/types';
 import { SuperAdminCreationModal } from '@/components/SuperAdminCreationModal';
 import { User } from '@supabase/supabase-js';
-// import { Organization, Garage } from '@/types/organization';
 import { supabase } from '@/integrations/supabase/client';
-import { SimpleUser, SimpleOrganization } from '@/types/explicit';
-import { OrganizationWithGarages, OrganizationResponse } from '@/types/organization';
+import { Database } from '@/integrations/supabase/types';
+import { OrganizationWithGarages } from '@/types/organization';
 
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -24,19 +22,14 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [organization, setOrganization] = useState<OrganizationWithGarages | null>(null);
 
-  // Fonction pour vérifier l'état de l'application
   const checkAppState = async () => {
     try {
-      console.log('🚀 Vérification de l\'état de l\'application...');
-
-      // 1. Vérifier si l'utilisateur est connecté
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
-        console.log('✅ Utilisateur connecté:', session.user.email);
         setUser(session.user);
 
-        // Requête séparée pour les profils et organisations
+        // ✅ Typage explicite sur la table "profiles"
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -45,8 +38,7 @@ function App() {
 
         if (profileError) throw profileError;
 
-        // Requête pour l'organisation avec typage explicite
-
+        // ✅ Typage explicite sur "organizations" avec jointure garages
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .select(`
@@ -63,117 +55,65 @@ function App() {
             )
           `)
           .eq('user_id', session.user.id)
-          .single<OrganizationWithGarages>();
+          .single();
 
         if (orgError) throw orgError;
 
         if (orgData) {
-          setUser(session.user);
-          setOrganization(orgData);
-          // Rediriger vers le dashboard
-          return;
+          setOrganization(orgData as OrganizationWithGarages);
         }
       }
 
-      // 4. Vérifier s'il y a un Super Admin dans la base
+      // ✅ Vérifier Super Admin
       const { data: superAdmins, error: superAdminError } = await supabase
         .from('super_admins')
         .select('id')
         .limit(1);
 
       if (superAdminError) {
-        console.error('❌ Erreur vérification Super Admin:', superAdminError);
-        // En cas d'erreur, afficher le modal Super Admin par défaut
         setShowSuperAdminModal(true);
         return;
       }
 
-      // Workflow corrigé : vérifier s'il existe un Super Admin
       if (superAdmins && superAdmins.length > 0) {
-        console.log('✅ Super Admin existant, afficher le workflow d\'onboarding avec pricing');
-        // Afficher le workflow d'onboarding qui commencera par la sélection du plan
         setShowOnboarding(true);
       } else {
-        console.log('ℹ️ Aucun Super Admin, afficher modal de création Super Admin');
         setShowSuperAdminModal(true);
       }
 
     } catch (error) {
-      console.error('❌ Erreur vérification état app:', error);
+      console.error('Erreur checkAppState:', error);
       setShowOnboarding(true);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Vérifier l'état de l'application au chargement initial
   useEffect(() => {
     if (!showSplash) {
       checkAppState();
     }
   }, [showSplash]);
 
-  // Gestionnaire d'authentification réussie
-  const handleAuthSuccess = (userData: any) => {
-    console.log('✅ Authentification réussie:', userData);
-    setUser(userData.user);
-    setOrganization(userData.organization);
-    setShowAuthModal(false);
-    // Rediriger vers le dashboard
-  };
-
-  // Gestionnaire de nouveau tenant
-  const handleNewTenant = () => {
-    console.log('🆕 Nouveau tenant demandé');
-    setShowAuthModal(false);
-    setShowOnboarding(true);
-  };
-
-  // Gestionnaire de création du Super Admin
-  const handleSuperAdminCreated = () => {
-    console.log('✅ Super Admin créé');
-    setShowSuperAdminModal(false);
-    // Recharger la page pour vérifier l'état
-    window.location.reload();
-  };
-
-  // Gestionnaire de fin d'onboarding
-  const handleOnboardingComplete = () => {
-    console.log('✅ Onboarding terminé');
-    setShowOnboarding(false);
-    // Recharger la page entièrement après l'onboarding
-    window.location.reload();
-  };
-
-  // Écouter les changements d'authentification
+  // ⚡️ écoute auth
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔄 Changement auth:', event, session?.user?.email);
-
         if (event === 'SIGNED_OUT') {
           setUser(null);
           setOrganization(null);
           setShowAuthModal(true);
         } else if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user);
-          // Vérifier l'organisation
-          const { data: profile, error: profileOrgError } = await supabase
+
+          const { data: profile } = await supabase
             .from('profiles')
             .select('*, organizations(*)')
             .eq('id', session.user.id)
             .single();
 
-          if (
-            !profileOrgError &&
-            profile &&
-            profile.organizations &&
-            Array.isArray(profile.organizations) &&
-            profile.organizations.length > 0
-          ) {
-            setOrganization(profile.organizations[0]);
-          } else {
-            setOrganization(null);
+          if (profile && (profile as any).organizations?.length > 0) {
+            setOrganization((profile as any).organizations[0]);
           }
         }
       }
@@ -182,57 +122,31 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Afficher le SplashScreen en premier
+  // Splash
   if (showSplash) {
-    return (
-      <SplashScreen
-        onComplete={() => {
-          setShowSplash(false);
-          // Après le splash, vérifier l'état de l'application
-          checkAppState();
-        }}
-        duration={3000}
-      />
-    );
+    return <SplashScreen onComplete={() => setShowSplash(false)} duration={2000} />;
   }
 
-  // Afficher le loader pendant la vérification de l'état
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
-        <div className="text-center">
-          <div className="w-20 h-20 bg-gradient-to-br from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6">
-            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <h2 className="text-2xl font-bold text-[#128C7E] mb-2">Multi-Garage-Connect (MGC)</h2>
-          <p className="text-gray-600">Vérification de votre espace...</p>
-        </div>
-      </div>
-    );
+    return <div>Chargement...</div>;
   }
 
-  // Si l'utilisateur est connecté et a une organisation, afficher le dashboard
   if (user && organization) {
-    // Construct an ExtendedUser with a default garageData (null or fetch actual data if available)
-    const extendedUser = { ...user, garageData: null };
-
     return (
       <AuthProvider supabaseClient={supabase}>
         <WorkflowProvider>
           <Router>
-            <div className="App">
-              <Dashboard
-                user={extendedUser}
-                organization={{
-                  ...organization,
-                  ownerName: organization?.name || "Owner",
-                  themeColor: "#128C7E"
-                }}
-                themeColor="#128C7E"
-                ownerName={organization?.name || "Owner"}
-              />
-              <Toaster position="top-right" richColors />
-            </div>
+            <Dashboard
+              user={{ ...user, garageData: null }}
+              organization={{
+                ...organization,
+                ownerName: organization?.name || "Owner",
+                themeColor: "#128C7E"
+              }}
+              themeColor="#128C7E"
+              ownerName={organization?.name || "Owner"}
+            />
+            <Toaster position="top-right" richColors />
           </Router>
         </WorkflowProvider>
       </AuthProvider>
@@ -242,36 +156,34 @@ function App() {
   return (
     <AuthProvider supabaseClient={supabase}>
       <WorkflowProvider>
-        <div className="App">
-          {/* Modal d'authentification générale */}
-          {showAuthModal && (
-            <GeneralAuthModal
-              isOpen={showAuthModal}
-              onClose={() => setShowAuthModal(false)}
-              onNewTenant={handleNewTenant}
-              onAuthSuccess={handleAuthSuccess}
-            />
-          )}
+        {showAuthModal && (
+          <GeneralAuthModal
+            isOpen={showAuthModal}
+            onClose={() => setShowAuthModal(false)}
+            onNewTenant={() => setShowOnboarding(true)}
+            onAuthSuccess={(data) => {
+              setUser(data.user);
+              setOrganization(data.organization);
+              setShowAuthModal(false);
+            }}
+          />
+        )}
 
-          {/* Modal de création Super Admin */}
-          {showSuperAdminModal && (
-            <SuperAdminCreationModal
-              isOpen={showSuperAdminModal}
-              onComplete={handleSuperAdminCreated}
-              onClose={() => setShowSuperAdminModal(false)}
-            />
-          )}
+        {showSuperAdminModal && (
+          <SuperAdminCreationModal
+            isOpen={showSuperAdminModal}
+            onComplete={() => window.location.reload()}
+            onClose={() => setShowSuperAdminModal(false)}
+          />
+        )}
 
-          {/* Workflow d'onboarding pour nouveaux tenants */}
-          {showOnboarding && (
-            <NewInitializationWizard
-              isOpen={showOnboarding}
-              onComplete={handleOnboardingComplete}
-            />
-          )}
-
-          <Toaster position="top-right" richColors />
-        </div>
+        {showOnboarding && (
+          <NewInitializationWizard
+            isOpen={showOnboarding}
+            onComplete={() => window.location.reload()}
+          />
+        )}
+        <Toaster position="top-right" richColors />
       </WorkflowProvider>
     </AuthProvider>
   );
