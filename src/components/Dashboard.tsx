@@ -3,13 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  BarChart3, 
-  Users, 
-  Car, 
-  Wrench, 
-  TrendingUp, 
-  MessageCircle, 
+import {
+  BarChart3,
+  Users,
+  Car,
+  Wrench,
+  TrendingUp,
+  MessageCircle,
   Bell,
   Settings,
   FileText,
@@ -21,20 +21,29 @@ import {
 import { Input } from '@/components/ui/input';
 import ChatWidget from './ChatWidget';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { ExtendedUser } from '@/types/database';
+
+// Define OrganisationWithGarages type locally if not exported from @/types/database
+type OrganisationWithGarages = {
+  name: string;
+  ownerName: string;
+  themeColor: string;
+  // Add other properties as needed
+};
 
 interface DashboardProps {
-  garageData: {
-    name: string;
-    ownerName: string;
-    email: string;
-    phone: string;
-    address: string;
-    themeColor: string;
-    logoFile: File | null;
-  };
+  user: ExtendedUser;
+  organization: OrganisationWithGarages;
+  themeColor: string;
+  ownerName: string;
 }
 
-const Dashboard = ({ garageData }: DashboardProps) => {
+const Dashboard: React.FC<DashboardProps> = ({
+  user,
+  organization,
+  themeColor,
+  ownerName
+}) => {
   const [selectedTab, setSelectedTab] = useState('overview');
 
   // Sample data for charts
@@ -87,11 +96,11 @@ const Dashboard = ({ garageData }: DashboardProps) => {
                 <Wrench className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">{garageData.name}</h1>
-                <p className="text-sm text-muted-foreground">{garageData.ownerName}</p>
+                <h1 className="text-xl font-bold">{organization.name}</h1>
+                <p className="text-sm text-muted-foreground">{ownerName}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -108,9 +117,9 @@ const Dashboard = ({ garageData }: DashboardProps) => {
                 <Settings className="w-4 h-4" />
               </Button>
               <Avatar>
-                <AvatarImage src="/placeholder-avatar.jpg" alt={garageData.ownerName} />
+                <AvatarImage src="/placeholder-avatar.jpg" alt={organization.ownerName} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  {garageData.ownerName.split(' ').map(n => n[0]).join('')}
+                  {organization.ownerName.split(' ').map(n => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -162,12 +171,12 @@ const Dashboard = ({ garageData }: DashboardProps) => {
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip formatter={(value) => [`${value} FCFA`, 'Chiffre d\'affaires']} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke={garageData.themeColor} 
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke={organization.themeColor}
                     strokeWidth={3}
-                    dot={{ fill: garageData.themeColor, strokeWidth: 2, r: 4 }}
+                    dot={{ fill: organization.themeColor, strokeWidth: 2, r: 4 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -188,7 +197,7 @@ const Dashboard = ({ garageData }: DashboardProps) => {
                   <XAxis type="number" />
                   <YAxis dataKey="type" type="category" width={80} />
                   <Tooltip />
-                  <Bar dataKey="count" fill={garageData.themeColor} radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="count" fill={organization.themeColor} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

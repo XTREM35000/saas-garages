@@ -7,10 +7,19 @@ import GeneralAuthModal from '@/components/GeneralAuthModal';
 import NewInitializationWizard from '@/components/NewInitializationWizard';
 import Dashboard from '@/components/Dashboard';
 import SplashScreen from '@/components/SplashScreen';
-// import {organizations} from '@/integrations/supabase/types';
+//import {organizations} from '@/integrations/supabase/types';
 import { SuperAdminCreationModal } from '@/components/SuperAdminCreationModal';
+import { User } from '@supabase/supabase-js';
+// import { Organization, Garage } from '@/types/organization';
 import { supabase } from '@/integrations/supabase/client';
-import './styles/globals.css';
+import { Organization, Garage } from '@/types/supabase.ts';
+import { OrganizationData, ExtendedUser } from '@/types/database';
+import { PostgrestSingleResponse } from '@/types/supabase';
+
+// Define ExtendedUser type to extend User with garageData
+interface ExtendedUser extends User {
+  garageData: Garage | {};
+}
 
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -18,8 +27,8 @@ function App() {
   const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [organization, setOrganization] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [organization, setOrganization] = useState<Organization | null>(null);
 
   // Fonction pour vérifier l'état de l'application
   const checkAppState = async () => {
@@ -33,30 +42,48 @@ function App() {
         console.log('✅ Utilisateur connecté:', session.user.email);
         setUser(session.user);
 
-        // 2. Récupérer le profil et l'organisation
-        const { data: profile, error: profileError } = await supabase
+        // Requête séparée pour les profils et organisations
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('*, organizations(*)')
+          .select('*')
           .eq('id', session.user.id)
           .single();
 
-        if (profileError) {
-          console.error('❌ Erreur profil:', profileError);
-          setShowAuthModal(true);
-          return;
-        }
+        if (profileError) throw profileError;
 
-        if (profile && profile.organizations) {
-          console.log('✅ Organisation trouvée:', profile.organizations.name);
-          setOrganization(profile.organizations);
+        // Requête pour l'organisation
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select(`
+            id,
+            name,
+            created_at,
+            user_id,
+            garages (
+              id,
+              name,
+              address,
+              phone,
+              created_at
+            )
+          `)
+          .eq('user_id', session.user.id)
+          .single<OrganizationData>();  // Notez le typage explicite ici
+
+        if (orgError) throw orgError;
+
+        if (orgData) {
+          // Créer l'utilisateur étendu avec le premier garage s'il existe
+          const extendedUser: ExtendedUser = {
+            ...session.user,
+            garageData: orgData.garages?.[0] || null
+          };
+
+          setUser(extendedUser);
+          setOrganization(orgData);
           // Rediriger vers le dashboard
           return;
         }
-
-        // 3. Si l'utilisateur n'a pas d'organisation, proposer de créer un nouvel abonnement
-        console.log('ℹ️ Utilisateur sans organisation, proposer onboarding');
-        setShowOnboarding(true);
-        return;
       }
 
       // 4. Vérifier s'il y a un Super Admin dans la base
@@ -142,14 +169,22 @@ function App() {
         } else if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user);
           // Vérifier l'organisation
-          const { data: profile } = await supabase
+          const { data: profile, error: profileOrgError } = await supabase
             .from('profiles')
             .select('*, organizations(*)')
             .eq('id', session.user.id)
             .single();
 
-          if (profile?.organizations) {
-            setOrganization(profile.organizations);
+          if (
+            !profileOrgError &&
+            profile &&
+            profile.organizations &&
+            Array.isArray(profile.organizations) &&
+            profile.organizations.length > 0
+          ) {
+            setOrganization(profile.organizations[0]);
+          } else {
+            setOrganization(null);
           }
         }
       }
@@ -190,11 +225,16 @@ function App() {
   // Si l'utilisateur est connecté et a une organisation, afficher le dashboard
   if (user && organization) {
     return (
-      <AuthProvider>
+      <AuthProvider supabaseClient={supabase}>
         <WorkflowProvider>
           <Router>
             <div className="App">
-              <Dashboard user={user} organization={organization} />
+              <Dashboard
+                user={user}
+                organization={organization}
+                themeColor="#128C7E"
+                ownerName={organization?.name || "Owner"}
+              />
               <Toaster position="top-right" richColors />
             </div>
           </Router>
@@ -204,7 +244,7 @@ function App() {
   }
 
   return (
-    <AuthProvider>
+    <AuthProvider supabaseClient={supabase}>
       <WorkflowProvider>
         <div className="App">
           {/* Modal d'authentification générale */}
