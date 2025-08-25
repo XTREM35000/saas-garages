@@ -13,6 +13,7 @@ import { User } from '@supabase/supabase-js';
 // import { Organization, Garage } from '@/types/organization';
 import { supabase } from '@/integrations/supabase/client';
 import { SimpleUser, SimpleOrganization } from '@/types/explicit';
+import { OrganizationWithGarages, OrganizationResponse } from '@/types/organization';
 
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -21,7 +22,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const [organization, setOrganization] = useState<SimpleOrganization | null>(null);
+  const [organization, setOrganization] = useState<OrganizationWithGarages | null>(null);
 
   // Fonction pour vérifier l'état de l'application
   const checkAppState = async () => {
@@ -45,16 +46,24 @@ function App() {
         if (profileError) throw profileError;
 
         // Requête pour l'organisation avec typage explicite
+
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .select(`
             id,
             name,
             created_at,
-            user_id
+            user_id,
+            garages:garages(
+              id,
+              name,
+              address,
+              phone,
+              created_at
+            )
           `)
           .eq('user_id', session.user.id)
-          .maybeSingle() as { data: SimpleOrganization | null; error: any };
+          .single<OrganizationWithGarages>();
 
         if (orgError) throw orgError;
 

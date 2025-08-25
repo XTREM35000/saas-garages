@@ -1,14 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
 
-if (!import.meta.env.VITE_SUPABASE_URL) {
-  throw new Error('VITE_SUPABASE_URL manquant dans les variables d\'environnement');
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error(`
+    ❌ Variables d'environnement Supabase manquantes !
+    Vérifiez votre fichier .env :
+    - VITE_SUPABASE_URL
+    - VITE_SUPABASE_ANON_KEY
+  `);
 }
 
-if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
-  throw new Error('VITE_SUPABASE_ANON_KEY manquant dans les variables d\'environnement');
-}
+console.log('🔌 Initialisation Supabase avec URL:', supabaseUrl);
 
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true
+  }
+});
+
+// Vérification de la connexion
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('🔐 État auth:', event, session?.user?.email);
+});
