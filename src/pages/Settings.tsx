@@ -97,16 +97,28 @@ const Settings: React.FC = () => {
         }
 
         if (settingsData) {
-          setUserSettings(settingsData);
+          const extendedSettings = {
+            ...settingsData,
+            notifications_email: true,
+            notifications_push: true,
+            notifications_sms: false,
+            language: settingsData.locale || 'fr',
+            two_factor: false,
+            session_timeout: 30,
+            photo_evidence_enabled: false,
+            min_photos: 1,
+            max_file_size: 5
+          };
+          setUserSettings(extendedSettings as any);
           setSettings({
             notifications: {
-              email: settingsData.notifications_email || true,
-              push: settingsData.notifications_push || true,
-              sms: settingsData.notifications_sms || false
+              email: true,
+              push: true,
+              sms: false
             },
             display: {
               theme: settingsData.theme || (isDark ? 'dark' : 'light'),
-              language: settingsData.language || 'fr',
+              language: settingsData.locale || 'fr',
               currency: settingsData.currency || 'XOF'
             },
             security: {

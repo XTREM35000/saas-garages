@@ -49,7 +49,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
             .select('id, code')
             .eq('id', storedOrg)
             .eq('code', storedOrgCode)
-            .single();
+            .maybeSingle() as { data: { id: string; code: string } | null; error: any };
 
           if (!orgError && org) {
             setSelectedOrg({ id: storedOrg, code: storedOrgCode });
@@ -94,7 +94,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
         .select('id, code')
         .eq('id', orgId)
         .eq('code', orgCode)
-        .single();
+        .maybeSingle() as { data: { id: string; code: string } | null; error: any };
 
       if (orgError || !org) {
         toast.error('Code d\'accès invalide ou accès refusé');

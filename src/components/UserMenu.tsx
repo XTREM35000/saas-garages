@@ -81,8 +81,16 @@ const UserMenu: React.FC = () => {
         console.log('🔍 Debug UserMenu - Organization data:', orgData);
         console.log('🔍 Debug UserMenu - Organization error:', orgError);
 
-        if (orgData && !orgError) {
-          setUserOrganization(orgData);
+        if (orgData && !orgError && orgData.organisations) {
+          const simpleOrg = {
+            ...orgData,
+            organisations: {
+              id: orgData.organisations.id || '',
+              name: orgData.organisations.name || '',
+              slug: orgData.organisations.slug || ''
+            }
+          };
+          setUserOrganization(simpleOrg as any);
         }
 
       } catch (error) {

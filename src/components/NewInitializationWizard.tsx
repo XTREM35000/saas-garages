@@ -2,6 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useWorkflow } from '@/contexts/WorkflowProvider';
 import { useAuthWorkflow } from '@/hooks/useAuthWorkflow';
 import { WorkflowStep } from '@/types/workflow.types';
+
+// Type pour éviter l'inférence infinie
+type WorkflowStepType = 'super_admin_check' | 'auth_general' | 'pricing_selection' | 'admin_creation' | 'org_creation' | 'garage_setup' | 'sms_validation' | 'completed';
+
 import WorkflowProgressBar from '@/components/WorkflowProgressBar';
 import { SuperAdminCreationModal } from '@/components/SuperAdminCreationModal';
 import PricingModal from '@/components/PricingModal';
@@ -28,8 +32,7 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
 }) => {
   const { state, completeStep, isLoading, error } = useWorkflow();
   const { session } = useAuthWorkflow();
-  const [isCheckingSystem, setIsCheckingSystem] = useState(false);
-
+  
   const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -37,600 +40,151 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
   const [showGarageModal, setShowGarageModal] = useState(false);
   const [showSmsModal, setShowSmsModal] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
-  const [forceUpdate, setForceUpdate] = useState(0);
-  const [showThankYou, setShowThankYou] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
-  const [superAdminInfo, setSuperAdminInfo] = useState<{ name: string; phone: string } | null>(null);
-  const [organizationInfo, setOrganizationInfo] = useState<{ name: string; code: string; adminName: string } | null>(null);
-  const [systemState, setSystemState] = useState<{
-    hasSuperAdmin: boolean;
-    hasAdmin: boolean;
-    hasOrg: boolean;
-    hasGarage: boolean;
-    hasResponsable: boolean;
-  }>({
-    hasSuperAdmin: false,
-    hasAdmin: false,
-    hasOrg: false,
-    hasGarage: false,
-    hasResponsable: false
-  });
 
-  console.log('🎭 [NewInitializationWizard] État actuel:', state);
+  // Fonction de vérification initiale et logique du workflow
+  const checkSystemAndProgress = useCallback(async () => {
+    if (!isOpen) return;
+    
+    console.log('🔍 Vérification du système et progression automatique...');
+    
+    try {
+      // 1. Vérifier Super Admin
+      const { data: superAdmins } = await supabase
+        .from('super_admins')
+        .select('*')
+        .eq('est_actif', true)
+        .limit(1);
 
-  // Fonction pour gérer le clic sur une étape
-  const handleStepClick = (step: WorkflowStep) => {
-    console.log('Clic sur l\'étape:', step);
+      const hasSuperAdmin = superAdmins && superAdmins.length > 0;
 
-    // Ouvrir le modal correspondant à l'étape cliquée
-    switch (step) {
-      case 'super_admin_check':
+      if (!hasSuperAdmin) {
+        console.log('❌ Aucun Super Admin trouvé - Affichage modal création');
         setShowSuperAdminModal(true);
-        break;
-      case 'admin_creation':
-        setShowAdminModal(true);
-        break;
-      case 'org_creation':
-        setShowOrgModal(true);
-        break;
-      case 'sms_validation':
-        setShowSmsModal(true);
-        break;
-      case 'garage_setup':
-        setShowGarageModal(true);
-        break;
-      default:
-        console.log('Étape non gérée:', step);
-    }
-  };
-
-  // Vérifier l'état complet du système au chargement
-  useEffect(() => {
-    const checkCompleteSystemState = async () => {
-      if (state.currentStep === 'super_admin_check' && !isCheckingSystem) {
-        setIsCheckingSystem(true);
-        console.log('🔍 Vérification complète de l\'état du système...');
-
-        try {
-          // 1. Vérifier Super Admin
-          const { data: superAdmins, error: superAdminError } = await supabase
-            .from('super_admins')
-            .select('*')
-            .eq('est_actif', true)
-            .limit(1);
-
-          if (superAdminError) {
-            console.error('❌ Erreur vérification Super Admin:', superAdminError);
-            toast.error('Erreur lors de la vérification Super Admin');
-            return;
-          }
-
-          const hasSuperAdmin = superAdmins && superAdmins.length > 0;
-
-          if (hasSuperAdmin) {
-            const superAdmin = superAdmins[0];
-            setSuperAdminInfo({
-              name: superAdmin.nom + ' ' + superAdmin.prenom,
-              phone: superAdmin.phone
-            });
-          }
-
-          // 2. Vérifier Admin (seulement si Super Admin existe)
-          let hasAdmin = false;
-          if (hasSuperAdmin) {
-            try {
-              const { data: admins, error: adminError } = await supabase
-                .from('admins')
-                .select('*')
-                .limit(1);
-
-              if (adminError) {
-                console.error('❌ Erreur vérification Admin:', adminError);
-                // Ne pas afficher d'erreur toast, juste continuer
-              } else {
-                hasAdmin = admins && admins.length > 0;
-              }
-            } catch (error) {
-              console.error('❌ Erreur lors de la vérification Admin:', error);
-              // Continuer sans bloquer
-            }
-          }
-
-          // 3. Vérifier Organisation
-          let hasOrg = false;
-          if (hasAdmin) {
-            const { data: organizations, error: orgError } = await supabase
-              .from('organizations')
-              .select('*')
-              .limit(1);
-
-            if (orgError) {
-              console.error('❌ Erreur vérification Organisation:', orgError);
-              toast.error('Erreur lors de la vérification Organisation');
-              return;
-            }
-
-            hasOrg = organizations && organizations.length > 0;
-          }
-
-          // 4. Vérifier Garage et Responsable
-          let hasGarage = false;
-          let hasResponsable = false;
-          if (hasOrg) {
-            const { data: garages, error: garageError } = await supabase
-              .from('garages')
-              .select('*, responsables(*)')
-              .limit(1);
-
-            if (garageError) {
-              console.error('❌ Erreur vérification Garage:', garageError);
-              toast.error('Erreur lors de la vérification Garage');
-              return;
-            }
-
-            hasGarage = garages && garages.length > 0;
-            hasResponsable = hasGarage && garages[0].responsables && garages[0].responsables.length > 0;
-          }
-
-          // Mettre à jour l'état du système
-          const newSystemState = {
-            hasSuperAdmin,
-            hasAdmin,
-            hasOrg,
-            hasGarage,
-            hasResponsable
-          };
-          setSystemState(newSystemState);
-
-          // Déterminer la prochaine étape selon l'état du système
-          let nextStep: WorkflowStep = 'super_admin_check';
-          let completedSteps: WorkflowStep[] = [];
-
-          if (hasSuperAdmin) {
-            completedSteps.push('super_admin_check');
-
-            // Après Super Admin, on passe à l'authentification générale
-            nextStep = 'auth_general';
-
-            // Note: On ne vérifie pas encore l'Admin car on doit d'abord s'authentifier
-          }
-
-          // Mettre à jour l'état du workflow
-          state.currentStep = nextStep;
-          state.completedSteps = completedSteps;
-
-          // Sauvegarder dans localStorage
-          try {
-            localStorage.setItem('workflow_state', JSON.stringify({
-              currentStep: nextStep,
-              completedSteps: completedSteps,
-              lastUpdated: new Date().toISOString(),
-              systemState: newSystemState,
-              superAdminInfo: hasSuperAdmin ? {
-                name: superAdmins[0].nom + ' ' + superAdmins[0].prenom,
-                phone: superAdmins[0].phone
-              } : null
-            }));
-            console.log('✅ État du workflow sauvegardé dans localStorage');
-          } catch (err) {
-            console.warn('⚠️ Impossible de sauvegarder dans localStorage:', err);
-          }
-
-          // Afficher le bon modal selon l'état
-          if (!hasSuperAdmin) {
-            // NOUVEAU WORKFLOW : Afficher le modal de création Super Admin
-            console.log('🚀 Aucun Super Admin trouvé, affichage du modal de création');
-            setShowSuperAdminModal(true);
-          } else {
-            // Super Admin existe, commencer par l'authentification générale
-            console.log('🔐 Super Admin existe, début du workflow par l\'authentification générale');
-            state.currentStep = 'auth_general';
-            state.completedSteps = ['super_admin_check'];
-            // Ouvrir automatiquement le modal d'authentification
-            setShowAuthModal(true);
-          }
-
-          // Forcer le re-render
-          setForceUpdate(prev => prev + 1);
-          console.log(`🔄 Progression automatique vers ${nextStep}`);
-
-        } catch (err) {
-          console.error('❌ Erreur lors de la vérification du système:', err);
-          toast.error('Erreur lors de la vérification du système');
-        } finally {
-          setTimeout(() => {
-            setIsCheckingSystem(false);
-          }, 500);
-        }
+        return;
       }
-    };
 
-    checkCompleteSystemState();
-  }, [state.currentStep, isCheckingSystem]);
+      // 2. Super Admin existe - Vérifier Admin
+      const { data: admins } = await supabase
+        .from('admins')
+        .select('*')
+        .limit(1);
 
-  // Ouvrir automatiquement le modal de pricing quand l'étape change
-  useEffect(() => {
-    if (state.currentStep === 'pricing_selection' && !showPricingModal) {
-      console.log('💰 Ouverture automatique du modal de pricing');
-      setShowPricingModal(true);
-    }
-  }, [state.currentStep, showPricingModal]);
+      const hasAdmin = admins && admins.length > 0;
 
-  // Ouvrir automatiquement le modal d'authentification quand l'étape change
-  useEffect(() => {
-    if (state.currentStep === 'auth_general' && !showAuthModal) {
-      console.log('🔐 Ouverture automatique du modal d\'authentification');
-      setShowAuthModal(true);
-    }
-  }, [state.currentStep, showAuthModal]);
+      if (!hasAdmin) {
+        console.log('🔐 Super Admin existe - Passage à sélection pricing');
+        setShowPricingModal(true);
+        return;
+      }
 
-  // Gestionnaire d'authentification réussie
-  const handleAuthSuccess = async (userData: any) => {
-    try {
-      console.log('✅ Authentification réussie:', userData);
-      setShowAuthModal(false);
+      // 3. Admin existe - Vérifier Organisation
+      const { data: organizations } = await supabase
+        .from('organizations')
+        .select('*')
+        .limit(1);
 
-      // Mettre à jour l'état du workflow
-      state.currentStep = 'pricing_selection';
-      state.completedSteps = ['super_admin_check', 'auth_general'];
+      const hasOrg = organizations && organizations.length > 0;
 
-      // Ouvrir automatiquement le modal de pricing
-      setShowPricingModal(true);
+      if (!hasOrg) {
+        console.log('🏢 Admin existe - Passage à création organisation');
+        setShowOrgModal(true);
+        return;
+      }
 
-      toast.success('Authentification réussie ! 🎉');
-    } catch (err) {
-      console.error('❌ Erreur lors de l\'authentification:', err);
-      toast.error('Erreur lors de l\'authentification');
-    }
-  };
+      // 4. Organisation existe - Vérifier Garage
+      const { data: garages } = await supabase
+        .from('garages')
+        .select('*')
+        .eq('is_active', true)
+        .limit(1);
 
-  // Gestionnaire de nouveau tenant
-  const handleNewTenant = () => {
-    console.log('🆕 Nouveau tenant demandé');
-    setShowAuthModal(false);
-    // Passer directement à la sélection du plan pour un nouveau tenant
-    state.currentStep = 'pricing_selection';
-    state.completedSteps = ['super_admin_check', 'auth_general'];
-    setShowPricingModal(true);
-  };
+      const hasGarage = garages && garages.length > 0;
 
-  // Gestionnaire de création du Super Admin
-  const handleSuperAdminCreated = async (userData: any) => {
-    try {
-      console.log('✅ Super Admin créé:', userData);
-      setShowSuperAdminModal(false);
+      if (!hasGarage) {
+        console.log('🏗️ Organisation existe - Passage à création garage');
+        setShowGarageModal(true);
+        return;
+      }
 
-      // Mettre à jour l'état du système
-      setSystemState(prev => ({ ...prev, hasSuperAdmin: true }));
-
-      // Passer à l'étape suivante : PRICING SELECTION
-      state.currentStep = 'pricing_selection';
-      state.completedSteps = ['super_admin_check'];
-
-      // Afficher le modal de sélection du plan
-      // Note: Le modal de pricing sera affiché automatiquement par renderCurrentStep
-      toast.success('Super Administrateur créé avec succès ! 🎉');
-    } catch (err) {
-      console.error('❌ Erreur lors de la création du Super Admin:', err);
-      toast.error('Erreur lors de la création du Super Admin');
-    }
-  };
-
-  // Gestionnaire de sélection du plan
-  const handlePlanSelected = async (planData: any) => {
-    try {
-      console.log('✅ Plan sélectionné:', planData);
-
-      // Sauvegarder le plan sélectionné
-      setSelectedPlan(planData.plan);
-
-      // Fermer le modal de pricing
-      setShowPricingModal(false);
-
-      // Mettre à jour l'état du workflow
-      state.currentStep = 'admin_creation';
-      state.completedSteps = ['super_admin_check', 'pricing_selection'];
-
-      // Afficher le modal de création d'Admin
-      setShowAdminModal(true);
-
-      toast.success(`Plan ${planData.plan} sélectionné ! 🎉`);
-    } catch (err) {
-      console.error('❌ Erreur lors de la sélection du plan:', err);
-      toast.error('Erreur lors de la sélection du plan');
-    }
-  };
-
-  // Continuer vers la création de l'Admin après le message de remerciement
-  const handleContinueToAdmin = () => {
-    setShowThankYou(false);
-    setShowAdminModal(true);
-  };
-
-  // Gestionnaire de création de l'Admin
-  const handleAdminCreated = async (adminData: any) => {
-    try {
-      console.log('✅ Admin créé:', adminData);
-      setShowAdminModal(false);
-
-      // Mettre à jour l'état du système
-      setSystemState(prev => ({ ...prev, hasAdmin: true }));
-
-      // Passer à l'étape suivante
-      state.currentStep = 'org_creation';
-      state.completedSteps = ['super_admin_check', 'admin_creation'];
-
-      // Afficher le modal de création d'Organisation
-      setShowOrgModal(true);
-
-      toast.success('Administrateur créé avec succès ! 🎉');
-    } catch (err) {
-      console.error('❌ Erreur lors de la création de l\'Admin:', err);
-      toast.error('Erreur lors de la création de l\'Administrateur');
-    }
-  };
-
-  // Gestionnaire de création de l'Organisation
-  const handleOrgCreated = async (orgData: any) => {
-    try {
-      console.log('✅ Organisation créée:', orgData);
-      setShowOrgModal(false);
-
-      // Stocker les informations de l'organisation pour le SMS
-      setOrganizationInfo({
-        name: orgData.name || 'Organisation',
-        code: orgData.code || 'ORG-001',
-        adminName: orgData.admin_name || 'Administrateur'
-      });
-
-      // Mettre à jour l'état du système
-      setSystemState(prev => ({ ...prev, hasOrg: true }));
-
-      // Passer à l'étape suivante : SMS Validation
-      state.currentStep = 'sms_validation';
-      state.completedSteps = ['super_admin_check', 'admin_creation', 'org_creation'];
-
-      // Afficher le modal de validation SMS
-      setShowSmsModal(true);
-
-      toast.success('Organisation créée avec succès ! 🎉');
-    } catch (err) {
-      console.error('❌ Erreur lors de la création de l\'Organisation:', err);
-      toast.error('Erreur lors de la création de l\'Organisation');
-    }
-  };
-
-  // Gestionnaire de création du Garage
-  const handleGarageCreated = async (garageData: any) => {
-    try {
-      console.log('✅ Garage créé:', garageData);
-      setShowGarageModal(false);
-
-      // Mettre à jour l'état du système
-      setSystemState(prev => ({ ...prev, hasGarage: true, hasResponsable: true }));
-
-      // Workflow terminé, rediriger vers le dashboard
+      // 5. Tout est configuré - Workflow terminé
+      console.log('✅ Workflow complet - Redirection dashboard');
       onComplete();
 
-      toast.success('Garage créé avec succès ! 🎉');
-    } catch (err) {
-      console.error('❌ Erreur lors de la création du Garage:', err);
-      toast.error('Erreur lors de la création du Garage');
+    } catch (error) {
+      console.error('❌ Erreur vérification système:', error);
+      toast.error('Erreur lors de la vérification du système');
     }
+  }, [isOpen, onComplete]);
+
+  // Vérification initiale
+  useEffect(() => {
+    checkSystemAndProgress();
+  }, [checkSystemAndProgress]);
+
+  // Gestionnaires d'événements
+  const handleSuperAdminCreated = async () => {
+    console.log('✅ Super Admin créé');
+    setShowSuperAdminModal(false);
+    setShowPricingModal(true);
+    toast.success('Super Administrateur créé avec succès ! 🎉');
   };
 
-  // Gestionnaire de validation SMS
-  const handleSmsValidated = async (smsData: any) => {
-    try {
-      console.log('✅ SMS validé:', smsData);
-      setShowSmsModal(false);
-
-      // Passer à l'étape suivante : Garage Setup
-      state.currentStep = 'garage_setup';
-      state.completedSteps = ['super_admin_check', 'admin_creation', 'org_creation', 'sms_validation'];
-
-      // Afficher le modal de création de Garage
-      setShowGarageModal(true);
-
-      toast.success('Validation SMS réussie ! 🎉');
-    } catch (err) {
-      console.error('❌ Erreur lors de la validation SMS:', err);
-      toast.error('Erreur lors de la validation SMS');
-    }
+  const handlePlanSelected = async (planData: any) => {
+    console.log('✅ Plan sélectionné:', planData);
+    setSelectedPlan(planData.plan);
+    setShowPricingModal(false);
+    setShowAdminModal(true);
+    toast.success(`Plan ${planData.plan} sélectionné ! 🎉`);
   };
 
-  // Rendu de l'étape courante
-  const renderCurrentStep = () => {
-    if (isLoading || isCheckingSystem) {
-      return (
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto mb-6"></div>
-            <h3 className="text-xl font-semibold text-[#128C7E] mb-2">
-              {isCheckingSystem ? 'Vérification du système...' : 'Chargement du workflow...'}
-            </h3>
-            <p className="text-gray-600">
-              {isCheckingSystem ? 'Analyse de l\'état actuel...' : 'Préparation de votre espace de gestion'}
-            </p>
+  const handleAdminCreated = async () => {
+    console.log('✅ Admin créé');
+    setShowAdminModal(false);
+    setShowOrgModal(true);
+    toast.success('Administrateur créé avec succès ! 🎉');
+  };
+
+  const handleOrgCreated = async () => {
+    console.log('✅ Organisation créée');
+    setShowOrgModal(false);
+    setShowSmsModal(true);
+    toast.success('Organisation créée avec succès ! 🎉');
+  };
+
+  const handleSmsValidated = async () => {
+    console.log('✅ SMS validé');
+    setShowSmsModal(false);
+    setShowGarageModal(true);
+    toast.success('Validation SMS réussie ! 🎉');
+  };
+
+  const handleGarageCreated = async () => {
+    console.log('✅ Garage créé');
+    setShowGarageModal(false);
+    onComplete();
+    toast.success('Garage créé avec succès ! 🎉');
+  };
+
+  // Affichage conditionnel des modals
+  if (!isOpen) return null;
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white p-8 rounded-lg shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <span>Vérification du workflow...</span>
           </div>
         </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50 to-red-100">
-          <div className="text-center max-w-md mx-auto p-8">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <div className="text-red-500 text-2xl">⚠️</div>
-            </div>
-            <h3 className="text-xl font-semibold text-red-700 mb-4">Erreur Workflow</h3>
-            <p className="text-red-600 mb-6">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-[#128C7E] text-white px-6 py-3 rounded-xl hover:bg-[#075E54] transition-colors duration-200 font-medium"
-            >
-              Recharger la page
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    // Afficher le contenu selon l'étape actuelle
-    switch (state.currentStep) {
-      case 'super_admin_check':
-        return (
-          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
-            <div className="text-center">
-              <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto mb-6"></div>
-              <h3 className="text-xl font-semibold text-[#128C7E] mb-2">Vérification du système...</h3>
-              <p className="text-gray-600">Configuration automatique en cours</p>
-            </div>
-          </div>
-        );
-
-      case 'auth_general':
-        return (
-          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
-            <div className="text-center max-w-2xl mx-auto p-8">
-              <div className="w-20 h-20 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <div className="text-white text-3xl">🔐</div>
-              </div>
-              <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Authentification Générale</h3>
-              <p className="text-gray-600 mb-6">
-                Le modal d'authentification s'ouvre automatiquement...
-              </p>
-              <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto"></div>
-            </div>
-          </div>
-        );
-
-      case 'pricing_selection':
-        return (
-          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
-            <div className="text-center max-w-2xl mx-auto p-8">
-              <div className="w-20 h-20 bg-gradient-to-r from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6">
-                <div className="text-white text-3xl">💰</div>
-              </div>
-              <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Sélection du Plan d'Abonnement</h3>
-              <p className="text-gray-600 mb-6">
-                Le modal de sélection des plans s'ouvre automatiquement...
-              </p>
-              <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto"></div>
-            </div>
-          </div>
-        );
-
-      case 'admin_creation':
-        return (
-          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
-            <div className="text-center max-w-2xl mx-auto p-8">
-              <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <div className="text-white text-3xl">👤</div>
-              </div>
-              <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Création de l'Administrateur</h3>
-              <p className="text-gray-600 mb-6">
-                Créez un administrateur pour gérer votre organisation.
-              </p>
-            </div>
-          </div>
-        );
-
-      case 'org_creation':
-        return (
-          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
-            <div className="text-center max-w-2xl mx-auto p-8">
-              <div className="w-20 h-20 bg-gradient-to-r from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6">
-                <div className="text-white text-3xl">🏢</div>
-              </div>
-              <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Création de l'Organisation</h3>
-              <p className="text-gray-600 mb-6">
-                Configurez votre organisation et ses informations.
-              </p>
-            </div>
-          </div>
-        );
-
-      case 'garage_setup':
-        return (
-          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
-            <div className="text-center max-w-2xl mx-auto p-8">
-              <div className="w-20 h-20 bg-gradient-to-r from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6">
-                <div className="text-white text-3xl">🚗</div>
-              </div>
-              <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Configuration du Garage</h3>
-              <p className="text-gray-600 mb-6">
-                Créez votre premier garage et assignez un responsable.
-              </p>
-            </div>
-          </div>
-        );
-
-      case 'sms_validation':
-        return (
-          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
-            <div className="text-center max-w-2xl mx-auto p-8">
-              <div className="w-20 h-20 bg-gradient-to-r from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6">
-                <div className="text-white text-3xl">📱</div>
-              </div>
-              <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Validation SMS</h3>
-              <p className="text-gray-600 mb-6">
-                Validez votre numéro de téléphone pour finaliser la configuration.
-              </p>
-            </div>
-          </div>
-        );
-
-      default:
-        return (
-          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-green-100">
-            <div className="text-center max-w-md mx-auto p-8">
-              <div className="w-20 h-20 bg-gradient-to-r from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6">
-                <div className="text-white text-3xl">🎉</div>
-              </div>
-              <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Configuration terminée !</h3>
-              <p className="text-gray-600 mb-6">
-                Votre système est maintenant entièrement configuré.
-              </p>
-              <button
-                onClick={onComplete}
-                className="bg-gradient-to-r from-[#128C7E] to-[#25D366] text-white px-8 py-4 rounded-xl hover:from-[#075E54] hover:to-[#128C7E] transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                Accéder au Dashboard
-              </button>
-            </div>
-          </div>
-        );
-    }
-  };
-
-  // Ne rendre que si le modal est ouvert
-  if (!isOpen) {
-    return null;
+      </div>
+    );
   }
 
   return (
     <>
-      <WhatsAppModal isOpen={isOpen} onClose={() => { }} size="xl">
-        <div className="max-w-4xl mx-auto">
-          {/* Barre de progression avec thème WhatsApp */}
-          <WorkflowProgressBar
-            currentStep={state.currentStep}
-            completedSteps={state.completedSteps}
-            onStepClick={handleStepClick}
-          />
-
-
-
-          {/* Contenu principal */}
-          <div>
-            {renderCurrentStep()}
-          </div>
-        </div>
-      </WhatsAppModal>
-
-      {/* Modals conditionnels */}
+      {/* Modal Super Admin */}
       {showSuperAdminModal && (
         <SuperAdminCreationModal
           isOpen={showSuperAdminModal}
@@ -639,15 +193,7 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
         />
       )}
 
-      {showAuthModal && (
-        <GeneralAuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onNewTenant={handleNewTenant}
-          onAuthSuccess={handleAuthSuccess}
-        />
-      )}
-
+      {/* Modal Pricing */}
       {showPricingModal && (
         <PricingModal
           isOpen={showPricingModal}
@@ -655,47 +201,39 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
         />
       )}
 
+      {/* Modal Admin */}
       {showAdminModal && (
         <AdminCreationModal
           isOpen={showAdminModal}
           onComplete={handleAdminCreated}
-          onClose={() => setShowAdminModal(false)}
         />
       )}
 
+      {/* Modal Organisation */}
       {showOrgModal && (
         <OrganizationSetupModal
           isOpen={showOrgModal}
           onComplete={handleOrgCreated}
-          selectedPlan={selectedPlan || 'monthly'}
         />
       )}
 
-      {showGarageModal && (
-        <GarageSetupModal
-          isOpen={showGarageModal}
-          onComplete={handleGarageCreated}
-          organizationName=""
-        />
-      )}
-
+      {/* Modal SMS */}
       {showSmsModal && (
         <SmsValidationModal
           isOpen={showSmsModal}
           onComplete={handleSmsValidated}
-          organizationName={organizationInfo?.name || ''}
-          organizationCode={organizationInfo?.code || ''}
-          adminName={organizationInfo?.adminName || ''}
+          organizationName="Organisation"
+          organizationCode="ORG-001"
+          adminName="Admin"
         />
       )}
 
-      {/* Message de remerciement après sélection du plan */}
-      {showThankYou && (
-        <ThankYouMessage
-          isOpen={showThankYou}
-          selectedPlan={selectedPlan}
-          superAdminInfo={superAdminInfo}
-          onContinue={handleContinueToAdmin}
+      {/* Modal Garage */}
+      {showGarageModal && (
+        <GarageSetupModal
+          isOpen={showGarageModal}
+          onComplete={handleGarageCreated}
+          organizationName="Organisation"
         />
       )}
     </>
@@ -703,5 +241,3 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
 };
 
 export default NewInitializationWizard;
-
-
