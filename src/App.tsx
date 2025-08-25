@@ -69,7 +69,17 @@ function App() {
           throw orgError || new Error("Organization not found");
         }
 
-        setOrganization(orgData as OrganizationWithGarages);
+        setOrganization({
+          ...orgData,
+          user_id: profileData.user_id || session.user.id, // Ensure user_id is present
+          garages: Array.isArray(orgData.garages) ? orgData.garages : [] // Ensure garages is always an array
+        }); // Cast if necessary
+        setIsLoading(false);
+        return;
+      } else {
+        setShowAuthModal(true);
+        setIsLoading(false);
+        return;
       }
 
       // ✅ Vérifier Super Admin
