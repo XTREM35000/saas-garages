@@ -104,14 +104,17 @@ const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
         break;
 
       case 'phone':
-        if (value.trim() && !/^(\+33|0)[1-9](\d{8})$/.test(value)) {
-          return 'Format de téléphone invalide (ex: +33123456789 ou 0123456789)';
+        if (value.trim()) {
+          // Validation simplifiée : au moins 8 chiffres
+          const cleanPhone = value.replace(/\D/g, '');
+          if (cleanPhone.length < 8) return 'Format de téléphone invalide';
         }
         break;
 
       case 'email':
-        if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          return 'Format d\'email invalide';
+        if (value.trim()) {
+          // Validation simplifiée : contient @ et un point après
+          if (!value.includes('@') || !value.includes('.')) return 'Format d\'email invalide';
         }
         break;
     }
@@ -199,31 +202,37 @@ const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
       }
 
       // Récupérer l'organisation de l'utilisateur     
-      const { data: orgData, error: orgError } = await supabase
-        .from('organization_users')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
+      const { data: orgData, error: orgError } = await (supabase as any)
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
 
-      if (orgError || !orgData?.organization_id) {
+      if (orgError || !orgData?.id) {
         console.error('Erreur récupération organisation:', orgError);
         throw new Error('Organisation non trouvée');
       }
 
-      // Appeler la fonction RPC Supabase pour créer le garage
-      const { data, error } = await supabase.rpc('create_garage', {
-        p_organization_id: orgData.organization_id,
-        p_name: formData.name,
-        p_address: formData.address,
-        p_city: formData.city,
-        p_postal_code: formData.postalCode,
-        p_country: formData.country,
-        p_latitude: coordinates?.lat || null,
-        p_longitude: coordinates?.lng || null,
-        p_phone: formData.phone || null,
-        p_email: formData.email || null,
-        p_description: formData.description || null
-      });
+      // Créer le garage directement dans la table garages
+      const { data, error } = await (supabase as any)
+        .from('garages')
+        .insert({
+          organization_id: orgData.id,
+          name: formData.name,
+          address: formData.address,
+          city: formData.city,
+          postal_code: formData.postalCode,
+          country: formData.country,
+          latitude: coordinates?.lat || null,
+          longitude: coordinates?.lng || null,
+          phone: formData.phone || null,
+          email: formData.email || null,
+          description: formData.description || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
 
       if (error) {
         throw new Error(error.message);
@@ -300,40 +309,40 @@ const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
                 Configurez votre premier garage pour {organizationName}
               </p>
               <div className="flex items-center space-x-2 mt-2">
-                                 <span 
-                   className="text-xl cursor-pointer hover:scale-110 transition-transform"
-                   onClick={() => {
-                     // Test erreur - données invalides
-                     setFormData({
-                       name: 'A',
-                       address: 'B',
-                       city: 'C',
-                       postalCode: '123',
-                       country: 'France',
-                       phone: '123',
-                       email: 'invalid',
-                       website: '',
-                       description: 'Test'
-                     });
-                   }}
-                 >😠</span>
-                 <span 
-                   className="text-xl cursor-pointer hover:scale-110 transition-transform"
-                   onClick={() => {
-                     // Test succès - données valides
-                     setFormData({
-                       name: 'Garage Central',
-                       address: '123 Avenue de la République',
-                       city: 'Paris',
-                       postalCode: '75001',
-                       country: 'France',
-                       phone: '+33 1 23 45 67 89',
-                       email: 'contact@garagecentral.fr',
-                       website: 'https://garagecentral.fr',
-                       description: 'Garage automobile professionnel avec service complet'
-                     });
-                   }}
-                 >😊</span>
+                <span
+                  className="text-xl cursor-pointer hover:scale-110 transition-transform"
+                  onClick={() => {
+                    // Test erreur - données invalides
+                    setFormData({
+                      name: 'A',
+                      address: 'B',
+                      city: 'C',
+                      postalCode: '123',
+                      country: 'France',
+                      phone: '123',
+                      email: 'invalid',
+                      website: '',
+                      description: 'Test'
+                    });
+                  }}
+                >😠</span>
+                <span
+                  className="text-xl cursor-pointer hover:scale-110 transition-transform"
+                  onClick={() => {
+                    // Test succès - données valides
+                    setFormData({
+                      name: 'Garage Central',
+                      address: '123 Avenue de la République',
+                      city: 'Paris',
+                      postalCode: '75001',
+                      country: 'France',
+                      phone: '+33 1 23 45 67 89',
+                      email: 'contact@garagecentral.fr',
+                      website: 'https://garagecentral.fr',
+                      description: 'Garage automobile professionnel avec service complet'
+                    });
+                  }}
+                >😊</span>
               </div>
             </div>
           </div>

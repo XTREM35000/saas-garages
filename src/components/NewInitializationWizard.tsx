@@ -41,6 +41,7 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
   const [showThankYou, setShowThankYou] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [superAdminInfo, setSuperAdminInfo] = useState<{ name: string; phone: string } | null>(null);
+  const [organizationInfo, setOrganizationInfo] = useState<{ name: string; code: string; adminName: string } | null>(null);
   const [systemState, setSystemState] = useState<{
     hasSuperAdmin: boolean;
     hasAdmin: boolean;
@@ -60,7 +61,7 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
   // Fonction pour gérer le clic sur une étape
   const handleStepClick = (step: WorkflowStep) => {
     console.log('Clic sur l\'étape:', step);
-    
+
     // Ouvrir le modal correspondant à l'étape cliquée
     switch (step) {
       case 'super_admin_check':
@@ -375,15 +376,22 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
       console.log('✅ Organisation créée:', orgData);
       setShowOrgModal(false);
 
+      // Stocker les informations de l'organisation pour le SMS
+      setOrganizationInfo({
+        name: orgData.name || 'Organisation',
+        code: orgData.code || 'ORG-001',
+        adminName: orgData.admin_name || 'Administrateur'
+      });
+
       // Mettre à jour l'état du système
       setSystemState(prev => ({ ...prev, hasOrg: true }));
 
-      // Passer à l'étape suivante
-      state.currentStep = 'garage_setup';
+      // Passer à l'étape suivante : SMS Validation
+      state.currentStep = 'sms_validation';
       state.completedSteps = ['super_admin_check', 'admin_creation', 'org_creation'];
 
-      // Afficher le modal de création de Garage
-      setShowGarageModal(true);
+      // Afficher le modal de validation SMS
+      setShowSmsModal(true);
 
       toast.success('Organisation créée avec succès ! 🎉');
     } catch (err) {
@@ -401,12 +409,8 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
       // Mettre à jour l'état du système
       setSystemState(prev => ({ ...prev, hasGarage: true, hasResponsable: true }));
 
-      // Passer à l'étape suivante
-      state.currentStep = 'sms_validation';
-      state.completedSteps = ['super_admin_check', 'admin_creation', 'org_creation', 'garage_setup'];
-
-      // Afficher le modal de validation SMS
-      setShowSmsModal(true);
+      // Workflow terminé, rediriger vers le dashboard
+      onComplete();
 
       toast.success('Garage créé avec succès ! 🎉');
     } catch (err) {
@@ -421,8 +425,12 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
       console.log('✅ SMS validé:', smsData);
       setShowSmsModal(false);
 
-      // Workflow terminé, rediriger vers le dashboard
-      onComplete();
+      // Passer à l'étape suivante : Garage Setup
+      state.currentStep = 'garage_setup';
+      state.completedSteps = ['super_admin_check', 'admin_creation', 'org_creation', 'sms_validation'];
+
+      // Afficher le modal de création de Garage
+      setShowGarageModal(true);
 
       toast.success('Validation SMS réussie ! 🎉');
     } catch (err) {
@@ -604,7 +612,7 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
 
   return (
     <>
-      <WhatsAppModal isOpen={isOpen} onClose={() => {}} size="xl">
+      <WhatsAppModal isOpen={isOpen} onClose={() => { }} size="xl">
         <div className="max-w-4xl mx-auto">
           {/* Barre de progression avec thème WhatsApp */}
           <WorkflowProgressBar
@@ -675,9 +683,9 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
         <SmsValidationModal
           isOpen={showSmsModal}
           onComplete={handleSmsValidated}
-          organizationName=""
-          organizationCode=""
-          adminName=""
+          organizationName={organizationInfo?.name || ''}
+          organizationCode={organizationInfo?.code || ''}
+          adminName={organizationInfo?.adminName || ''}
         />
       )}
 
