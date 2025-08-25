@@ -12,8 +12,7 @@ import { SuperAdminCreationModal } from '@/components/SuperAdminCreationModal';
 import { User } from '@supabase/supabase-js';
 // import { Organization, Garage } from '@/types/organization';
 import { supabase } from '@/integrations/supabase/client';
-import { Organization, Garage } from '@/types/supabase.ts';
-import { OrganizationData, ExtendedUser } from '@/types/database';
+import { Organization, Garage, OrganizationWithGarages } from '@/types/database';
 import { PostgrestSingleResponse } from '@/types/supabase';
 
 // Define ExtendedUser type to extend User with garageData

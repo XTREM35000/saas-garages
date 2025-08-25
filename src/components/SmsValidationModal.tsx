@@ -9,25 +9,34 @@ import { Icons } from '@/components/ui/icons';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { WhatsAppModal } from './ui/whatsapp-modal';
+import { MessageSquare, CheckCircle, AlertCircle } from 'lucide-react';
+import { AnimatedLogo } from './AnimatedLogo';
 
 interface SmsValidationModalProps {
   isOpen: boolean;
   onComplete: (data: any) => void;
-  organizationName: string;
-  organizationCode: string;
-  adminName: string;
+  onClose: () => void;
+  onSubmit: (code: string) => Promise<void>;
+  organizationData: {
+    name: string;
+    slug: string;
+    adminName: string;
+  };
+  isLoading?: boolean;
 }
 
 const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
   isOpen,
   onComplete,
-  organizationName,
-  organizationCode,
-  adminName
+  onClose,
+  onSubmit,
+  organizationData,
+  isLoading = false
 }) => {
   const [smsCode, setSmsCode] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [canResend, setCanResend] = useState(false);
 
@@ -35,7 +44,6 @@ const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setSmsCode('');
-      setIsLoading(false);
       setShowSuccess(false);
       setCountdown(60);
       setCanResend(false);
@@ -54,8 +62,6 @@ const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
 
   // Envoyer le code SMS
   const handleSendSms = async () => {
-    setIsLoading(true);
-
     try {
       // Simuler l'envoi SMS (en production, appeler l'API SMS)
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -65,261 +71,214 @@ const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
       setCanResend(false);
     } catch (error) {
       toast.error('Erreur lors de l\'envoi du SMS');
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // Valider le code SMS
   const handleValidateCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
 
     if (!smsCode.trim()) {
-      toast.error('Veuillez entrer le code SMS');
+      setError('Veuillez entrer le code de validation');
       return;
     }
 
-    setIsLoading(true);
-
     try {
-      // Simuler la validation (en production, appeler l'API de validation)
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Code de test : 123456
-      if (smsCode === '123456') {
-        setShowSuccess(true);
-
-        setTimeout(() => {
-          onComplete({ success: true, message: 'SMS validé avec succès' });
-        }, 2000);
-      } else {
-        toast.error('Code SMS incorrect');
+      // Validation du code
+      if (smsCode !== '1234') {
+        throw new Error('Code invalide. Pour le test, utilisez 1234');
       }
-    } catch (error) {
-      toast.error('Erreur lors de la validation');
-    } finally {
-      setIsLoading(false);
+
+      // Log des informations de validation
+      console.log('✅ Validation SMS réussie:', {
+        code: smsCode,
+        organization: organizationData.name,
+        slug: organizationData.slug,
+        admin: organizationData.adminName
+      });
+
+      await onSubmit(smsCode);
+
+      // Afficher un toast de succès
+      toast.success(`Organisation ${organizationData.name} activée !`);
+
+      setShowSuccess(true);
+
+      // Attendre 2 secondes avant de compléter
+      setTimeout(() => {
+        onComplete({
+          organizationName: organizationData.name,
+          organizationSlug: organizationData.slug,
+          adminName: organizationData.adminName,
+          verified: true
+        });
+      }, 2000);
+
+    } catch (error: any) {
+      console.error('❌ Erreur validation SMS:', error);
+      setError(error.message || 'Code incorrect');
+      toast.error(error.message || 'Code incorrect');
     }
   };
 
-  // Animation de succès
+  // Modal de succès
   if (showSuccess) {
     return (
-      <Dialog open={isOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-md mx-auto text-center p-8">
-          <div className="animate-in zoom-in-95 duration-500">
-            <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-              <Icons.check className="w-10 h-10 text-white" />
-            </div>
-            <h3 className="text-2xl font-bold text-green-700 mb-4">
-              SMS validé ! 🎉
-            </h3>
-            <p className="text-green-600 mb-6">
-              Votre numéro de téléphone a été vérifié avec succès
-            </p>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-green-700">
-                La sécurité de votre compte est maintenant renforcée.
-              </p>
-            </div>
-            <div className="flex items-center justify-center space-x-2 text-green-600">
-              <Icons.spinner className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Configuration en cours...</span>
-            </div>
+      <WhatsAppModal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Validation Réussie!"
+      >
+        <div className="text-center p-6">
+          <div className="w-16 h-16 mx-auto mb-4">
+            <AnimatedLogo
+              mainIcon={CheckCircle}
+              secondaryIcon={MessageSquare}
+              mainColor="text-whatsapp"
+              secondaryColor="text-whatsapp-light"
+              waterDrop={true}
+            />
           </div>
-        </DialogContent>
-      </Dialog>
+
+          <h3 className="text-lg font-semibold text-whatsapp mb-2">
+            Plan Tarifaire Activé
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Redirection vers votre espace...
+          </p>
+
+          <div className="loading-whatsapp-spinner" />
+        </div>
+      </WhatsAppModal>
     );
   }
 
+  // Modal de validation
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="max-w-2xl mx-auto p-0 overflow-hidden">
-        {/* Header avec gradient WhatsApp */}
-        <DialogHeader className="bg-gradient-to-r from-[#128C7E] to-[#25D366] text-white p-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <Icons.messageSquare className="w-6 h-6 text-white" />
+    <WhatsAppModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Validation SMS"
+      description={`Validation pour ${organizationData.name}`}
+    >
+      {/* Logo animé */}
+      <div className="w-16 h-16 mx-auto">
+        <AnimatedLogo
+          mainIcon={MessageSquare}
+          secondaryIcon={CheckCircle}
+          mainColor="text-whatsapp"
+          secondaryColor="text-whatsapp-light"
+          waterDrop={true}
+        />
+      </div>
+
+      {/* Code de test */}
+      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          💡 Code de test: <strong>1234</strong>
+        </p>
+      </div>
+
+      <form onSubmit={handleValidateCode} className="space-y-4">
+        {/* Champ de code */}
+        <div className="space-y-2">
+          <Input
+            id="smsCode"
+            type="text"
+            value={smsCode}
+            onChange={(e) => setSmsCode(e.target.value)}
+            placeholder="Code à 4 chiffres"
+            maxLength={4}
+            className="text-center text-2xl font-mono tracking-widest h-14"
+            disabled={isLoading}
+          />
+          {error && (
+            <p className="text-sm text-red-500 flex items-center justify-center gap-1">
+              <AlertCircle className="h-4 w-4" />
+              {error}
+            </p>
+          )}
+        </div>
+
+        {/* Bouton de validation */}
+        <Button
+          type="submit"
+          className="w-full btn-whatsapp-primary h-12"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <div className="loading-whatsapp-spinner" />
+              Validation en cours...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Valider le code
+            </span>
+          )}
+        </Button>
+      </form>
+
+      {/* Informations de l'organisation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Icons.building className="w-5 h-5 text-[#128C7E]" />
+            <span>Informations de l'organisation</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-medium text-gray-700">
+                Nom de l'organisation
+              </Label>
+              <p className="text-lg font-semibold text-gray-900">
+                {organizationData.name}
+              </p>
             </div>
             <div>
-              <DialogTitle className="text-2xl font-bold">
-                Validation par SMS
-              </DialogTitle>
-              <p className="text-white/90 mt-1">
-                Sécurisez votre compte avec une validation par SMS
+              <Label className="text-sm font-medium text-gray-700">
+                Code d'organisation
+              </Label>
+              <p className="text-lg font-mono font-semibold text-[#128C7E]">
+                {organizationData.slug}
               </p>
-              <div className="flex items-center space-x-2 mt-2">
-                                 <span 
-                   className="text-xl cursor-pointer hover:scale-110 transition-transform"
-                   onClick={() => {
-                     // Test erreur - code SMS invalide
-                     setSmsCode('000000');
-                   }}
-                 >😠</span>
-                 <span 
-                   className="text-xl cursor-pointer hover:scale-110 transition-transform"
-                   onClick={() => {
-                     // Test succès - code SMS valide
-                     setSmsCode('123456');
-                   }}
-                 >😊</span>
+            </div>
+          </div>
+          <div>
+            <Label className="text-sm font-medium text-gray-700">
+              Administrateur principal
+            </Label>
+            <p className="text-lg font-semibold text-gray-900">
+              {organizationData.adminName}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Informations de sécurité */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="p-4">
+          <div className="flex items-start space-x-3">
+            <Icons.shield className="w-5 h-5 text-blue-600 mt-0.5" />
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-blue-900">
+                Pourquoi valider par SMS ?
+              </p>
+              <div className="text-sm text-blue-700 space-y-1">
+                <p>• <strong>Sécurité renforcée</strong> : Protection contre les accès non autorisés</p>
+                <p>• <strong>Vérification d'identité</strong> : Confirmation que vous êtes bien le propriétaire du numéro</p>
+                <p>• <strong>Notifications importantes</strong> : Alertes de sécurité et informations critiques</p>
+                <p>• <strong>Conformité</strong> : Respect des standards de sécurité SaaS</p>
               </div>
             </div>
           </div>
-        </DialogHeader>
-
-        {/* Contenu du formulaire */}
-        <div className="p-6">
-          <div className="space-y-6">
-            {/* Informations de l'organisation */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Icons.building className="w-5 h-5 text-[#128C7E]" />
-                  <span>Informations de l'organisation</span>
-                </CardTitle>
-                <CardDescription>
-                  Détails de votre organisation en cours de configuration
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700">Nom de l'organisation</Label>
-                    <p className="text-lg font-semibold text-gray-900">{organizationName || 'Organisation'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700">Code d'organisation</Label>
-                    <p className="text-lg font-mono font-semibold text-[#128C7E]">{organizationCode || 'ORG-001'}</p>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Administrateur principal</Label>
-                  <p className="text-lg font-semibold text-gray-900">{adminName || 'Administrateur'}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Validation SMS */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Icons.messageSquare className="w-5 h-5 text-[#128C7E]" />
-                  <span>Validation par SMS</span>
-                </CardTitle>
-                <CardDescription>
-                  Entrez le code reçu par SMS pour vérifier votre numéro de téléphone
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Code SMS */}
-                <div className="space-y-4">
-                  <Label htmlFor="smsCode" className="text-base font-medium">
-                    Code de validation SMS
-                  </Label>
-                  <div className="flex space-x-3">
-                    <Input
-                      id="smsCode"
-                      type="text"
-                      value={smsCode}
-                      onChange={(e) => setSmsCode(e.target.value)}
-                      placeholder="123456"
-                      maxLength={6}
-                      className="text-center text-2xl font-mono tracking-widest"
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Entrez le code à 6 chiffres reçu par SMS
-                  </p>
-                </div>
-
-                {/* Bouton d'envoi */}
-                <div className="flex justify-center">
-                  <Button
-                    onClick={handleSendSms}
-                    disabled={!canResend || isLoading}
-                    variant="outline"
-                    className="px-6"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Icons.spinner className="w-4 h-4 mr-2 animate-spin" />
-                        Envoi en cours...
-                      </>
-                    ) : canResend ? (
-                      <>
-                        <Icons.messageSquare className="w-4 h-4 mr-2" />
-                        Renvoyer le code
-                      </>
-                    ) : (
-                      <>
-                        <Icons.clock className="w-4 h-4 mr-2" />
-                        Renvoyer dans {countdown}s
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Code de test pour le développement */}
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <Icons.alertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                    <div className="text-sm text-yellow-800">
-                      <p className="font-medium mb-1">Mode développement</p>
-                      <p>
-                        Pour tester, utilisez le code <strong>123456</strong>.
-                        En production, un vrai code SMS sera envoyé.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Informations de sécurité */}
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="p-4">
-                <div className="flex items-start space-x-3">
-                  <Icons.shield className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-blue-900">
-                      Pourquoi valider par SMS ?
-                    </p>
-                    <div className="text-sm text-blue-700 space-y-1">
-                      <p>• <strong>Sécurité renforcée</strong> : Protection contre les accès non autorisés</p>
-                      <p>• <strong>Vérification d'identité</strong> : Confirmation que vous êtes bien le propriétaire du numéro</p>
-                      <p>• <strong>Notifications importantes</strong> : Alertes de sécurité et informations critiques</p>
-                      <p>• <strong>Conformité</strong> : Respect des standards de sécurité SaaS</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Actions */}
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button
-                onClick={handleValidateCode}
-                disabled={isLoading || !smsCode.trim()}
-                className="bg-gradient-to-r from-[#128C7E] to-[#25D366] hover:from-[#075E54] hover:to-[#128C7E] px-8"
-              >
-                {isLoading ? (
-                  <>
-                    <Icons.spinner className="w-4 h-4 mr-2 animate-spin" />
-                    Validation en cours...
-                  </>
-                ) : (
-                  <>
-                    <Icons.check className="w-4 h-4 mr-2" />
-                    Valider le code
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </CardContent>
+      </Card>
+    </WhatsAppModal >
   );
 };
 

@@ -683,9 +683,13 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
         <SmsValidationModal
           isOpen={showSmsModal}
           onComplete={handleSmsValidated}
-          organizationName={organizationInfo?.name || ''}
-          organizationCode={organizationInfo?.code || ''}
-          adminName={organizationInfo?.adminName || ''}
+          onClose={() => setShowSmsModal(false)}
+          onSubmit={handleSmsValidated}
+          organizationData={{
+            name: organizationInfo?.name || '',
+            slug: organizationInfo?.code || '',
+            adminName: organizationInfo?.adminName || ''
+          }}
         />
       )}
 
