@@ -193,6 +193,7 @@
 @media (max-width: 640px) {
   .modal-whatsapp-content {
     @apply mx-2;
+
   }
 
   .modal-whatsapp-body {
@@ -212,6 +213,9 @@
 @media (max-width: 768px) {
   .modal-whatsapp-card {
     @apply rounded-t-xl;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .grid-cols-1>div {
@@ -235,6 +239,24 @@
     height: auto;
     transform: none !important;
     /* Désactive l'effet hover sur mobile */
+  }
+
+  .whatsapp-modal-content {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .whatsapp-modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #fff;
+  }
+
+  .whatsapp-modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -279,4 +301,9 @@
 /* Styles pour le handle du modal */
 .modal-handle {
   @apply w-12 h-1.5 rounded-full bg-gray-300 dark:bg-gray-700 mx-auto my-2 cursor-grab active:cursor-grabbing;
+}
+
+/* Amélioration du scroll sur iOS */
+.whatsapp-modal-content {
+  overscroll-behavior-y: contain;
 }

@@ -66,7 +66,7 @@ export const Modal: React.FC<ModalProps> = ({
   maxHeight = "90vh",
   scrollable = true,
   position = "center",
-  draggable = false,
+  draggable = false, p
   dragConstraints = { top: -400, bottom: 400 }
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -101,7 +101,7 @@ export const Modal: React.FC<ModalProps> = ({
       const focusableElements = modalRef.current.querySelectorAll(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       );
-      
+
       if (focusableElements.length > 0) {
         (focusableElements[0] as HTMLElement).focus();
       }
@@ -147,28 +147,28 @@ export const Modal: React.FC<ModalProps> = ({
       >
         {/* Overlay avec backdrop blur */}
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-        
+
         {/* Modal */}
         <motion.div
           ref={modalRef}
-          initial={{ 
-            scale: 0.9, 
+          initial={{
+            scale: 0.9,
             opacity: 0,
             y: position === "top" ? -20 : position === "bottom" ? 20 : 0
           }}
-          animate={{ 
-            scale: 1, 
+          animate={{
+            scale: 1,
             opacity: 1,
             y: 0
           }}
-          exit={{ 
-            scale: 0.9, 
+          exit={{
+            scale: 0.9,
             opacity: 0,
             y: position === "top" ? -20 : position === "bottom" ? 20 : 0
           }}
-          transition={{ 
-            type: "spring", 
-            damping: 25, 
+          transition={{
+            type: "spring",
+            damping: 25,
             stiffness: 300,
             duration: 0.3
           }}
@@ -190,7 +190,7 @@ export const Modal: React.FC<ModalProps> = ({
             draggable ? "touch-pan-y" : "",
             className
           )}
-          style={{ 
+          style={{
             maxHeight: scrollable ? maxHeight : "auto",
             ...(draggable && { y: dragY })
           }}
@@ -213,7 +213,7 @@ export const Modal: React.FC<ModalProps> = ({
                   </p>
                 )}
               </div>
-              
+
               {showCloseButton && (
                 <button
                   onClick={onClose}
@@ -266,7 +266,7 @@ export const ModalHeader: React.FC<{
     <div className="flex-1">
       {children}
     </div>
-    
+
     {showCloseButton && onClose && (
       <button
         onClick={onClose}
@@ -291,7 +291,7 @@ export const ModalBody: React.FC<{
     scrollable ? "overflow-y-auto" : "overflow-hidden",
     className
   )}
-  style={{ maxHeight: scrollable ? maxHeight : "auto" }}
+    style={{ maxHeight: scrollable ? maxHeight : "auto" }}
   >
     <div className="p-4 sm:p-6">
       {children}
@@ -321,33 +321,33 @@ export const DraggableFormModal: React.FC<{
   description?: string;
   className?: string;
   maxHeight?: string;
-}> = ({ 
-  isOpen, 
-  onClose, 
-  children, 
-  title, 
-  description, 
+}> = ({
+  isOpen,
+  onClose,
+  children,
+  title,
+  description,
   className = "",
   maxHeight = "95vh"
 }) => (
-  <Modal
-    isOpen={isOpen}
-    onClose={onClose}
-    size="xl"
-    draggable={true}
-    dragConstraints={{ top: -600, bottom: 600 }} // ← Augmentez les limites
-    maxHeight={maxHeight}
-    className={cn("min-h-[140vh] bg-white", className)} // ← Hauteur augmentée
-    overlayClassName="p-2 sm:p-4"
-    position="bottom" // ← Position en bas pour mieux voir
-    scrollable={false} // ← Désactive le scroll interne
-  >
-    <ModalHeader onClose={onClose}>
-      {title && <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h2>}
-      {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
-    </ModalHeader>
-    <ModalBody scrollable={false} className="min-h-[120vh]">  
-      {children}
-    </ModalBody>
-  </Modal>
-);
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="xl"
+      draggable={true}
+      dragConstraints={{ top: -600, bottom: 600 }} // ← Augmentez les limites
+      maxHeight={maxHeight}
+      className={cn("min-h-[140vh] bg-white", className)} // ← Hauteur augmentée
+      overlayClassName="p-2 sm:p-4"
+      position="bottom" // ← Position en bas pour mieux voir
+      scrollable={false} // ← Désactive le scroll interne
+    >
+      <ModalHeader onClose={onClose}>
+        {title && <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h2>}
+        {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+      </ModalHeader>
+      <ModalBody scrollable={false} className="min-h-[120vh]">
+        {children}
+      </ModalBody>
+    </Modal>
+  );

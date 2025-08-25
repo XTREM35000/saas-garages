@@ -88,25 +88,20 @@ export const useResponsiveDragConstraints = (modalHeight: number = 600): DragCon
 /**
  * Hook simplifié avec valeurs prédéfinies pour chaque breakpoint
  */
-export const useBreakpointDragConstraints = (): DragConstraints => {
-  const [constraints, setConstraints] = useState<DragConstraints>({ top: -380, bottom: 500 }); // tino
+export const useBreakpointDragConstraints = () => {
+  const [constraints, setConstraints] = useState({ top: -50, bottom: 100 });
 
   useEffect(() => {
     const updateConstraints = () => {
-      const screenHeight = window.innerHeight;
-
-      if (screenHeight >= 1080) {
-        setConstraints({ top: -500, bottom: 600 }); // Desktop - grande liberté
-      } else if (screenHeight >= 768) {
-        setConstraints({ top: -380, bottom: 500 }); // Laptop/Tablet -tino - liberté modérée
-      } else {
-        setConstraints({ top: -380, bottom: 300 }); // Mobile - tino liberté limitée mais suffisante
-      }
+      const isMobile = window.innerWidth < 768;
+      setConstraints({
+        top: -50,
+        bottom: isMobile ? 100 : 300 // Réduire la limite de drag sur mobile
+      });
     };
 
     updateConstraints();
     window.addEventListener('resize', updateConstraints);
-
     return () => window.removeEventListener('resize', updateConstraints);
   }, []);
 
