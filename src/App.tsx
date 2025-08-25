@@ -12,13 +12,7 @@ import { SuperAdminCreationModal } from '@/components/SuperAdminCreationModal';
 import { User } from '@supabase/supabase-js';
 // import { Organization, Garage } from '@/types/organization';
 import { supabase } from '@/integrations/supabase/client';
-import { Organization, Garage, OrganizationWithGarages } from '@/types/database';
-import { PostgrestSingleResponse } from '@/types/supabase';
-
-// Define ExtendedUser type to extend User with garageData
-interface ExtendedUser extends User {
-  garageData: Garage | {};
-}
+import { SimpleUser, SimpleOrganization } from '@/types/explicit';
 
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -27,7 +21,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [organization, setOrganization] = useState<SimpleOrganization | null>(null);
 
   // Fonction pour vérifier l'état de l'application
   const checkAppState = async () => {
@@ -50,35 +44,22 @@ function App() {
 
         if (profileError) throw profileError;
 
-        // Requête pour l'organisation
+        // Requête pour l'organisation avec typage explicite
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .select(`
             id,
             name,
             created_at,
-            user_id,
-            garages (
-              id,
-              name,
-              address,
-              phone,
-              created_at
-            )
+            user_id
           `)
           .eq('user_id', session.user.id)
-          .single<OrganizationData>();  // Notez le typage explicite ici
+          .maybeSingle() as { data: SimpleOrganization | null; error: any };
 
         if (orgError) throw orgError;
 
         if (orgData) {
-          // Créer l'utilisateur étendu avec le premier garage s'il existe
-          const extendedUser: ExtendedUser = {
-            ...session.user,
-            garageData: orgData.garages?.[0] || null
-          };
-
-          setUser(extendedUser);
+          setUser(session.user);
           setOrganization(orgData);
           // Rediriger vers le dashboard
           return;
@@ -223,14 +204,21 @@ function App() {
 
   // Si l'utilisateur est connecté et a une organisation, afficher le dashboard
   if (user && organization) {
+    // Construct an ExtendedUser with a default garageData (null or fetch actual data if available)
+    const extendedUser = { ...user, garageData: null };
+
     return (
       <AuthProvider supabaseClient={supabase}>
         <WorkflowProvider>
           <Router>
             <div className="App">
               <Dashboard
-                user={user}
-                organization={organization}
+                user={extendedUser}
+                organization={{
+                  ...organization,
+                  ownerName: organization?.name || "Owner",
+                  themeColor: "#128C7E"
+                }}
                 themeColor="#128C7E"
                 ownerName={organization?.name || "Owner"}
               />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SplashScreen from '@/components/SplashScreen';
-
+import { Button } from '@/components/ui/button';
 import OrganisationOnboarding from '@/components/OrganisationOnboarding';
 import BrandSetupWizard from '@/components/BrandSetupWizard';
 
@@ -45,10 +45,15 @@ const SimpleSetup: React.FC<SimpleSetupProps> = ({ onComplete, children }) => {
 
     case 'pricing':
       return (
-        {/* PricingModal removed */}
-          isOpen={true}
-          onSelectPlan={handlePlanSelection}
-        />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Sélection du Plan</h2>
+            <p className="text-gray-600 mb-6">Choisissez votre plan tarifaire</p>
+            <Button onClick={() => handlePlanSelection('starter')}>
+              Plan Starter
+            </Button>
+          </div>
+        </div>
       );
 
     case 'organisation':

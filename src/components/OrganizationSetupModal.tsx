@@ -14,7 +14,7 @@ import '../styles/whatsapp-theme.css';
 interface OrganizationSetupModalProps {
   isOpen: boolean;
   onComplete: (orgData: any) => void;
-  selectedPlan: string;
+  selectedPlan?: string;
 }
 
 interface FormData {
