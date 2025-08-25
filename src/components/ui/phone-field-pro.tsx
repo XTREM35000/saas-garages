@@ -30,11 +30,11 @@ interface PhoneFieldProProps {
 
 export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
   label = "Téléphone",
-	value,
-	onChange,
+  value,
+  onChange,
   onCountryChange,
   countryCode = "FR",
-	error,
+  error,
   disabled = false,
   placeholder,
   required = false,
@@ -46,62 +46,101 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
   const [touched, setTouched] = useState<boolean>(false);
   const [parsedPhone, setParsedPhone] = useState<PhoneNumber | null>(null);
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const [localCountryCode, setLocalCountryCode] = useState<string>(countryCode);
 
-  // Parser le numéro de téléphone
-	useEffect(() => {
-		if (value) {
-      const parsed = parsePhoneNumber(value, countryCode);
-      setParsedPhone(parsed);
-      setIsValid(parsed.isValid);
-      onValidationChange?.(parsed.isValid);
+  // Synchroniser le localCountryCode avec le prop countryCode
+  useEffect(() => {
+    setLocalCountryCode(countryCode);
+  }, [countryCode]);
+
+  // Validation simple du numéro de téléphone
+  useEffect(() => {
+    if (value) {
+      const cleanValue = value.replace(/\D/g, '');
+      const isValid = cleanValue.length >= 8;
+      setIsValid(isValid);
+      onValidationChange?.(isValid);
     } else {
       setParsedPhone(null);
       setIsValid(!required);
       onValidationChange?.(!required);
     }
-  }, [value, countryCode, required, onValidationChange]);
+  }, [value, required, onValidationChange]);
+
+  // Obtenir la valeur à afficher (numéro national seulement)
+  const getDisplayValue = () => {
+    if (!value) return '';
+
+    // Pour la Côte d'Ivoire, enlever le 225 pour l'affichage
+    if (localCountryCode === 'CI' && value.startsWith('225')) {
+      return value.substring(3);
+    }
+
+    // Pour les autres pays, enlever le code pays
+    const country = COUNTRY_CODES[localCountryCode as keyof typeof COUNTRY_CODES];
+    if (country) {
+      const countryCodeDigits = country.code.replace('+', '');
+      if (value.startsWith(countryCodeDigits)) {
+        return value.substring(countryCodeDigits.length);
+      }
+    }
+
+    return value;
+  };
 
   // Gestion du changement de valeur
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    
-    // Ne pas ajouter l'indicatif automatiquement car il y a déjà un sélecteur de pays
-    // Juste nettoyer le numéro et le passer directement
-    const cleanValue = newValue.replace(/[^\d]/g, '');
-    onChange(cleanValue);
+    // Nettoyer et garder seulement les chiffres
+    const cleanValue = newValue.replace(/\D/g, '');
+
+    // Pour la Côte d'Ivoire, on s'assure que le numéro commence par 225
+    if (localCountryCode === 'CI') {
+      let finalValue = cleanValue;
+      if (!finalValue.startsWith('225')) {
+        finalValue = '225' + finalValue;
+      }
+      onChange(finalValue);
+    } else {
+      // Pour les autres pays, on ajoute le code pays
+      const country = COUNTRY_CODES[localCountryCode as keyof typeof COUNTRY_CODES];
+      const fullNumber = country ? country.code.replace('+', '') + cleanValue : cleanValue;
+      onChange(fullNumber);
+    }
 
     if (touched) {
-      const parsed = parsePhoneNumber(cleanValue, countryCode);
-      setIsValid(parsed.isValid);
-      onValidationChange?.(parsed.isValid);
+      const isValid = cleanValue.length >= 8;
+      setIsValid(isValid);
+      onValidationChange?.(isValid);
     }
   };
 
   // Gestion de la perte de focus
   const handleBlur = () => {
     setTouched(true);
-    const parsed = parsePhoneNumber(value, countryCode);
-    setIsValid(parsed.isValid);
-    onValidationChange?.(parsed.isValid);
+
+    // Validation simple : au moins 8 chiffres
+    const cleanValue = value.replace(/\D/g, '');
+    const isValid = cleanValue.length >= 8;
+    setIsValid(isValid);
+    onValidationChange?.(isValid);
   };
 
   // Gestion du changement de pays
   const handleCountryChange = (newCountryCode: string) => {
+    setLocalCountryCode(newCountryCode);
     onCountryChange?.(newCountryCode);
     setShowCountryDropdown(false);
-    
-    // Ne pas reformater automatiquement, garder le numéro tel quel
-    // L'indicatif sera géré par le sélecteur de pays
   };
 
   // Obtenir le placeholder selon le pays
   const getPlaceholder = () => {
     if (placeholder) return placeholder;
-    
-    const country = COUNTRY_CODES[countryCode as keyof typeof COUNTRY_CODES];
+
+    const country = COUNTRY_CODES[localCountryCode as keyof typeof COUNTRY_CODES];
     if (!country) return "Numéro de téléphone";
-    
-    switch (countryCode) {
+
+    switch (localCountryCode) {
       case 'FR':
         return "06 12 34 56 78";
       case 'CI':
@@ -135,17 +174,17 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
 
   const showError = touched && !isValid;
   const hasError = error || showError;
-  const currentCountry = COUNTRY_CODES[countryCode as keyof typeof COUNTRY_CODES];
+  const currentCountry = COUNTRY_CODES[localCountryCode as keyof typeof COUNTRY_CODES];
 
-	return (
+  return (
     <div className={cn("space-y-2", className)}>
-			{label && (
+      {label && (
         <Label htmlFor="phone" className="flex items-center gap-2 text-sm font-medium">
           <Phone className="w-4 h-4 text-muted-foreground" />
           <span>{label}</span>
           {required && <span className="text-red-500">*</span>}
-				</Label>
-			)}
+        </Label>
+      )}
 
       <div className="flex items-center gap-2">
         {showCountrySelect && (
@@ -154,7 +193,7 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
               type="button"
               variant="outline"
               onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-					disabled={disabled}
+              disabled={disabled}
               className="flex items-center gap-2 min-w-[120px] justify-between"
             >
               <span className="text-lg">{currentCountry?.flag || '🌍'}</span>
@@ -181,15 +220,15 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
         )}
 
         <div className="relative flex-1">
-				<Input
+          <Input
             id="phone"
-					type="tel"
-            value={value}
+            type="tel"
+            value={getDisplayValue()}
             onChange={handleChange}
             onBlur={handleBlur}
             placeholder={getPlaceholder()}
-					disabled={disabled}
-					className={cn(
+            disabled={disabled}
+            className={cn(
               "transition-all duration-200",
               hasError
                 ? "border-red-500 focus:border-red-500 focus:ring-red-200"
@@ -214,7 +253,7 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
             </div>
           )}
         </div>
-			</div>
+      </div>
 
       {/* Messages d'erreur */}
       {hasError && (
@@ -227,8 +266,8 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
       {!hasError && !value && (
         <p className="text-gray-500 text-xs">
           Format accepté : {getPlaceholder()}
-				</p>
-			)}
+        </p>
+      )}
 
       {/* Informations sur le format de stockage */}
       {parsedPhone && (
@@ -237,7 +276,7 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
           <p>Pays : {currentCountry?.name || 'Inconnu'}</p>
         </div>
       )}
-		</div>
+    </div>
   );
 };
 

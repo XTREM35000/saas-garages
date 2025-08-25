@@ -117,11 +117,14 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
         break;
       case 'email':
         if (!value.trim()) return { isValid: false, error: 'L\'email est requis' };
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return { isValid: false, error: 'Format d\'email invalide' };
+        // Validation simplifiée : contient @ et un point après
+        if (!value.includes('@') || !value.includes('.')) return { isValid: false, error: 'Format d\'email invalide' };
         break;
       case 'phone':
         if (!value.trim()) return { isValid: false, error: 'Le téléphone est requis' };
-        if (!/^\+(\d{3,4})\s+\d{7,10}$/.test(value)) return { isValid: false, error: 'Format de téléphone invalide (+XXX XXXXXXXXX)' };
+        // Validation simplifiée : au moins 8 chiffres
+        const cleanPhone = value.replace(/\D/g, '');
+        if (cleanPhone.length < 8) return { isValid: false, error: 'Format de téléphone invalide' };
         break;
       case 'password':
         if (!value.trim()) return { isValid: false, error: 'Le mot de passe est requis' };
