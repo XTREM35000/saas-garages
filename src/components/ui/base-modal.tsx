@@ -3,6 +3,7 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Button } from './button';
 import { AnimatedLogo } from '../AnimatedLogo';
+import { cn } from '@/lib/utils';
 
 interface BaseModalProps {
   isOpen: boolean;
@@ -91,7 +92,13 @@ export const BaseModal: React.FC<BaseModalProps> = ({
             onDragEnd: handleDragEnd,
             style: { y: dragY + 200 }
           })}
-          className={`relative w-full ${maxWidth} mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden ${draggable ? 'touch-pan-y' : ''} ${className}`}
+          className={cn(
+            "relative w-full bg-white rounded-2xl shadow-2xl",
+            maxWidth,
+            "mx-4",
+            draggable && "touch-pan-y",
+            className
+          )}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header avec logo animé et dégradé */}

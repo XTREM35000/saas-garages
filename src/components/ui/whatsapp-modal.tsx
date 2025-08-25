@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { X, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useBreakpointDragConstraints } from '@/hooks/useResponsiveDragConstraints';
+// import { useBreakpointDragConstraints } from '@/hooks/useResponsiveDragConstraints';
 
 interface WhatsAppModalProps {
   isOpen: boolean;
@@ -29,7 +29,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
   const [isDragging, setIsDragging] = React.useState(false);
 
   // Hook responsive pour les limites de drag
-  const dragConstraints = useBreakpointDragConstraints();
+  // const dragConstraints = useBreakpointDragConstraints();
 
   // Valeurs de test fixes pour déboguer
   const testConstraints = { top: -100, bottom: 300 };
@@ -106,12 +106,13 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto"
+        className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         {/* Overlay avec backdrop blur */}
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
-        {/* Modal Container */}
+        {/* Modal - Positionné correctement avec limites de drag */}
         <motion.div
           initial={{
             scale: 0.95,
@@ -144,22 +145,27 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
           onDrag={handleDrag}
           onDragEnd={handleDragEnd}
           className={cn(
-            "relative w-full bg-white rounded-t-3xl shadow-2xl overflow-hidden touch-pan-y cursor-grab active:cursor-grabbing mt-2 mb-2",
+            "relative w-full bg-white rounded-t-3xl shadow-2xl overflow-hidden touch-pan-y cursor-grab active:cursor-grabbing",
             sizeClasses[size],
             className
           )}
           style={{
             y: dragY,
-            maxHeight: 'calc(100vh - 2rem)'
+            marginTop: '2rem',
+            marginBottom: '2rem'
           }}
         >
           {/* Handle de drag */}
-          <div className="sticky top-0 z-10 flex justify-center pt-3 pb-2 bg-white">
+          <div className="flex justify-center pt-3 pb-2 bg-white">
             <div className="w-12 h-1.5 rounded-full bg-[#128C7E]/30" />
+            {/* Debug: afficher les contraintes actuelles */}
+            <div className="absolute right-4 top-2 text-xs text-gray-500">
+              T: {testConstraints.top} B: {testConstraints.bottom}
+            </div>
           </div>
 
-          {/* Header - Maintenant sticky */}
-          <div className="sticky top-8 z-10 bg-gradient-to-r from-[#128C7E] to-[#075E54] text-white">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-[#128C7E] to-[#075E54] text-white">
             {/* Indicateur Super Admin */}
             {showSuperAdminIndicator && (
               <div className="absolute top-3 right-3 flex items-center gap-2 bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-semibold z-10">
@@ -191,15 +197,9 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
             </button>
           </div>
 
-          {/* Contenu scrollable */}
+          {/* Contenu - SANS limites de hauteur */}
           <div className="bg-gradient-to-b from-white to-gray-50">
-            <div
-              className="p-6 overflow-y-auto"
-              style={{
-                maxHeight: 'calc(100vh - 180px)',
-                WebkitOverflowScrolling: 'touch'
-              }}
-            >
+            <div className="p-6">
               {children}
             </div>
           </div>
