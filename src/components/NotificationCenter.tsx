@@ -1,382 +1,333 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Bell,
-  X,
-  CheckCircle,
-  AlertTriangle,
-  Info,
-  XCircle,
-  Wrench,
+  MessageSquare,
+  Send,
+  Plus,
+  Search,
+  Filter,
+  Calendar,
   User,
-  Package,
-  Settings,
+  Building,
+  CheckCircle,
   Clock,
-  Check,
-  Trash2,
-  ExternalLink
+  AlertTriangle,
+  Mail,
+  Smartphone,
+  Globe,
+  Target
 } from 'lucide-react';
-import { Notification, NOTIFICATION_TYPES, NOTIFICATION_CATEGORIES } from '@/types/notifications';
-import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
-interface NotificationCenterProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
+const NotificationCenter: React.FC = () => {
+  const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
+  const [messageType, setMessageType] = useState<'notification' | 'sms' | 'email'>('notification');
+  const [messageTitle, setMessageTitle] = useState('');
+  const [messageContent, setMessageContent] = useState('');
 
-const NotificationCenter: React.FC<NotificationCenterProps> = ({
-  isOpen,
-  onClose
-}) => {
-  const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const tenants = [
+    { id: '1', name: 'Garage Auto Plus', email: 'contact@garageautoplus.fr', phone: '+33 1 23 45 67 89' },
+    { id: '2', name: 'Garage Excellence', email: 'admin@garageexcellence.fr', phone: '+33 1 98 76 54 32' },
+    { id: '3', name: 'Garage Central', email: 'info@garagecentral.fr', phone: '+33 1 45 67 89 01' },
+    { id: '4', name: 'Garage Test', email: 'test@garagetest.fr', phone: '+33 1 12 34 56 78' }
+  ];
 
-  // Données de démonstration
-  const demoNotifications: Notification[] = [
+  const notifications = [
     {
-      id: 1,
-      title: 'Réparation terminée',
-      message: 'La réparation du véhicule Toyota Corolla de Kouassi Jean a été terminée avec succès.',
-      type: 'success',
-      category: 'reparation',
-      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 min ago
-      read: false,
-      actionUrl: '/reparations',
-      actionText: 'Voir les détails',
-      priority: 'high'
+      id: '1',
+      type: 'notification',
+      title: 'Maintenance planifiée',
+      content: 'Une maintenance système est prévue le 22 décembre à 2h du matin.',
+      recipients: ['Tous les tenants'],
+      sentAt: '2024-12-20 14:30',
+      status: 'sent',
+      readCount: 24
     },
     {
-      id: 2,
-      title: 'Stock faible',
-      message: 'Le stock de filtres à huile est faible (5 unités restantes). Pensez à commander.',
-      type: 'warning',
-      category: 'stock',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2h ago
-      read: false,
-      actionUrl: '/stock',
-      actionText: 'Gérer le stock',
-      priority: 'medium'
+      id: '2',
+      type: 'sms',
+      title: 'Rappel de paiement',
+      content: 'Votre abonnement expire dans 3 jours. Merci de procéder au renouvellement.',
+      recipients: ['Garage Central'],
+      sentAt: '2024-12-19 10:15',
+      status: 'sent',
+      readCount: 1
     },
     {
-      id: 3,
-      title: 'Nouveau client',
-      message: 'Un nouveau client "Traoré Ali" a été ajouté au système.',
-      type: 'info',
-      category: 'client',
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4h ago
-      read: true,
-      actionUrl: '/clients/liste',
-      actionText: 'Voir le profil',
-      priority: 'low'
+      id: '3',
+      type: 'email',
+      title: 'Nouvelle fonctionnalité',
+      content: 'Découvrez notre nouvelle fonctionnalité de gestion des stocks !',
+      recipients: ['Tous les tenants'],
+      sentAt: '2024-12-18 16:45',
+      status: 'sent',
+      readCount: 18
     },
     {
-      id: 4,
-      title: 'Rappel de maintenance',
-      message: 'La révision du véhicule Peugeot 206 de Diabaté Fatou est prévue dans 3 jours.',
-      type: 'info',
-      category: 'reminder',
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6h ago
-      read: false,
-      actionUrl: '/reparations',
-      actionText: 'Planifier',
-      priority: 'medium'
-    },
-    {
-      id: 5,
-      title: 'Sauvegarde automatique',
-      message: 'La sauvegarde automatique des données a été effectuée avec succès.',
-      type: 'success',
-      category: 'system',
-      timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8h ago
-      read: true,
-      priority: 'low'
-    },
-    {
-      id: 6,
-      title: 'Erreur de connexion',
-      message: 'Problème de connexion à la base de données. Tentative de reconnexion en cours.',
-      type: 'error',
-      category: 'system',
-      timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12h ago
-      read: false,
-      priority: 'high'
+      id: '4',
+      type: 'notification',
+      title: 'Mise à jour sécurité',
+      content: 'Une mise à jour de sécurité a été déployée automatiquement.',
+      recipients: ['Tous les tenants'],
+      sentAt: '2024-12-17 09:20',
+      status: 'sent',
+      readCount: 22
     }
   ];
 
-  useEffect(() => {
-    // Charger les notifications depuis localStorage ou utiliser les données de démonstration
-    const savedNotifications = localStorage.getItem('notifications');
-    if (savedNotifications) {
-      setNotifications(JSON.parse(savedNotifications));
-    } else {
-      setNotifications(demoNotifications);
-      localStorage.setItem('notifications', JSON.stringify(demoNotifications));
-    }
-  }, []);
-
-  // Sauvegarder les notifications dans localStorage à chaque modification
-  useEffect(() => {
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-  }, [notifications]);
-
-  const markAsRead = (id: number) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id ? { ...notification, read: true } : notification
-      )
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
-    );
-  };
-
-  const deleteNotification = (id: number) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id));
-  };
-
-  const clearAll = () => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer toutes les notifications ?')) {
-      setNotifications([]);
-    }
-  };
-
-  const handleAction = (notification: Notification) => {
-    markAsRead(notification.id);
-    if (notification.actionUrl) {
-      navigate(notification.actionUrl);
-      onClose();
-    }
-  };
-
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'success':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'warning':
-        return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
-      case 'error':
-        return <XCircle className="w-5 h-5 text-red-500" />;
-      case 'info':
+      case 'notification':
+        return <Bell className="w-4 h-4 text-blue-600" />;
+      case 'sms':
+        return <Smartphone className="w-4 h-4 text-green-600" />;
+      case 'email':
+        return <Mail className="w-4 h-4 text-purple-600" />;
       default:
-        return <Info className="w-5 h-5 text-blue-500" />;
+        return <MessageSquare className="w-4 h-4 text-gray-600" />;
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'reparation':
-        return <Wrench className="w-4 h-4" />;
-      case 'client':
-        return <User className="w-4 h-4" />;
-      case 'stock':
-        return <Package className="w-4 h-4" />;
-      case 'system':
-        return <Settings className="w-4 h-4" />;
-      case 'reminder':
-        return <Clock className="w-4 h-4" />;
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'sent':
+        return <Badge className="bg-green-100 text-green-800">Envoyé</Badge>;
+      case 'pending':
+        return <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>;
+      case 'failed':
+        return <Badge className="bg-red-100 text-red-800">Échec</Badge>;
       default:
-        return <Info className="w-4 h-4" />;
+        return <Badge variant="outline">Inconnu</Badge>;
     }
   };
 
-  const getCategoryColor = (category: string) => {
-    const cat = NOTIFICATION_CATEGORIES.find(c => c.value === category);
-    return cat ? cat.color : 'text-gray-600 bg-gray-100';
+  const handleSendMessage = () => {
+    if (!messageTitle || !messageContent) {
+      toast.error('Veuillez remplir le titre et le contenu du message');
+      return;
+    }
+
+    if (selectedTenants.length === 0) {
+      toast.error('Veuillez sélectionner au moins un destinataire');
+      return;
+    }
+
+    toast.success(`Message ${messageType} envoyé avec succès !`);
+    setMessageTitle('');
+    setMessageContent('');
+    setSelectedTenants([]);
   };
 
-  const formatTime = (timestamp: string) => {
-    const now = new Date();
-    const notificationTime = new Date(timestamp);
-    const diffInMinutes = Math.floor((now.getTime() - notificationTime.getTime()) / (1000 * 60));
-
-    if (diffInMinutes < 1) return 'À l\'instant';
-    if (diffInMinutes < 60) return `Il y a ${diffInMinutes} min`;
-    if (diffInMinutes < 1440) return `Il y a ${Math.floor(diffInMinutes / 60)}h`;
-    return `Il y a ${Math.floor(diffInMinutes / 1440)}j`;
+  const handleSelectAllTenants = () => {
+    if (selectedTenants.length === tenants.length) {
+      setSelectedTenants([]);
+    } else {
+      setSelectedTenants(tenants.map(t => t.id));
+    }
   };
 
-  const filteredNotifications = notifications.filter(notification => {
-    if (filter === 'unread') return !notification.read;
-    if (filter === 'read') return notification.read;
-    return true;
-  });
+  const handleSelectTenant = (tenantId: string) => {
+    if (selectedTenants.includes(tenantId)) {
+      setSelectedTenants(selectedTenants.filter(id => id !== tenantId));
+    } else {
+      setSelectedTenants([...selectedTenants, tenantId]);
+    }
+  };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const stats = [
+    { label: 'Total Messages', value: notifications.length, icon: MessageSquare, color: 'text-blue-600' },
+    { label: 'Notifications', value: notifications.filter(n => n.type === 'notification').length, icon: Bell, color: 'text-blue-600' },
+    { label: 'SMS', value: notifications.filter(n => n.type === 'sms').length, icon: Smartphone, color: 'text-green-600' },
+    { label: 'Emails', value: notifications.filter(n => n.type === 'email').length, icon: Mail, color: 'text-purple-600' }
+  ];
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
-        <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <DialogTitle className="flex items-center space-x-2">
-            <Bell className="w-5 h-5 text-blue-600" />
-            <span>Notifications</span>
-            {unreadCount > 0 && (
-              <Badge className="bg-red-500 text-white">
-                {unreadCount}
-              </Badge>
-            )}
-          </DialogTitle>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={markAllAsRead}
-              className="text-blue-600 hover:text-blue-700"
+    <div className="space-y-6">
+      {/* Statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {stats.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
             >
-              <Check className="w-4 h-4 mr-1" />
-              Tout marquer comme lu
+              <Card className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-600">{stat.label}</p>
+                      <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                    </div>
+                    <Icon className={`w-8 h-8 ${stat.color}`} />
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Envoi de message */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Send className="w-5 h-5 text-slate-600" />
+              Envoyer un Message
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Type de message */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">Type de message</label>
+              <div className="flex gap-2">
+            <Button
+                  variant={messageType === 'notification' ? 'default' : 'outline'}
+                  onClick={() => setMessageType('notification')}
+              size="sm"
+                  className="flex items-center gap-2"
+            >
+                  <Bell className="w-4 h-4" />
+                  Notification
             </Button>
             <Button
-              variant="ghost"
+                  variant={messageType === 'sms' ? 'default' : 'outline'}
+                  onClick={() => setMessageType('sms')}
               size="sm"
-              onClick={clearAll}
-              className="text-red-600 hover:text-red-700"
+                  className="flex items-center gap-2"
             >
-              <Trash2 className="w-4 h-4" />
+                  <Smartphone className="w-4 h-4" />
+                  SMS
             </Button>
             <Button
-              variant="ghost"
+                  variant={messageType === 'email' ? 'default' : 'outline'}
+                  onClick={() => setMessageType('email')}
               size="sm"
-              onClick={onClose}
+                  className="flex items-center gap-2"
             >
-              <X className="w-4 h-4" />
+                  <Mail className="w-4 h-4" />
+                  Email
             </Button>
           </div>
-        </DialogHeader>
+            </div>
 
-        {/* Filtres */}
-        <div className="flex space-x-2 pb-4">
+            {/* Destinataires */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">Destinataires</label>
+              <div className="border rounded-lg p-3 max-h-32 overflow-y-auto">
+                <div className="flex items-center gap-2 mb-2">
           <Button
-            variant={filter === 'all' ? 'default' : 'outline'}
+                    variant="outline"
             size="sm"
-            onClick={() => setFilter('all')}
-          >
-            Toutes ({notifications.length})
-          </Button>
-          <Button
-            variant={filter === 'unread' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('unread')}
-          >
-            Non lues ({unreadCount})
-          </Button>
-          <Button
-            variant={filter === 'read' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('read')}
-          >
-            Lues ({notifications.length - unreadCount})
+                    onClick={handleSelectAllTenants}
+                    className="flex items-center gap-2"
+                  >
+                    <Target className="w-4 h-4" />
+                    {selectedTenants.length === tenants.length ? 'Désélectionner tout' : 'Sélectionner tout'}
           </Button>
         </div>
-
-        <Separator />
-
-        {/* Liste des notifications */}
-        <ScrollArea className="h-[400px] pr-4">
-          <div className="space-y-3 pt-4">
-            {filteredNotifications.length === 0 ? (
-              <div className="text-center py-8">
-                <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">
-                  {filter === 'all'
-                    ? 'Aucune notification'
-                    : filter === 'unread'
-                    ? 'Aucune notification non lue'
-                    : 'Aucune notification lue'
-                  }
-                </p>
+                <div className="space-y-2">
+                  {tenants.map(tenant => (
+                    <div key={tenant.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedTenants.includes(tenant.id)}
+                        onChange={() => handleSelectTenant(tenant.id)}
+                        className="rounded"
+                      />
+                      <span className="text-sm">{tenant.name}</span>
               </div>
-            ) : (
-              filteredNotifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-md ${
-                    notification.read
-                      ? 'bg-gray-50 border-gray-200'
-                      : 'bg-white border-blue-200 shadow-sm'
-                  } ${notification.priority === 'high' ? 'ring-2 ring-red-200' : ''}`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 mt-1">
-                      {getTypeIcon(notification.type)}
+                  ))}
                     </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className={`text-sm font-semibold ${
-                          notification.read ? 'text-gray-700' : 'text-gray-900'
-                        }`}>
-                          {notification.title}
-                        </h4>
-                        <div className="flex items-center space-x-2">
-                          <Badge className={getCategoryColor(notification.category)}>
-                            {getCategoryIcon(notification.category)}
-                          </Badge>
-                          <span className="text-xs text-gray-500">
-                            {formatTime(notification.timestamp)}
-                          </span>
                         </div>
                       </div>
 
-                      <p className={`text-sm mb-3 ${
-                        notification.read ? 'text-gray-600' : 'text-gray-700'
-                      }`}>
-                        {notification.message}
-                      </p>
+            {/* Titre */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">Titre</label>
+              <Input
+                placeholder="Titre du message..."
+                value={messageTitle}
+                onChange={(e) => setMessageTitle(e.target.value)}
+              />
+            </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          {notification.actionUrl && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAction(notification)}
-                              className="text-blue-600 hover:text-blue-700"
-                            >
-                              <ExternalLink className="w-3 h-3 mr-1" />
-                              {notification.actionText}
-                            </Button>
-                          )}
-
-                          {!notification.read && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => markAsRead(notification.id)}
-                              className="text-gray-500 hover:text-gray-700"
-                            >
-                              <Check className="w-3 h-3 mr-1" />
-                              Marquer comme lu
-                            </Button>
-                          )}
+            {/* Contenu */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">Contenu</label>
+              <Textarea
+                placeholder="Contenu du message..."
+                value={messageContent}
+                onChange={(e) => setMessageContent(e.target.value)}
+                rows={4}
+              />
                         </div>
 
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteNotification(notification.id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="w-3 h-3" />
+              onClick={handleSendMessage}
+              className="w-full flex items-center gap-2"
+              disabled={!messageTitle || !messageContent || selectedTenants.length === 0}
+            >
+              <Send className="w-4 h-4" />
+              Envoyer le Message
                         </Button>
+          </CardContent>
+        </Card>
+
+        {/* Historique des messages */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-slate-600" />
+              Historique des Messages
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {notifications.map((notification, index) => (
+                <motion.div
+                  key={notification.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className="border rounded-lg p-3 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      {getTypeIcon(notification.type)}
+                      <div className="flex-1">
+                        <h4 className="font-medium text-slate-900">{notification.title}</h4>
+                        <p className="text-sm text-slate-600 mt-1">{notification.content}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                          <span>Destinataires: {notification.recipients.join(', ')}</span>
+                          <span>Lu: {notification.readCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {getStatusBadge(notification.status)}
+                      <div className="text-xs text-slate-500 mt-1">
+                        {notification.sentAt}
                       </div>
                     </div>
                   </div>
+                </motion.div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
                 </div>
-              ))
-            )}
           </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
   );
 };
 

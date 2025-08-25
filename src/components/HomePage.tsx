@@ -12,17 +12,24 @@ import {
   Play,
   MessageCircle,
   HelpCircle,
-  FileText
+  FileText,
+  Crown,
+  Check,
+  AlertTriangle,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AnimatedLogo from '@/components/AnimatedLogo';
+import { usePricing } from '@/hooks/usePricing';
 
 interface HomePageProps {
   onClose: () => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({ onClose }) => {
+  const { pricing, loading: pricingLoading } = usePricing();
+  
   const features = [
     {
       icon: <Building2 className="w-8 h-8" />,
@@ -58,24 +65,86 @@ export const HomePage: React.FC<HomePageProps> = ({ onClose }) => {
 
   const pricingPlans = [
     {
-      name: "Basic",
-      price: "29KFCA,
-      period: "/mois",
-      features: ["1 Garage", "5 Utilisateurs", "Support Email", "Stockage 10GB"],
+      id: 'free',
+      name: 'Gratuit',
+      price: '0',
+      period: '1 semaine',
+      description: 'Découvrez notre solution pendant une semaine',
+      icon: Star,
+      buttonColors: {
+        bg: 'bg-green-500',
+        hover: 'hover:bg-green-700',
+        text: 'text-white'
+      },
+      cardGradient: 'from-green-50 to-emerald-100',
+      features: [
+        '1 garage seulement',
+        'Gestion de base des véhicules',
+        'Suivi des réparations simples',
+        'Jusqu\'à 3 utilisateurs',
+        'Support par email'
+      ],
+      limitations: [
+        'Durée limitée à 1 semaine',
+        'Redirection obligatoire vers plans payants après la période'
+      ],
       popular: false
     },
     {
-      name: "Pro",
-      price: "79KFCA,
-      period: "/mois",
-      features: ["5 Garages", "20 Utilisateurs", "Support Prioritaire", "Stockage 50GB"],
+      id: 'monthly',
+      name: 'Mensuel',
+      price: pricing ? pricing.pricing_month.toLocaleString() : '25 000',
+      period: 'par mois',
+      description: 'Solution flexible pour votre organisation',
+      icon: Zap,
+      buttonColors: {
+        bg: 'bg-orange-500',
+        hover: 'hover:bg-orange-700',
+        text: 'text-white'
+      },
+      cardGradient: 'from-orange-50 to-amber-100',
+      features: [
+        '1 organisation',
+        '3 instances maximum (garage/lavage-auto/buvette/superette)',
+        'Utilisateurs illimités',
+        'Toutes les fonctionnalités',
+        'Support prioritaire',
+        'Sauvegarde automatique',
+        'Rapports détaillés',
+        'Notifications SMS'
+      ],
+      limitations: [
+        'Limité à 1 organisation',
+        'Maximum 3 instances'
+      ],
       popular: true
     },
     {
-      name: "Enterprise",
-      price: "199KFCA,
-      period: "/mois",
-      features: ["Garages Illimités", "Utilisateurs Illimités", "Support Dédié", "Stockage Illimité"],
+      id: 'annual',
+      name: 'Annuel',
+      price: pricing ? pricing.pricing_year.toLocaleString() : '250 000',
+      period: 'par an',
+      description: 'Solution complète pour organisations multiples',
+      icon: Crown,
+      buttonColors: {
+        bg: 'bg-blue-500',
+        hover: 'hover:bg-blue-700',
+        text: 'text-white'
+      },
+      cardGradient: 'from-blue-50 to-indigo-100',
+      features: [
+        'Organisations multiples',
+        'Instances illimitées',
+        'Tous les types d\'activités',
+        'Fonctionnalités avancées',
+        'Support premium 24/7',
+        'Formation personnalisée',
+        'API d\'intégration',
+        'Rapports analytiques avancés',
+        'Déploiement multi-sites',
+        'Paiement manuel'
+      ],
+      limitations: [],
       popular: false
     }
   ];
@@ -197,49 +266,131 @@ export const HomePage: React.FC<HomePageProps> = ({ onClose }) => {
               Choisissez le plan qui correspond le mieux à vos besoins
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {pricingPlans.map((plan, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-              >
-                <Card className={`h-full relative KFCFA{plan.popular ? 'ring-2 ring-[#25D366]' : ''}`}>
-                  {plan.popular && (
-                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                      <span className="bg-[#25D366] text-white px-4 py-1 rounded-full text-sm font-medium">
-                        Populaire
-                      </span>
-                    </div>
-                  )}
-                  <CardHeader className="text-center pb-4">
-                    <CardTitle className="text-2xl font-bold text-[#128C7E]">
-                      {plan.name}
-                    </CardTitle>
-                    <div className="mt-4">
-                      <span className="text-4xl font-bold text-[#128C7E]">{plan.price}</span>
-                      <span className="text-gray-500">{plan.period}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <ul className="space-y-3 mb-6">
-                      {plan.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="flex items-center">
-                          <Star className="w-4 h-4 text-[#25D366] mr-2" />
-                          <span className="text-gray-600">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Button
-                      className={`w-full KFCFA{plan.popular ? 'bg-[#25D366] hover:bg-[#128C7E]' : 'bg-[#128C7E] hover:bg-[#075E54]'}`}
-                    >
-                      Choisir ce plan
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {pricingPlans.map((plan, index) => {
+              const PlanIcon = plan.icon;
+              
+              return (
+                <motion.div
+                  key={plan.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                >
+                  <Card
+                    className={`relative transition-all duration-300 cursor-pointer border-2 bg-gradient-to-br ${plan.cardGradient} ${
+                      plan.popular ? 'lg:scale-105 lg:z-10 border-orange-500 shadow-lg ring-2 ring-orange-500 ring-opacity-50' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600'
+                    }`}
+                  >
+                    {plan.popular && (
+                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <span className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">
+                          <Star className="w-3 h-3 mr-1 inline" />
+                          Le plus populaire
+                        </span>
+                      </div>
+                    )}
+
+                    <CardHeader className="text-center pb-4">
+                      <div className={`mx-auto mb-4 w-12 h-12 ${plan.buttonColors.bg} rounded-full flex items-center justify-center shadow-lg`}>
+                        <PlanIcon className="w-6 h-6 text-white" />
+                      </div>
+                      <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200">
+                        {plan.name}
+                      </CardTitle>
+                      <p className="text-slate-600 dark:text-slate-300 text-sm">
+                        {plan.description}
+                      </p>
+                    </CardHeader>
+
+                    <CardContent className="space-y-6">
+                      <div className="text-center">
+                        <div className="flex items-baseline justify-center gap-1">
+                          <span className="text-3xl font-bold text-slate-800 dark:text-slate-200">
+                            {plan.price === '0' ? 'Gratuit' : `${plan.price} FCFA`}
+                          </span>
+                          <span className="text-slate-500 dark:text-slate-400 text-sm">
+                            /{plan.period}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                          Inclus :
+                        </h4>
+                        {plan.features.map((feature, featureIndex) => (
+                          <div key={featureIndex} className="flex items-center gap-3">
+                            <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                            <span className="text-sm text-slate-700 dark:text-slate-300">
+                              {feature}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {plan.limitations.length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="font-semibold text-slate-700 dark:text-slate-300 text-sm flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-amber-500" />
+                            Limitations :
+                          </h4>
+                          {plan.limitations.map((limitation, limitationIndex) => (
+                            <div key={limitationIndex} className="flex items-start gap-3">
+                              <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Clock className="w-3 h-3 text-white" />
+                              </div>
+                              <span className="text-sm text-amber-700 dark:text-amber-300">
+                                {limitation}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <Button
+                        className={`w-full transition-all duration-300 font-semibold py-3 rounded-lg ${plan.buttonColors.bg} ${plan.buttonColors.hover} ${plan.buttonColors.text} shadow-lg hover:shadow-xl`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Star className="w-4 h-4" />
+                          {plan.id === 'free' ? 'Commencer gratuitement' : 'Choisir ce plan'}
+                        </div>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+          <div className="flex items-start gap-4">
+            <div>
+              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 text-lg">
+                Activation immédiate et support garanti
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700 dark:text-blue-300">
+                <div>
+                  <p className="mb-2">
+                    <strong>✓ Activation immédiate</strong> après sélection
+                  </p>
+                  <p className="mb-2">
+                    <strong>✓ Support technique</strong> inclus
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-2">
+                    <strong>✓ Migration facile</strong> entre les plans
+                  </p>
+                  <p>
+                    <strong>✓ Garantie de satisfaction</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -62,6 +62,39 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
     }
   }, [isOpen]);
 
+  // Event listeners pour les pictos de test
+  useEffect(() => {
+    const handleFillFormError = () => {
+      setFormData({
+        firstName: 'A',
+        lastName: 'B',
+        email: 'invalid-email',
+        phone: '123',
+        password: 'weak',
+        avatarUrl: ''
+      });
+    };
+
+    const handleFillFormSuccess = () => {
+      setFormData({
+        firstName: 'Jean',
+        lastName: 'Dupont',
+        email: 'jean.dupont@example.com',
+        phone: '+33 6 12 34 56 78',
+        password: 'SecurePass123',
+        avatarUrl: ''
+      });
+    };
+
+    window.addEventListener('fillFormError', handleFillFormError);
+    window.addEventListener('fillFormSuccess', handleFillFormSuccess);
+
+    return () => {
+      window.removeEventListener('fillFormError', handleFillFormError);
+      window.removeEventListener('fillFormSuccess', handleFillFormSuccess);
+    };
+  }, []);
+
   const handleAvatarChange = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -110,7 +143,7 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
       const validation = validateField(field, formData[field]);
       if (!validation.isValid) {
         toast.error(validation.error);
-      return;
+        return;
       }
     }
 
@@ -264,6 +297,8 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
   return (
     <WhatsAppModal isOpen={isOpen} onClose={onClose}>
       <div className="max-w-4xl mx-auto">
+
+
         {/* Utilisation du composant AvatarUpload réutilisable */}
         <AvatarUpload
           avatarPreview={avatarPreview}
@@ -281,7 +316,7 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-2 h-2 bg-[#128C7E] rounded-full"></div>
                 <h3 className="text-lg font-semibold text-[#128C7E]">Informations personnelles</h3>
-                  </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -304,15 +339,15 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
                     placeholder="Votre nom"
                   />
                 </div>
-                  </div>
-                </div>
+              </div>
+            </div>
 
             {/* Informations de contact */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-2 h-2 bg-[#25D366] rounded-full"></div>
                 <h3 className="text-lg font-semibold text-[#25D366]">Informations de contact</h3>
-                    </div>
+              </div>
 
               <div className="space-y-4">
                 <EmailFieldPro
@@ -324,21 +359,21 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
                   value={formData.phone}
                   onChange={(value) => handleInputChange('phone', value)}
                 />
-                    </div>
-                  </div>
+              </div>
+            </div>
 
             {/* Sécurité */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-2 h-2 bg-[#075E54] rounded-full"></div>
                 <h3 className="text-lg font-semibold text-[#075E54]">Sécurité</h3>
-                </div>
+              </div>
 
               <PasswordFieldPro
                 value={formData.password}
                 onChange={(value) => handleInputChange('password', value)}
               />
-                </div>
+            </div>
 
             {/* Bouton de soumission */}
             <div className="flex justify-end pt-4">
@@ -352,7 +387,30 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
             </div>
           </CardContent>
         </Card>
+
+        {/* Footer avec branding Thierry Gogo */}
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+            <div className="flex items-center space-x-3">
+              <img
+                src="/profile01.png"
+                alt="Thierry Gogo"
+                className="w-10 h-10 rounded-full border-2 border-[#128C7E]"
+              />
+              <div>
+                <h4 className="font-semibold text-gray-900 text-sm">Thierry Gogo</h4>
+                <p className="text-xs text-gray-600">Développeur FullStack (Frontend & Backend)</p>
+                <p className="text-xs text-gray-500">FREELANCE</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-600">Whatsapp +225 0758966156 / 0103644527</p>
+              <p className="text-xs text-gray-500">01 BP 5341 Abidjan 01</p>
+              <p className="text-xs text-gray-500">Cocody, RIVIERA 3</p>
+            </div>
+          </div>
         </div>
+      </div>
     </WhatsAppModal>
   );
 };

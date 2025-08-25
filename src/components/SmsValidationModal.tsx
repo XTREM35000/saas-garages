@@ -148,6 +148,22 @@ const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
               <p className="text-white/90 mt-1">
                 Sécurisez votre compte avec une validation par SMS
               </p>
+              <div className="flex items-center space-x-2 mt-2">
+                                 <span 
+                   className="text-xl cursor-pointer hover:scale-110 transition-transform"
+                   onClick={() => {
+                     // Test erreur - code SMS invalide
+                     setSmsCode('000000');
+                   }}
+                 >😠</span>
+                 <span 
+                   className="text-xl cursor-pointer hover:scale-110 transition-transform"
+                   onClick={() => {
+                     // Test succès - code SMS valide
+                     setSmsCode('123456');
+                   }}
+                 >😊</span>
+              </div>
             </div>
           </div>
         </DialogHeader>

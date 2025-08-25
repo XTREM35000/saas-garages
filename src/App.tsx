@@ -7,6 +7,7 @@ import GeneralAuthModal from '@/components/GeneralAuthModal';
 import NewInitializationWizard from '@/components/NewInitializationWizard';
 import Dashboard from '@/components/Dashboard';
 import SplashScreen from '@/components/SplashScreen';
+// import {organizations} from '@/integrations/supabase/types';
 import { SuperAdminCreationModal } from '@/components/SuperAdminCreationModal';
 import { supabase } from '@/integrations/supabase/client';
 import './styles/globals.css';
@@ -20,7 +21,7 @@ function App() {
   const [user, setUser] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
 
-    // Fonction pour vérifier l'état de l'application
+  // Fonction pour vérifier l'état de l'application
   const checkAppState = async () => {
     try {
       console.log('🚀 Vérification de l\'état de l\'application...');
@@ -89,12 +90,12 @@ function App() {
     }
   };
 
-    // Vérifier l'état de l'application au chargement initial
-    useEffect(() => {
-      if (!showSplash) {
-        checkAppState();
-      }
-    }, [showSplash]);
+  // Vérifier l'état de l'application au chargement initial
+  useEffect(() => {
+    if (!showSplash) {
+      checkAppState();
+    }
+  }, [showSplash]);
 
   // Gestionnaire d'authentification réussie
   const handleAuthSuccess = (userData: any) => {
@@ -179,7 +180,7 @@ function App() {
           <div className="w-20 h-20 bg-gradient-to-br from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6">
             <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
-                      <h2 className="text-2xl font-bold text-[#128C7E] mb-2">Multi-Garage-Connect (MGC)</h2>
+          <h2 className="text-2xl font-bold text-[#128C7E] mb-2">Multi-Garage-Connect (MGC)</h2>
           <p className="text-gray-600">Vérification de votre espace...</p>
         </div>
       </div>

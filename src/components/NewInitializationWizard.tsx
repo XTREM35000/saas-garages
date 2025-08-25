@@ -4,6 +4,7 @@ import { useAuthWorkflow } from '@/hooks/useAuthWorkflow';
 import { WorkflowStep } from '@/types/workflow.types';
 import WorkflowProgressBar from '@/components/WorkflowProgressBar';
 import { SuperAdminCreationModal } from '@/components/SuperAdminCreationModal';
+import PricingModal from '@/components/PricingModal';
 
 import ThankYouMessage from '@/components/ThankYouMessage';
 import { OrganizationSetupModal } from '@/components/OrganizationSetupModal';
@@ -14,6 +15,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
 import '../styles/whatsapp-theme.css';
+import GeneralAuthModal from '@/components/GeneralAuthModal';
 
 interface NewInitializationWizardProps {
   isOpen: boolean;
@@ -29,10 +31,12 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
   const [isCheckingSystem, setIsCheckingSystem] = useState(false);
 
   const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [showGarageModal, setShowGarageModal] = useState(false);
   const [showSmsModal, setShowSmsModal] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
   const [showThankYou, setShowThankYou] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
@@ -184,10 +188,10 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
           if (hasSuperAdmin) {
             completedSteps.push('super_admin_check');
 
-            // Après Super Admin, on passe à la sélection du plan
-            nextStep = 'pricing_selection';
+            // Après Super Admin, on passe à l'authentification générale
+            nextStep = 'auth_general';
 
-            // Note: On ne vérifie pas encore l'Admin car on doit d'abord sélectionner le plan
+            // Note: On ne vérifie pas encore l'Admin car on doit d'abord s'authentifier
           }
 
           // Mettre à jour l'état du workflow
@@ -217,11 +221,12 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
             console.log('🚀 Aucun Super Admin trouvé, affichage du modal de création');
             setShowSuperAdminModal(true);
           } else {
-            // Super Admin existe, commencer par la sélection du plan
-            console.log('💰 Super Admin existe, début du workflow par la sélection du plan');
-            state.currentStep = 'pricing_selection';
+            // Super Admin existe, commencer par l'authentification générale
+            console.log('🔐 Super Admin existe, début du workflow par l\'authentification générale');
+            state.currentStep = 'auth_general';
             state.completedSteps = ['super_admin_check'];
-            // Le modal de pricing sera affiché automatiquement par renderCurrentStep
+            // Ouvrir automatiquement le modal d'authentification
+            setShowAuthModal(true);
           }
 
           // Forcer le re-render
@@ -241,6 +246,52 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
 
     checkCompleteSystemState();
   }, [state.currentStep, isCheckingSystem]);
+
+  // Ouvrir automatiquement le modal de pricing quand l'étape change
+  useEffect(() => {
+    if (state.currentStep === 'pricing_selection' && !showPricingModal) {
+      console.log('💰 Ouverture automatique du modal de pricing');
+      setShowPricingModal(true);
+    }
+  }, [state.currentStep, showPricingModal]);
+
+  // Ouvrir automatiquement le modal d'authentification quand l'étape change
+  useEffect(() => {
+    if (state.currentStep === 'auth_general' && !showAuthModal) {
+      console.log('🔐 Ouverture automatique du modal d\'authentification');
+      setShowAuthModal(true);
+    }
+  }, [state.currentStep, showAuthModal]);
+
+  // Gestionnaire d'authentification réussie
+  const handleAuthSuccess = async (userData: any) => {
+    try {
+      console.log('✅ Authentification réussie:', userData);
+      setShowAuthModal(false);
+
+      // Mettre à jour l'état du workflow
+      state.currentStep = 'pricing_selection';
+      state.completedSteps = ['super_admin_check', 'auth_general'];
+
+      // Ouvrir automatiquement le modal de pricing
+      setShowPricingModal(true);
+
+      toast.success('Authentification réussie ! 🎉');
+    } catch (err) {
+      console.error('❌ Erreur lors de l\'authentification:', err);
+      toast.error('Erreur lors de l\'authentification');
+    }
+  };
+
+  // Gestionnaire de nouveau tenant
+  const handleNewTenant = () => {
+    console.log('🆕 Nouveau tenant demandé');
+    setShowAuthModal(false);
+    // Passer directement à la sélection du plan pour un nouveau tenant
+    state.currentStep = 'pricing_selection';
+    state.completedSteps = ['super_admin_check', 'auth_general'];
+    setShowPricingModal(true);
+  };
 
   // Gestionnaire de création du Super Admin
   const handleSuperAdminCreated = async (userData: any) => {
@@ -271,6 +322,9 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
 
       // Sauvegarder le plan sélectionné
       setSelectedPlan(planData.plan);
+
+      // Fermer le modal de pricing
+      setShowPricingModal(false);
 
       // Mettre à jour l'état du workflow
       state.currentStep = 'admin_creation';
@@ -428,205 +482,34 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
           </div>
         );
 
+      case 'auth_general':
+        return (
+          <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
+            <div className="text-center max-w-2xl mx-auto p-8">
+              <div className="w-20 h-20 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="text-white text-3xl">🔐</div>
+              </div>
+              <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Authentification Générale</h3>
+              <p className="text-gray-600 mb-6">
+                Le modal d'authentification s'ouvre automatiquement...
+              </p>
+              <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto"></div>
+            </div>
+          </div>
+        );
+
       case 'pricing_selection':
         return (
           <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#128C7E]/5 to-[#25D366]/5">
-            <div className="text-center max-w-6xl mx-auto p-8">
+            <div className="text-center max-w-2xl mx-auto p-8">
               <div className="w-20 h-20 bg-gradient-to-r from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6">
                 <div className="text-white text-3xl">💰</div>
               </div>
-              <h3 className="text-3xl font-bold text-[#128C7E] mb-4">Sélection du Plan d'Abonnement</h3>
-              <p className="text-xl text-gray-600 mb-8">
-                Choisissez le plan qui correspond le mieux à vos besoins et commencez votre aventure avec MGC
+              <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Sélection du Plan d'Abonnement</h3>
+              <p className="text-gray-600 mb-6">
+                Le modal de sélection des plans s'ouvre automatiquement...
               </p>
-              
-              {/* Plans disponibles */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                {/* Plan Gratuit */}
-                <div className="bg-white rounded-2xl p-8 shadow-lg border-2 border-gray-200 hover:border-[#128C7E] transition-all duration-300 hover:shadow-xl transform hover:-translate-y-2">
-                  <div className="text-center mb-6">
-                    <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <div className="text-white text-2xl">⭐</div>
-                    </div>
-                    <h4 className="text-2xl font-bold text-gray-900 mb-2">Gratuit</h4>
-                    <div className="text-4xl font-bold text-green-600 mb-2">€0</div>
-                    <p className="text-gray-600">Par mois</p>
-                  </div>
-                  
-                  <ul className="space-y-3 mb-8 text-left">
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">1 garage seulement</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">Gestion de base</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">Jusqu'à 3 utilisateurs</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">Support communautaire</span>
-                    </li>
-                  </ul>
-                  
-                  <button
-                    onClick={() => handlePlanSelected({ plan: 'free' })}
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                  >
-                    Choisir le Plan Gratuit
-                  </button>
-                </div>
-
-                {/* Plan Mensuel - RECOMMANDÉ */}
-                <div className="bg-white rounded-2xl p-8 shadow-xl border-2 border-[#128C7E] relative transform scale-105">
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-[#128C7E] to-[#25D366] text-white px-4 py-2 rounded-full text-sm font-bold">
-                      RECOMMANDÉ
-                    </div>
-                  </div>
-                  
-                  <div className="text-center mb-6">
-                    <div className="w-16 h-16 bg-gradient-to-r from-[#128C7E] to-[#25D366] rounded-full flex items-center justify-center mx-auto mb-4">
-                      <div className="text-white text-2xl">⚡</div>
-                    </div>
-                    <h4 className="text-2xl font-bold text-gray-900 mb-2">Mensuel</h4>
-                    <div className="text-4xl font-bold text-[#128C7E] mb-2">€29</div>
-                    <p className="text-gray-600">Par mois</p>
-                  </div>
-                  
-                  <ul className="space-y-3 mb-8 text-left">
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-[#128C7E]/20 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-[#128C7E] rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">1 organisation</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-[#128C7E]/20 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-[#128C7E] rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">3 instances maximum</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-[#128C7E]/20 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-[#128C7E] rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">Utilisateurs illimités</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-[#128C7E]/20 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-[#128C7E] rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">Support par email</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-[#128C7E]/20 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-[#128C7E] rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">Analytics avancés</span>
-                    </li>
-                  </ul>
-                  
-                  <button
-                    onClick={() => handlePlanSelected({ plan: 'monthly' })}
-                    className="w-full bg-gradient-to-r from-[#128C7E] to-[#25D366] text-white py-3 px-6 rounded-xl hover:from-[#075E54] hover:to-[#128C7E] transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                  >
-                    Choisir le Plan Mensuel
-                  </button>
-                </div>
-
-                {/* Plan Annuel */}
-                <div className="bg-white rounded-2xl p-8 shadow-lg border-2 border-gray-200 hover:border-purple-500 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-2">
-                  <div className="text-center mb-6">
-                    <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <div className="text-white text-2xl">👑</div>
-                    </div>
-                    <h4 className="text-2xl font-bold text-gray-900 mb-2">Annuel</h4>
-                    <div className="text-4xl font-bold text-purple-600 mb-2">€299</div>
-                    <p className="text-gray-600">Par an</p>
-                    <div className="text-sm text-green-600 font-medium">Économisez 2 mois !</div>
-                  </div>
-                  
-                  <ul className="space-y-3 mb-8 text-left">
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">Organisations multiples</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">Instances illimitées</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">Support VIP 24/7</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">API personnalisée</span>
-                    </li>
-                    <li className="flex items-center">
-                      <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                        <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                      </div>
-                      <span className="text-gray-700">Formation dédiée</span>
-                    </li>
-                  </ul>
-                  
-                  <button
-                    onClick={() => handlePlanSelected({ plan: 'annual' })}
-                    className="w-full bg-gradient-to-r from-purple-500 to-purple-700 text-white py-3 px-6 rounded-xl hover:from-purple-600 hover:to-purple-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                  >
-                    Choisir le Plan Annuel
-                  </button>
-                </div>
-              </div>
-
-              {/* Informations supplémentaires */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 text-center">💡 Pourquoi choisir MGC ?</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                  <div>
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <div className="text-blue-600 text-xl">🚀</div>
-                    </div>
-                    <h5 className="font-semibold text-gray-900 mb-2">Déploiement Rapide</h5>
-                    <p className="text-sm text-gray-600">Configuration en moins de 5 minutes</p>
-                  </div>
-                  <div>
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <div className="text-green-600 text-xl">🔒</div>
-                    </div>
-                    <h5 className="font-semibold text-gray-900 mb-2">Sécurité Maximale</h5>
-                    <p className="text-sm text-gray-600">Données chiffrées et sauvegardées</p>
-                  </div>
-                  <div>
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <div className="text-purple-600 text-xl">📱</div>
-                    </div>
-                    <h5 className="font-semibold text-gray-900 mb-2">Multi-Plateforme</h5>
-                    <p className="text-sm text-gray-600">Accessible partout, tout le temps</p>
-                  </div>
-                </div>
-              </div>
+              <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto"></div>
             </div>
           </div>
         );
@@ -730,6 +613,8 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
             onStepClick={handleStepClick}
           />
 
+
+
           {/* Contenu principal */}
           <div>
             {renderCurrentStep()}
@@ -743,6 +628,22 @@ export const NewInitializationWizard: React.FC<NewInitializationWizardProps> = (
           isOpen={showSuperAdminModal}
           onComplete={handleSuperAdminCreated}
           onClose={() => setShowSuperAdminModal(false)}
+        />
+      )}
+
+      {showAuthModal && (
+        <GeneralAuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onNewTenant={handleNewTenant}
+          onAuthSuccess={handleAuthSuccess}
+        />
+      )}
+
+      {showPricingModal && (
+        <PricingModal
+          isOpen={showPricingModal}
+          onSelectPlan={handlePlanSelected}
         />
       )}
 

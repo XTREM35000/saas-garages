@@ -75,6 +75,45 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
     }
   }, [isOpen]);
 
+  // Event listeners pour les pictos de test
+  useEffect(() => {
+    const handleFillFormError = () => {
+      setFormData({
+        name: 'A',
+        description: 'B',
+        address: 'C',
+        city: 'D',
+        country: 'France',
+        phone: '123',
+        email: 'invalid',
+        website: 'invalid-url',
+        logoUrl: ''
+      });
+    };
+
+    const handleFillFormSuccess = () => {
+      setFormData({
+        name: 'Garage Excellence Network',
+        description: 'Réseau de garages automobiles spécialisés dans la mécanique de pointe et la carrosserie',
+        address: '456 Boulevard Haussmann',
+        city: 'Paris',
+        country: 'France',
+        phone: '+33 1 42 68 90 12',
+        email: 'contact@garageexcellence.fr',
+        website: 'https://garageexcellence.fr',
+        logoUrl: ''
+      });
+    };
+
+    window.addEventListener('fillFormError', handleFillFormError);
+    window.addEventListener('fillFormSuccess', handleFillFormSuccess);
+
+    return () => {
+      window.removeEventListener('fillFormError', handleFillFormError);
+      window.removeEventListener('fillFormSuccess', handleFillFormSuccess);
+    };
+  }, []);
+
   // Générer le slug, sous-domaine et email d'entreprise
   useEffect(() => {
     if (formData.name && formData.name.length >= 8) {

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Building2, Car, Wrench, Zap } from 'lucide-react';
+import { Lock, Building2, Car, Wrench, Zap, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,8 @@ import ModalForgotPassword from './ModalForgotPassword';
 import ModalVerifyEmail from './ModalVerifyEmail';
 import ModalVerifyPhone from './ModalVerifyPhone';
 import ModalResetPassword from './ModalResetPassword';
+import SuperAdminDashboard from './SuperAdminDashboard';
+import SuperAdminLoginModal from './SuperAdminLoginModal';
 import '../styles/whatsapp-theme.css';
 
 interface GeneralAuthModalProps {
@@ -46,14 +48,24 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
   const [showVerifyPhone, setShowVerifyPhone] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [showHomePage, setShowHomePage] = useState(false);
+  const [showSuperAdminDashboard, setShowSuperAdminDashboard] = useState(false);
+  const [showSuperAdminLogin, setShowSuperAdminLogin] = useState(false);
+  const [isSuperAdminAuthenticated, setIsSuperAdminAuthenticated] = useState(false);
   const [recoveryData, setRecoveryData] = useState({
     email: '',
     phone: ''
   });
 
+  // Ouvrir automatiquement le HomePageModal quand le GeneralAuthModal s'ouvre
+  useEffect(() => {
+    if (isOpen) {
+      setShowHomePage(true);
+    }
+  }, [isOpen]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     // Générer automatiquement le slug quand l'organisation change
     if (field === 'organization' && value.length >= 8) {
       const generatedSlug = generateSlug(value);
@@ -66,7 +78,7 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
   const extractOrganizationFromEmail = (email: string): string | null => {
     const domain = email.split('@')[1];
     if (!domain) return null;
-    
+
     // Extraire le slug de l'organisation depuis le domaine
     // Ex: user@garage-titoh.com → garage-titoh
     const slug = domain.replace('.garageconnect.com', '').replace('.com', '');
@@ -167,20 +179,36 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
   return (
     <WhatsAppModal isOpen={isOpen} onClose={onClose} size="xl">
       <div className="max-w-4xl mx-auto">
-        {/* Header avec Logo Animé et bouton En savoir plus */}
+
         <div className="text-center mb-8">
           <div className="flex items-center justify-between mb-6">
             <div></div> {/* Spacer */}
             <div className="flex justify-center">
               <AnimatedLogo size="large" />
             </div>
-            <Button
-              onClick={() => setShowHomePage(true)}
-              variant="ghost"
-              className="text-[#128C7E] hover:text-[#25D366] hover:bg-[#128C7E]/10 px-3 py-2"
-            >
-              👉 En savoir plus
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => setShowHomePage(true)}
+                variant="ghost"
+                className="text-[#128C7E] hover:text-[#25D366] hover:bg-[#128C7E]/10 px-3 py-2"
+              >
+                👉 En savoir plus
+              </Button>
+              <Button
+                onClick={() => {
+                  if (isSuperAdminAuthenticated) {
+                    setShowSuperAdminDashboard(true);
+                  } else {
+                    setShowSuperAdminLogin(true);
+                  }
+                }}
+                variant="ghost"
+                className="text-[#128C7E] hover:text-[#25D366] hover:bg-[#128C7E]/10 px-3 py-2"
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                Paramètres
+              </Button>
+            </div>
           </div>
           <h1 className="text-4xl font-bold text-[#128C7E] mb-2">
             Multi-Garage-Connect (MGC)
@@ -188,6 +216,30 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
           <p className="text-lg text-gray-600">
             Plateforme de gestion multi-garages professionnelle
           </p>
+          <div className="flex items-center justify-center space-x-2 mt-2">
+            <span
+              className="text-xl cursor-pointer hover:scale-110 transition-transform"
+              onClick={() => {
+                setFormData({
+                  organization: 'A',
+                  slug: 'invalid',
+                  email: 'test',
+                  password: '123'
+                });
+              }}
+            >😠</span>
+            <span
+              className="text-xl cursor-pointer hover:scale-110 transition-transform"
+              onClick={() => {
+                setFormData({
+                  organization: 'Garage Titoh',
+                  slug: 'garage-titoh',
+                  email: 'admin',
+                  password: 'SecurePass123'
+                });
+              }}
+            >😊</span>
+          </div>
         </div>
 
         {/* Icônes thématiques */}
@@ -223,7 +275,7 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
               Connectez-vous avec votre email professionnel
             </p>
           </CardHeader>
-          
+
           <CardContent className="space-y-6">
             {/* Organisation */}
             <div className="space-y-2">
@@ -261,7 +313,7 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
                 )}
               </div>
               <p className="text-xs text-gray-500">
-                {formData.organization.length < 8 
+                {formData.organization.length < 8
                   ? 'Entrez au moins 8 caractères pour générer le slug'
                   : 'Slug généré automatiquement à partir du nom de l\'organisation'
                 }
@@ -342,14 +394,35 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
           </CardContent>
         </Card>
 
-        {/* Footer informatif */}
-        <div className="text-center mt-6 text-sm text-gray-500">
-          <p>
-            Multi-Garage-Connect (MGC) - Solution professionnelle de gestion multi-garages
-          </p>
-          <p className="mt-1">
-            Support : support@garageconnect.com
-          </p>
+        {/* Footer informatif avec branding Thierry Gogo */}
+        <div className="mt-6">
+          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 mb-4 p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <img
+                src="/profile01.png"
+                alt="Thierry Gogo"
+                className="w-10 h-10 rounded-full border-2 border-[#128C7E]"
+              />
+              <div>
+                <h4 className="font-semibold text-gray-900 text-sm">Thierry Gogo</h4>
+                <p className="text-xs text-gray-600">Développeur FullStack (Frontend & Backend)</p>
+                <p className="text-xs text-gray-500">FREELANCE</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-600">Whatsapp +225 0758966156 / 0103644527</p>
+              <p className="text-xs text-gray-500">01 BP 5341 Abidjan 01</p>
+              <p className="text-xs text-gray-500">Cocody, RIVIERA 3</p>
+            </div>
+          </div>
+          <div className="text-center text-sm text-gray-500">
+            <p>
+              Multi-Garage-Connect (MGC) - Solution professionnelle de gestion multi-garages
+            </p>
+            <p className="mt-1">
+              Support : support@garageconnect.com
+            </p>
+          </div>
         </div>
       </div>
 
@@ -387,6 +460,22 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
       <HomePageModal
         isOpen={showHomePage}
         onClose={() => setShowHomePage(false)}
+      />
+
+      {/* Modal de login Super Admin */}
+      <SuperAdminLoginModal
+        isOpen={showSuperAdminLogin}
+        onClose={() => setShowSuperAdminLogin(false)}
+        onLoginSuccess={() => {
+          setIsSuperAdminAuthenticated(true);
+          setShowSuperAdminDashboard(true);
+        }}
+      />
+
+      {/* Tableau de bord Super Admin */}
+      <SuperAdminDashboard
+        isOpen={showSuperAdminDashboard}
+        onClose={() => setShowSuperAdminDashboard(false)}
       />
     </WhatsAppModal>
   );

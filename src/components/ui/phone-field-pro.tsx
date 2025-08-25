@@ -1,173 +1,246 @@
-import React, { useEffect, useId, useState } from 'react'
-import { Label } from './label'
-import { Input } from './input'
-import { cn } from '@/lib/utils'
+import React, { useState, useEffect } from "react";
+import { Phone, ChevronDown } from "lucide-react";
+import { Input } from "./input";
+import { Label } from "./label";
+import { Button } from "./button";
+import { cn } from "@/lib/utils";
+import {
+  parsePhoneNumber,
+  formatPhoneForDisplay,
+  formatPhoneForStorage,
+  getCountryOptions,
+  COUNTRY_CODES,
+  PhoneNumber
+} from "@/utils/phoneUtils";
 
-type Country = { code: string; name: string; flag: string; prefix: string; format: string }
-
-const COUNTRIES: Country[] = [
-	{ code: 'CI', name: "Côte d'Ivoire", flag: '🇨🇮', prefix: '+225', format: 'XX XX XX XX XX' },
-	{ code: 'LB', name: 'Liban', flag: '🇱🇧', prefix: '+961', format: 'X XXX XXX / XX XXX XXX' },
-	{ code: 'MA', name: 'Maroc', flag: '🇲🇦', prefix: '+212', format: 'X XX XX XX XX' },
-	{ code: 'DZ', name: 'Algérie', flag: '🇩🇿', prefix: '+213', format: 'X XX XX XX XX' },
-	{ code: 'ML', name: 'Mali', flag: '🇲🇷', prefix: '+223', format: 'XX XX XX XX' },
-	{ code: 'BF', name: 'Burkina', flag: '🇧🇫', prefix: '+226', format: 'XX XX XX XX' },
-	{ code: 'GN', name: 'Guinée', flag: '🇬🇳', prefix: '+224', format: 'XX XXX XX XX' },
-	{ code: 'TG', name: 'Togo', flag: '🇹🇬', prefix: '+228', format: 'XX XX XX XX' },
-	{ code: 'BJ', name: 'Bénin', flag: '🇧🇯', prefix: '+229', format: 'XX XX XX XX' },
-	{ code: 'GH', name: 'Ghana', flag: '🇬🇭', prefix: '+233', format: 'XX XXX XXXX' },
-	{ code: 'LR', name: 'Libéria', flag: '🇱🇷', prefix: '+231', format: 'XX XXX XXX' },
-]
-
-const PATTERNS: Record<string, { regex: RegExp; min: number; max: number }> = {
-	'+225': { regex: /^(\+225|00225)\s*\d{10}$/, min: 10, max: 10 },
-	'+961': { regex: /^(\+961|00961)\s*\d{7,8}$/, min: 7, max: 8 },
-	'+212': { regex: /^(\+212|00212)\s*\d{9}$/, min: 9, max: 9 },
-	'+213': { regex: /^(\+213|00213)\s*\d{9}$/, min: 9, max: 9 },
-	'+223': { regex: /^(\+223|00223)\s*\d{8}$/, min: 8, max: 8 },
-	'+226': { regex: /^(\+226|00226)\s*\d{8}$/, min: 8, max: 8 },
-	'+224': { regex: /^(\+224|00224)\s*\d{9}$/, min: 9, max: 9 },
-	'+228': { regex: /^(\+228|00228)\s*\d{8}$/, min: 8, max: 8 },
-	'+229': { regex: /^(\+229|00229)\s*\d{8}$/, min: 8, max: 8 },
-	'+233': { regex: /^(\+233|00233)\s*\d{9}$/, min: 9, max: 9 },
-	'+231': { regex: /^(\+231|00231)\s*\d{7,8}$/, min: 7, max: 8 },
-}
-
-export interface PhoneFieldProProps {
-	label?: string
-	value: string
-	onChange: (value: string) => void
-	error?: string
-	required?: boolean
-	disabled?: boolean
-	className?: string
-	onValidationChange?: (valid: boolean) => void
+interface PhoneFieldProProps {
+  label?: string;
+  value: string;
+  onChange: (value: string) => void;
+  onCountryChange?: (countryCode: string) => void;
+  countryCode?: string;
+  error?: string;
+  disabled?: boolean;
+  placeholder?: string;
+  required?: boolean;
+  className?: string;
+  showCountrySelect?: boolean;
+  onValidationChange?: (valid: boolean) => void;
 }
 
 export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
-	label = 'Téléphone',
+  label = "Téléphone",
 	value,
 	onChange,
+  onCountryChange,
+  countryCode = "FR",
 	error,
-	required,
-	disabled,
-	className,
-	onValidationChange,
+  disabled = false,
+  placeholder,
+  required = false,
+  className = "",
+  showCountrySelect = true,
+  onValidationChange
 }) => {
-	const fieldId = useId()
-	const errorId = `${fieldId}-error`
-	const [prefix, setPrefix] = useState(COUNTRIES[0].prefix)
-	const [number, setNumber] = useState('')
-	const [hint, setHint] = useState<string>('')
-	const [status, setStatus] = useState<'info' | 'success' | 'error'>('info')
+  const [isValid, setIsValid] = useState<boolean>(true);
+  const [touched, setTouched] = useState<boolean>(false);
+  const [parsedPhone, setParsedPhone] = useState<PhoneNumber | null>(null);
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
 
+  // Parser le numéro de téléphone
 	useEffect(() => {
 		if (value) {
-			const match = COUNTRIES.find(c => value.startsWith(c.prefix))
-			if (match) {
-				setPrefix(match.prefix)
-				setNumber(value.slice(match.prefix.length).trim())
-			}
-		}
-	}, [value])
+      const parsed = parsePhoneNumber(value, countryCode);
+      setParsedPhone(parsed);
+      setIsValid(parsed.isValid);
+      onValidationChange?.(parsed.isValid);
+    } else {
+      setParsedPhone(null);
+      setIsValid(!required);
+      onValidationChange?.(!required);
+    }
+  }, [value, countryCode, required, onValidationChange]);
 
-	const validate = (pref: string, num: string) => {
-		const clean = num.replace(/\D/g, '')
-		if (!required && clean.length === 0) {
-			setHint('')
-			setStatus('info')
-			onValidationChange?.(true)
-			onChange(`${pref} ${num}`.trim())
-			return
-		}
-		const rule = PATTERNS[pref]
-		const country = COUNTRIES.find(c => c.prefix === pref)!
-		if (!rule) {
-			setHint('Pays non supporté')
-			setStatus('error')
-			onValidationChange?.(false)
-			return
-		}
-		if (clean.length < rule.min) {
-			setHint(`${country.name}: ${clean.length}/${rule.min} chiffres requis`)
-			setStatus('info')
-			onValidationChange?.(false)
-			return
-		}
-		if (clean.length > rule.max) {
-			setHint(`${country.name}: maximum ${rule.max} chiffres`)
-			setStatus('error')
-			onValidationChange?.(false)
-			return
-		}
-		if (!rule.regex.test(`${pref}${clean}`)) {
-			setHint(`Format invalide pour ${country.name}`)
-			setStatus('error')
-			onValidationChange?.(false)
-			return
-		}
-		setHint('Numéro valide')
-		setStatus('success')
-		onValidationChange?.(true)
-		onChange(`${pref} ${num}`.trim())
-	}
+  // Gestion du changement de valeur
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    
+    // Ne pas ajouter l'indicatif automatiquement car il y a déjà un sélecteur de pays
+    // Juste nettoyer le numéro et le passer directement
+    const cleanValue = newValue.replace(/[^\d]/g, '');
+    onChange(cleanValue);
 
-	const handlePrefix = (e: React.ChangeEvent<HTMLSelectElement>) => {
-		const p = e.target.value
-		setPrefix(p)
-		validate(p, number)
-	}
-	const handleNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const n = e.target.value.replace(/[^\d\s]/g, '')
-		setNumber(n)
-		validate(prefix, n)
-	}
+    if (touched) {
+      const parsed = parsePhoneNumber(cleanValue, countryCode);
+      setIsValid(parsed.isValid);
+      onValidationChange?.(parsed.isValid);
+    }
+  };
+
+  // Gestion de la perte de focus
+  const handleBlur = () => {
+    setTouched(true);
+    const parsed = parsePhoneNumber(value, countryCode);
+    setIsValid(parsed.isValid);
+    onValidationChange?.(parsed.isValid);
+  };
+
+  // Gestion du changement de pays
+  const handleCountryChange = (newCountryCode: string) => {
+    onCountryChange?.(newCountryCode);
+    setShowCountryDropdown(false);
+    
+    // Ne pas reformater automatiquement, garder le numéro tel quel
+    // L'indicatif sera géré par le sélecteur de pays
+  };
+
+  // Obtenir le placeholder selon le pays
+  const getPlaceholder = () => {
+    if (placeholder) return placeholder;
+    
+    const country = COUNTRY_CODES[countryCode as keyof typeof COUNTRY_CODES];
+    if (!country) return "Numéro de téléphone";
+    
+    switch (countryCode) {
+      case 'FR':
+        return "06 12 34 56 78";
+      case 'CI':
+      case 'SN':
+      case 'ML':
+      case 'BF':
+      case 'NE':
+      case 'TG':
+      case 'BJ':
+      case 'CM':
+      case 'TD':
+      case 'CF':
+      case 'GA':
+      case 'CG':
+      case 'CD':
+      case 'GQ':
+      case 'ST':
+      case 'GW':
+      case 'GN':
+      case 'MR':
+      case 'GM':
+      case 'SL':
+      case 'LR':
+      case 'GH':
+      case 'NG':
+        return "07 12 34 56 78";
+      default:
+        return "Numéro de téléphone";
+    }
+  };
+
+  const showError = touched && !isValid;
+  const hasError = error || showError;
+  const currentCountry = COUNTRY_CODES[countryCode as keyof typeof COUNTRY_CODES];
 
 	return (
-		<div className="space-y-2">
+    <div className={cn("space-y-2", className)}>
 			{label && (
-				<Label htmlFor={fieldId} className="text-sm font-medium">
-					{label}
+        <Label htmlFor="phone" className="flex items-center gap-2 text-sm font-medium">
+          <Phone className="w-4 h-4 text-muted-foreground" />
+          <span>{label}</span>
+          {required && <span className="text-red-500">*</span>}
 				</Label>
 			)}
-			<div className="flex gap-2">
-				<select
-					value={prefix}
-					onChange={handlePrefix}
+
+      <div className="flex items-center gap-2">
+        {showCountrySelect && (
+          <div className="relative">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCountryDropdown(!showCountryDropdown)}
 					disabled={disabled}
-					className={cn('h-10 rounded-md border bg-background px-3 py-2 text-sm w-[220px]', error && 'border-red-500')}
-					aria-label="Pays"
-				>
-					{COUNTRIES.map(c => (
-						<option key={c.code} value={c.prefix}>{c.flag} {c.name} ({c.prefix})</option>
-					))}
-				</select>
+              className="flex items-center gap-2 min-w-[120px] justify-between"
+            >
+              <span className="text-lg">{currentCountry?.flag || '🌍'}</span>
+              <span className="text-xs">{currentCountry?.code || '+33'}</span>
+              <ChevronDown className="w-3 h-3" />
+            </Button>
+
+            {showCountryDropdown && (
+              <div className="absolute top-full left-0 z-50 mt-1 w-64 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+                {getCountryOptions().map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleCountryChange(option.value)}
+                    className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <span className="text-lg">{option.label.split(' ')[0]}</span>
+                    <span className="text-sm text-gray-600">{option.label.split(' ').slice(1).join(' ')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="relative flex-1">
 				<Input
-					id={fieldId}
+            id="phone"
 					type="tel"
-					value={number}
-					onChange={handleNumber}
+            value={value}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            placeholder={getPlaceholder()}
 					disabled={disabled}
-					required={required}
-					placeholder={COUNTRIES.find(c => c.prefix === prefix)?.format}
-					aria-invalid={Boolean(error || status === 'error')}
-					aria-describedby={error || hint ? errorId : undefined}
 					className={cn(
-						status === 'error' && 'border-red-500 focus:border-red-500',
-						status === 'success' && 'border-green-500 focus:border-green-500',
-						className,
-					)}
-				/>
+              "transition-all duration-200",
+              hasError
+                ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                : "border-gray-300 focus:border-blue-500 focus:ring-blue-200",
+              disabled && "bg-gray-50 cursor-not-allowed"
+            )}
+            autoComplete="tel"
+          />
+
+          {/* Indicateur de validation */}
+          {touched && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              {isValid ? (
+                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                </div>
+              ) : (
+                <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 			</div>
-			{(hint || error) && (
-				<p id={errorId} className={cn('text-xs mt-1', status === 'error' && 'text-red-500', status === 'success' && 'text-green-500', status === 'info' && 'text-blue-500')}>
-					{status === 'success' ? '✅ ' : status === 'error' ? '❌ ' : ''}{error || hint}
+
+      {/* Messages d'erreur */}
+      {hasError && (
+        <p className="text-xs text-red-500">
+          {error || "Format de téléphone invalide"}
+        </p>
+      )}
+
+      {/* Aide format */}
+      {!hasError && !value && (
+        <p className="text-gray-500 text-xs">
+          Format accepté : {getPlaceholder()}
 				</p>
 			)}
-		</div>
-	)
-}
 
-export default PhoneFieldPro
+      {/* Informations sur le format de stockage */}
+      {parsedPhone && (
+        <div className="text-xs text-gray-500">
+          <p>Stockage : {parsedPhone.formattedStorage}</p>
+          <p>Pays : {currentCountry?.name || 'Inconnu'}</p>
+        </div>
+      )}
+		</div>
+  );
+};
+
+export default PhoneFieldPro;
 
 

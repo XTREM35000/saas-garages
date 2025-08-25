@@ -1,10 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { X, Building2, Car, Wrench, Zap, Users, Shield, Globe, Star, ArrowRight, CheckCircle } from 'lucide-react';
+import { X, Building2, Car, Wrench, Zap, Users, Shield, Globe, Star, ArrowRight, CheckCircle, Crown, AlertTriangle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
 import AnimatedLogo from '@/components/AnimatedLogo';
+import { usePricing } from '@/hooks/usePricing';
 import '../styles/whatsapp-theme.css';
 
 interface HomePageModalProps {
@@ -13,6 +14,8 @@ interface HomePageModalProps {
 }
 
 const HomePageModal: React.FC<HomePageModalProps> = ({ isOpen, onClose }) => {
+  const { pricing, loading: pricingLoading } = usePricing();
+  
   const features = [
     {
       icon: Building2,
@@ -48,43 +51,53 @@ const HomePageModal: React.FC<HomePageModalProps> = ({ isOpen, onClose }) => {
 
   const pricingPlans = [
     {
-      name: 'Starter',
-      price: 'Gratuit',
-      period: '7 jours',
+      name: 'Gratuit',
+      price: '0',
+      period: '1 semaine',
       features: [
-        '1 Garage',
-        '5 Utilisateurs',
-        'Fonctionnalités de base',
-        'Support email'
+        '1 garage seulement',
+        'Gestion de base des véhicules',
+        'Suivi des réparations simples',
+        'Jusqu\'à 3 utilisateurs',
+        'Support par email'
       ],
-      popular: false
+      popular: false,
+      icon: Star
     },
     {
-      name: 'Pro',
-      price: '29€',
-      period: '/mois',
+      name: 'Mensuel',
+      price: pricing ? pricing.pricing_month.toLocaleString() : '25 000',
+      period: 'par mois',
       features: [
-        '5 Garages',
-        '20 Utilisateurs',
+        '1 organisation',
+        '3 instances maximum (garage/lavage-auto/buvette/superette)',
+        'Utilisateurs illimités',
         'Toutes les fonctionnalités',
         'Support prioritaire',
-        'API d\'intégration'
+        'Sauvegarde automatique',
+        'Rapports détaillés',
+        'Notifications SMS'
       ],
-      popular: true
+      popular: true,
+      icon: Zap
     },
     {
-      name: 'Enterprise',
-      price: '99€',
-      period: '/mois',
+      name: 'Annuel',
+      price: pricing ? pricing.pricing_year.toLocaleString() : '250 000',
+      period: 'par an',
       features: [
-        'Garages illimités',
+        '1 organisation',
+        '3 instances maximum (garage/lavage-auto/buvette/superette)',
         'Utilisateurs illimités',
-        'Fonctionnalités avancées',
-        'Support dédié 24/7',
-        'Domaine personnalisé',
-        'Intégrations avancées'
+        'Toutes les fonctionnalités',
+        'Support prioritaire',
+        'Sauvegarde automatique',
+        'Rapports détaillés',
+        'Notifications SMS',
+        'Économie de 50 000 FCFA/an'
       ],
-      popular: false
+      popular: false,
+      icon: Crown
     }
   ];
 
@@ -307,19 +320,40 @@ const HomePageModal: React.FC<HomePageModalProps> = ({ isOpen, onClose }) => {
           </Button>
         </motion.div>
 
-        {/* Footer */}
+        {/* Footer avec branding Thierry Gogo */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1.2 }}
-          className="text-center mt-12 pt-8 border-t border-gray-200"
+          className="mt-12 pt-8 border-t border-gray-200"
         >
-          <p className="text-gray-600 mb-2">
-            © 2024 Multi-Garage-Connect (MGC). Tous droits réservés.
-          </p>
-          <p className="text-sm text-gray-500">
-            Support : support@garageconnect.com | Documentation : docs.garageconnect.com
-          </p>
+          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 mb-4">
+            <div className="flex items-center space-x-4">
+              <img 
+                src="/profile01.png" 
+                alt="Thierry Gogo" 
+                className="w-12 h-12 rounded-full border-2 border-[#128C7E]"
+              />
+              <div>
+                <h3 className="font-semibold text-gray-900">Thierry Gogo</h3>
+                <p className="text-sm text-gray-600">Développeur FullStack (Frontend & Backend)</p>
+                <p className="text-xs text-gray-500">FREELANCE</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Whatsapp +225 0758966156 / 0103644527</p>
+              <p className="text-xs text-gray-500">01 BP 5341 Abidjan 01</p>
+              <p className="text-xs text-gray-500">Cocody, RIVIERA 3</p>
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-gray-600 mb-2">
+              © 2024 Multi-Garage-Connect (MGC). Tous droits réservés.
+            </p>
+            <p className="text-sm text-gray-500">
+              Support : support@garageconnect.com | Documentation : docs.garageconnect.com
+            </p>
+          </div>
         </motion.div>
       </div>
     </WhatsAppModal>

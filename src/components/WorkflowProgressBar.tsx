@@ -19,6 +19,13 @@ const WORKFLOW_STEPS = [
     color: 'from-yellow-500 to-yellow-600'
   },
   {
+    key: 'auth_general' as WorkflowStep,
+    label: 'Authentification',
+    description: 'Connexion ou création de compte',
+    icon: Icons.lock,
+    color: 'from-red-500 to-red-600'
+  },
+  {
     key: 'pricing_selection' as WorkflowStep,
     label: 'Plan',
     description: 'Sélection du plan d\'abonnement',

@@ -65,7 +65,31 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
           <div className="text-left">
             <h2 className="text-2xl font-bold text-[#128C7E]">{title}</h2>
             {subtitle && (
-              <p className="text-sm text-gray-600">{subtitle}</p>
+              <div>
+                <p className="text-sm text-gray-600">{subtitle}</p>
+                <div className="flex items-center space-x-2 mt-1">
+                  <span 
+                    className="text-xl cursor-pointer hover:scale-110 transition-transform"
+                    onClick={() => {
+                      // Simuler des données invalides
+                      const event = new CustomEvent('fillFormError', { 
+                        detail: { role: role.toLowerCase().replace(' ', '_') } 
+                      });
+                      window.dispatchEvent(event);
+                    }}
+                  >😠</span>
+                  <span 
+                    className="text-xl cursor-pointer hover:scale-110 transition-transform"
+                    onClick={() => {
+                      // Simuler des données valides
+                      const event = new CustomEvent('fillFormSuccess', { 
+                        detail: { role: role.toLowerCase().replace(' ', '_') } 
+                      });
+                      window.dispatchEvent(event);
+                    }}
+                  >😊</span>
+                </div>
+              </div>
             )}
           </div>
         </div>

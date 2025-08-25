@@ -299,6 +299,42 @@ const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
               <p className="text-white/90 mt-1">
                 Configurez votre premier garage pour {organizationName}
               </p>
+              <div className="flex items-center space-x-2 mt-2">
+                                 <span 
+                   className="text-xl cursor-pointer hover:scale-110 transition-transform"
+                   onClick={() => {
+                     // Test erreur - données invalides
+                     setFormData({
+                       name: 'A',
+                       address: 'B',
+                       city: 'C',
+                       postalCode: '123',
+                       country: 'France',
+                       phone: '123',
+                       email: 'invalid',
+                       website: '',
+                       description: 'Test'
+                     });
+                   }}
+                 >😠</span>
+                 <span 
+                   className="text-xl cursor-pointer hover:scale-110 transition-transform"
+                   onClick={() => {
+                     // Test succès - données valides
+                     setFormData({
+                       name: 'Garage Central',
+                       address: '123 Avenue de la République',
+                       city: 'Paris',
+                       postalCode: '75001',
+                       country: 'France',
+                       phone: '+33 1 23 45 67 89',
+                       email: 'contact@garagecentral.fr',
+                       website: 'https://garagecentral.fr',
+                       description: 'Garage automobile professionnel avec service complet'
+                     });
+                   }}
+                 >😊</span>
+              </div>
             </div>
           </div>
         </DialogHeader>

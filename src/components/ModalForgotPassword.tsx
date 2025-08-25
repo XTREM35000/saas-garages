@@ -44,7 +44,7 @@ export const ModalForgotPassword: React.FC<ModalForgotPasswordProps> = ({
     try {
       // Vérifier si l'utilisateur existe
       let userExists = false;
-      
+
       if (formData.email) {
         const { data: userByEmail } = await supabase.auth.admin.listUsers();
         userExists = userByEmail.users.some(user => user.email === formData.email);
@@ -57,7 +57,7 @@ export const ModalForgotPassword: React.FC<ModalForgotPasswordProps> = ({
           .select('id')
           .eq('phone', formData.phone)
           .single();
-        
+
         userExists = !!profileByPhone;
       }
 
@@ -68,7 +68,7 @@ export const ModalForgotPassword: React.FC<ModalForgotPasswordProps> = ({
 
       // Simuler l'envoi d'OTP (à implémenter avec votre service SMS/Email)
       toast.success('Code de vérification envoyé !');
-      
+
       // Passer aux étapes suivantes
       onEmailSent(formData.email, formData.phone);
 
@@ -94,7 +94,7 @@ export const ModalForgotPassword: React.FC<ModalForgotPasswordProps> = ({
             <ArrowLeft className="w-4 h-4 mr-1" />
             Retour
           </Button>
-          
+
           <h2 className="text-2xl font-bold text-[#128C7E] mb-2">
             Mot de passe oublié
           </h2>
@@ -159,6 +159,29 @@ export const ModalForgotPassword: React.FC<ModalForgotPasswordProps> = ({
             </Button>
           </CardContent>
         </Card>
+
+        {/* Footer avec branding Thierry Gogo */}
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+            <div className="flex items-center space-x-3">
+              <img
+                src="/profile01.png"
+                alt="Thierry Gogo"
+                className="w-10 h-10 rounded-full border-2 border-[#128C7E]"
+              />
+              <div>
+                <h4 className="font-semibold text-gray-900 text-sm">Thierry Gogo</h4>
+                <p className="text-xs text-gray-600">Développeur FullStack (Frontend & Backend)</p>
+                <p className="text-xs text-gray-500">FREELANCE</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-600">Whatsapp +225 0758966156 / 0103644527</p>
+              <p className="text-xs text-gray-500">01 BP 5341 Abidjan 01</p>
+              <p className="text-xs text-gray-500">Cocody, RIVIERA 3</p>
+            </div>
+          </div>
+        </div>
       </div>
     </WhatsAppModal>
   );

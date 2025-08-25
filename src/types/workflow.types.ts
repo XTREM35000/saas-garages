@@ -5,6 +5,7 @@ export type WorkflowStep =
   | 'init'
   | 'loading'
   | 'super_admin_check'
+  | 'auth_general'
   | 'pricing_selection'
   | 'admin_creation'
   | 'org_creation'
@@ -52,6 +53,7 @@ export interface WorkflowContextType {
 export const WORKFLOW_STEPS: WorkflowStep[] = [
   'init',
   'super_admin_check',
+  'auth_general',
   'pricing_selection',
   'admin_creation',
   'org_creation',

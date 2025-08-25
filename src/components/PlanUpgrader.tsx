@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { usePricing } from '@/hooks/usePricing';
 
 interface PlanUpgraderProps {
   isOpen: boolean;
@@ -51,6 +52,7 @@ const PlanUpgrader: React.FC<PlanUpgraderProps> = ({
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [step, setStep] = useState(1); // 1: Selection, 2: Confirmation, 3: Success
   const [isUpgrading, setIsUpgrading] = useState(false);
+  const { pricing, loading: pricingLoading } = usePricing();
 
   const plans: Plan[] = [
     {
@@ -67,7 +69,7 @@ const PlanUpgrader: React.FC<PlanUpgraderProps> = ({
     {
       id: 'monthly',
       name: 'Mensuel',
-      price: '25 000',
+      price: pricing ? pricing.pricing_month.toLocaleString() : '25 000',
       period: 'par mois',
       description: 'Solution flexible',
       icon: Zap,
@@ -79,7 +81,7 @@ const PlanUpgrader: React.FC<PlanUpgraderProps> = ({
     {
       id: 'annual',
       name: 'Annuel',
-      price: '250 000',
+      price: pricing ? pricing.pricing_year.toLocaleString() : '250 000',
       period: 'par an',
       description: 'Solution complète',
       icon: Crown,
