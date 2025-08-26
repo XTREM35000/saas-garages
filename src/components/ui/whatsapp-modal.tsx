@@ -25,27 +25,23 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
   className = ''
 }) => {
   const [dragY, setDragY] = React.useState(0);
-  const [isDragging, setIsDragging] = React.useState(false);
 
-  // Gestion du drag vertical
-  const handleDragStart = () => setIsDragging(true);
-
-  const handleDrag = (event: any, info: PanInfo) => {
-    const maxDragY = window.innerWidth <= 768 ? 150 : 200; // plus souple sur mobile
+  const handleDrag = (_: any, info: PanInfo) => {
+    const isMobile = window.innerWidth <= 768;
+    const maxDragY = isMobile ? 150 : 200;
     const clampedY = Math.max(-maxDragY, Math.min(maxDragY, info.offset.y));
     setDragY(clampedY);
   };
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
-    setIsDragging(false);
-    if (info.offset.y > 200 && info.velocity.y > 500) {
+  const handleDragEnd = (_: any, info: PanInfo) => {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile && info.offset.y > 200 && info.velocity.y > 500) {
       onClose();
     } else {
       setDragY(0);
     }
   };
 
-  // Escape key
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     if (isOpen) {
@@ -68,6 +64,8 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
     full: 'max-w-6xl'
   };
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+
   return (
     <AnimatePresence>
       <motion.div
@@ -75,46 +73,41 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-
         <motion.div
           initial={{ scale: 0.95, opacity: 0, y: 0 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 0 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300, duration: 0.3 }}
-          drag="y"
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          drag={isMobile ? "y" : false}
           dragConstraints={{ top: -50, bottom: 300 }}
           dragElastic={0.1}
           dragMomentum={false}
-          dragTransition={{ bounceStiffness: 800, bounceDamping: 30 }}
-          onDragStart={handleDragStart}
           onDrag={handleDrag}
           onDragEnd={handleDragEnd}
-          className={cn(
-            "relative w-full bg-white rounded-t-3xl shadow-2xl overflow-visible touch-pan-y cursor-grab active:cursor-grabbing",
-            sizeClasses[size],
-            className,
-            "md:max-h-[90vh]" // limite pour PC
-          )}
           style={{
             y: dragY,
-            marginTop: window.innerWidth <= 768 ? 0 : '2rem',
-            marginBottom: window.innerWidth <= 768 ? 0 : '2rem',
-            height: window.innerWidth <= 768 ? '100vh' : 'auto'
+            height: isMobile ? '100vh' : 'auto',
+            margin: isMobile ? 0 : '2rem',
           }}
+          className={cn(
+            "relative w-full bg-white rounded-3xl shadow-2xl flex flex-col",
+            sizeClasses[size],
+            className,
+            !isMobile && "md:max-h-[90vh] overflow-hidden"
+          )}
         >
-          {/* Handle de drag (visible sur mobile) */}
-          {window.innerWidth <= 768 && (
-            <div className="flex justify-center pt-3 pb-2 bg-white">
-              <div className="w-12 h-1.5 rounded-full bg-[#128C7E]/30" />
+          {/* Handle drag visible uniquement sur mobile */}
+          {isMobile && (
+            <div className="flex justify-center pt-3 pb-1 bg-white rounded-t-3xl">
+              <div className="w-12 h-1.5 rounded-full bg-gray-300" />
             </div>
           )}
 
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#128C7E] to-[#075E54] text-white relative">
+          <div className="bg-gradient-to-r from-[#128C7E] to-[#075E54] text-white relative rounded-t-3xl">
             {showSuperAdminIndicator && (
               <div className="absolute top-3 right-3 flex items-center gap-2 bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-xs font-semibold z-10">
                 <Crown className="w-4 h-4" />
@@ -136,8 +129,8 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
             </button>
           </div>
 
-          {/* Contenu principal - direct dans le modal */}
-          <div className="bg-gradient-to-b from-white to-gray-50 p-6 overflow-y-auto h-full">
+          {/* Contenu direct */}
+          <div className="bg-gradient-to-b from-white to-gray-50 p-6 flex-1 overflow-y-auto">
             {children}
           </div>
         </motion.div>
