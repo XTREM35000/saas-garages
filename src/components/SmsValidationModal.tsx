@@ -26,7 +26,7 @@ interface SmsValidationModalProps {
   isLoading?: boolean;
 }
 
-const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
+export const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
   isOpen,
   onComplete,
   onClose,

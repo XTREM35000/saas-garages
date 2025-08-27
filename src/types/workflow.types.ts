@@ -1,18 +1,19 @@
 // src/types/workflow.types.ts
 import { Json } from './database.types';
+import { ComponentType } from 'react';
+// Define IconType here if '@/types/common.types' cannot be resolved
+export type IconType = React.ComponentType<{ size?: number; color?: string }>;
 
+// Define IconType here if './common.types' does not exist or is misplaced
 export type WorkflowStep =
-  | 'init'
-  | 'loading'
-  | 'super_admin_check'
-  | 'auth_general'
-  | 'pricing_selection'
-  | 'admin_creation'
-  | 'org_creation'
-  | 'garage_setup'
-  | 'sms_validation'
-  | 'dashboard'
-  | 'completed';
+  | 'super_admin'
+  | 'auth'
+  | 'pricing'
+  | 'admin'
+  | 'organization'
+  | 'sms'
+  | 'garage'
+  | 'dashboard';
 
 // Type pour l'état en base de données
 export interface DBWorkflowState {
@@ -50,23 +51,39 @@ export interface WorkflowContextType {
   };
 }
 
+export interface WorkflowModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete?: () => void;
+  onLoginSuccess?: (data: { user: any; profile: any }) => void;
+}
+
+export interface WorkflowStepConfig {
+  id: string;
+  title: string;
+  name: string;
+  description: string;
+  component: ComponentType<any>; // Plus flexible pour les props spécifiques
+  order: number;
+  icon: any; // Nous utiliserons le type IconType plus tard
+}
+
 export const WORKFLOW_STEPS: WorkflowStep[] = [
-  'init',
-  'super_admin_check',
-  'auth_general',
-  'pricing_selection',
-  'admin_creation',
-  'org_creation',
-  'garage_setup',
-  'sms_validation',
-  'completed'
+  'super_admin',
+  'auth',
+  'pricing',
+  'admin',
+  'organization',
+  'sms',
+  'garage',
+  'dashboard'
 ];
 
-export const getNextStep = (currentStep: WorkflowStep): WorkflowStep => {
+export const getNextStep = (currentStep: WorkflowStep): WorkflowStep | null => {
   const currentIndex = WORKFLOW_STEPS.indexOf(currentStep);
 
   if (currentIndex === -1 || currentIndex === WORKFLOW_STEPS.length - 1) {
-    return 'completed';
+    return null;
   }
 
   return WORKFLOW_STEPS[currentIndex + 1];

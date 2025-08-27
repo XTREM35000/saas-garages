@@ -30,7 +30,7 @@ interface PricingModalProps {
   onSelectPlan: (planId: string) => void;
 }
 
-const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onSelectPlan }) => {
+export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onSelectPlan }) => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { pricing, loading: pricingLoading } = usePricing();
@@ -186,8 +186,8 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onSelectPlan }) => 
               <Card
                 key={plan.id}
                 className={`relative transition-all duration-300 cursor-pointer border-2 bg-gradient-to-br ${plan.cardGradient} ${isSelected
-                    ? 'border-blue-500 shadow-lg ring-2 ring-blue-500 ring-opacity-50 scale-105'
-                    : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600'
+                  ? 'border-blue-500 shadow-lg ring-2 ring-blue-500 ring-opacity-50 scale-105'
+                  : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600'
                   } ${plan.popular ? 'lg:scale-105 lg:z-10' : ''}`}
                 onClick={() => handlePlanSelect(plan.id)}
               >

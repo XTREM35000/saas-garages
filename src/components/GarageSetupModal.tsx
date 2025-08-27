@@ -39,7 +39,7 @@ interface ValidationErrors {
   email?: string;
 }
 
-const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
+export const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
   isOpen,
   onComplete,
   organizationName

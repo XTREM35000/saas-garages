@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icons } from '@/components/ui/icons';
+import { WORKFLOW_STEPS } from '@/lib/workflow-state';
 import { cn } from '@/lib/utils';
 import { WorkflowStep } from '@/types/workflow.types';
 import { Lock, Unlock } from 'lucide-react';
@@ -10,63 +11,14 @@ interface WorkflowProgressBarProps {
   onStepClick?: (step: WorkflowStep) => void;
 }
 
-const WORKFLOW_STEPS = [
-  {
-    key: 'super_admin_check' as WorkflowStep,
-    label: 'Super Admin',
-    description: 'Création du Super Administrateur',
-    icon: Icons.shield,
-    color: 'from-yellow-500 to-yellow-600'
-  },
-  {
-    key: 'auth_general' as WorkflowStep,
-    label: 'Authentification',
-    description: 'Connexion ou création de compte',
-    icon: Icons.lock,
-    color: 'from-red-500 to-red-600'
-  },
-  {
-    key: 'pricing_selection' as WorkflowStep,
-    label: 'Plan',
-    description: 'Sélection du plan d\'abonnement',
-    icon: Icons.creditCard,
-    color: 'from-[#128C7E] to-[#25D366]'
-  },
-  {
-    key: 'admin_creation' as WorkflowStep,
-    label: 'Admin',
-    description: 'Création de l\'Administrateur',
-    icon: Icons.user,
-    color: 'from-blue-500 to-blue-600'
-  },
-  {
-    key: 'org_creation' as WorkflowStep,
-    label: 'Organisation',
-    description: 'Configuration de l\'organisation',
-    icon: Icons.building,
-    color: 'from-purple-500 to-purple-600'
-  },
-  {
-    key: 'garage_setup' as WorkflowStep,
-    label: 'Garage',
-    description: 'Configuration du premier garage',
-    icon: Icons.wrench,
-    color: 'from-orange-500 to-orange-600'
-  },
-  {
-    key: 'sms_validation' as WorkflowStep,
-    label: 'SMS',
-    description: 'Validation par SMS',
-    icon: Icons.messageSquare,
-    color: 'from-green-500 to-green-600'
-  }
-];
-
 const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
   currentStep,
   completedSteps,
   onStepClick
 }) => {
+  const steps = Object.values(WORKFLOW_STEPS).sort((a, b) => a.order - b.order);
+  const progress = (completedSteps.length / steps.length) * 100;
+
   const getStepStatus = (stepKey: WorkflowStep) => {
     if (completedSteps.includes(stepKey)) {
       return 'completed';
@@ -78,7 +30,7 @@ const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
   };
 
   const getStepIndex = (stepKey: WorkflowStep) => {
-    return WORKFLOW_STEPS.findIndex(step => step.key === stepKey);
+    return Object.values(WORKFLOW_STEPS).findIndex(step => step.id === stepKey);
   };
 
   const currentStepIndex = getStepIndex(currentStep);
@@ -100,26 +52,26 @@ const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
         <div className="relative">
           {/* Ligne de connexion */}
           <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-200">
-            <div 
+            <div
               className="h-full bg-gradient-to-r from-[#128C7E] to-[#25D366] transition-all duration-500 ease-in-out"
               style={{
-                width: `${Math.max(0, (currentStepIndex / (WORKFLOW_STEPS.length - 1)) * 100)}%`
+                width: `${Math.max(0, (currentStepIndex / (steps.length - 1)) * 100)}%`
               }}
             />
           </div>
 
           {/* Étapes */}
           <div className="relative flex justify-between">
-            {WORKFLOW_STEPS.map((step, index) => {
-              const status = getStepStatus(step.key);
+            {steps.map((step, index) => {
+              const status = getStepStatus(step.id as WorkflowStep);
               const isCompleted = status === 'completed';
               const isCurrent = status === 'current';
               const isPending = status === 'pending';
 
               return (
-                <div key={step.key} className="flex flex-col items-center">
+                <div key={step.id} className="flex flex-col items-center">
                   {/* Cercle de l'étape */}
-                  <div 
+                  <div
                     className={cn(
                       "w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-all duration-300 relative z-10",
                       {
@@ -131,7 +83,7 @@ const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
                         "bg-gray-200 text-gray-400": isPending
                       }
                     )}
-                    onClick={() => onStepClick && onStepClick(step.key)}
+                    onClick={() => onStepClick && onStepClick(step.id as WorkflowStep)}
                   >
                     {isCompleted ? (
                       <div className="relative">
@@ -140,10 +92,10 @@ const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
                         <Unlock className="w-3 h-3 text-white absolute -top-1 -right-1 bg-green-600 rounded-full p-0.5" />
                       </div>
                     ) : (
-                      <step.icon className={cn(
-                        "w-6 h-6",
-                        isCurrent ? "text-white" : "text-gray-400"
-                      )} />
+                      <step.icon
+                        size={24}
+                        color={isCurrent ? "#ffffff" : "#9ca3af"}
+                      />
                     )}
                   </div>
 
@@ -156,7 +108,7 @@ const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
                         "text-gray-500": isPending
                       }
                     )}>
-                      {step.label}
+                      {step.title}
                     </div>
                     <div className={cn(
                       "text-xs",
@@ -189,7 +141,7 @@ const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
             <div className="inline-flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
               <Icons.info className="w-4 h-4 text-blue-600" />
               <span className="text-sm text-blue-800">
-                Étape {currentStepIndex + 1} sur {WORKFLOW_STEPS.length} : {WORKFLOW_STEPS.find(s => s.key === currentStep)?.description}
+                Étape {currentStepIndex + 1} sur {steps.length} : {steps.find(s => s.id === currentStep)?.description}
               </span>
             </div>
           </div>
@@ -203,15 +155,15 @@ const WorkflowProgressBar: React.FC<WorkflowProgressBarProps> = ({
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-[#128C7E] to-[#25D366] transition-all duration-500 ease-in-out"
                   style={{
-                    width: `${Math.max(0, (completedSteps.length / WORKFLOW_STEPS.length) * 100)}%`
+                    width: `${Math.max(0, (completedSteps.length / steps.length) * 100)}%`
                   }}
                 />
               </div>
               <span className="text-sm font-medium text-gray-700 min-w-[3rem]">
-                {Math.round((completedSteps.length / WORKFLOW_STEPS.length) * 100)}%
+                {Math.round((completedSteps.length / steps.length) * 100)}%
               </span>
             </div>
           </div>
