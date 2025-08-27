@@ -1,0 +1,252 @@
+Structure du projet (exclusions : node_modules, dist, public, nhost, .vscode, .nuxt, .output, .git, .bolt, .next)
+========================================
+
+📄 AdminApprovalNotice.tsx
+📄 AdminCreationForm.tsx
+📄 AdminCreationModal.tsx
+📄 AdminCRUDModal.tsx
+📄 AdminDashboardTest.tsx
+📄 AdminOnboardingModal.tsx
+📄 AdvancedSettings.tsx
+📄 AnimatedLogo.tsx
+📄 AnimatedLogoOverlay.tsx
+📄 AnimatedLogo_copie.tsx
+📁 Auth
+  📄 AuthForm.tsx
+  📄 EnhancedAuthForm.tsx
+  📄 LoginForm.tsx
+  📄 RegisterForm.tsx
+📄 AuthGuard.tsx
+📄 AuthModal.tsx
+📄 AuthStatusDebug.tsx
+📄 BrainModal.tsx
+📄 BrandSetupWizard.tsx
+📄 ChatWidget.tsx
+📄 ClientDetailModal.tsx
+📄 ClientForm.tsx
+📄 CompletionSummaryModal.tsx
+📄 CreateOrganisationForm.tsx
+📁 CRUD
+  📄 ClientsCRUD.tsx
+  📄 VehiclesCRUD.tsx
+📁 dashboard
+  📄 DashboardStats.tsx
+📄 Dashboard.tsx
+📄 DashboardCard.tsx
+📄 DatabaseDiagnostic.tsx
+📄 DeleteAllModal.tsx
+📄 EmailAuthInputExample.tsx
+📄 EmergencyAdminCreate.tsx
+📁 enhanced-dashboard
+  📄 DashboardCard.tsx
+📄 EnhancedAdminForm.tsx
+📄 EnhancedSuperAdminSetup.tsx
+📄 ErrorBoundary.tsx
+📄 FileUploadTest.tsx
+📄 Footer.tsx
+📄 GarageInfo.tsx
+📄 GarageSetupModal.tsx
+📄 GeneralAuthModal.tsx
+📁 Header
+  📄 BackButton.tsx
+📄 Header.tsx
+📄 HomePage.tsx
+📄 HomePageModal.tsx
+📄 InitialSetupWizard.tsx
+📄 InteractiveFooter.tsx
+📁 layout
+  📄 MainLayout.tsx
+  📄 Navbar.tsx
+📄 LazyModalWrapper.tsx
+📄 liste.mjs
+📄 MaintenanceLog.tsx
+📄 ModalForgotPassword.tsx
+📄 ModalResetPassword.tsx
+📁 modals
+  📄 AdminModal.tsx
+  📄 OrganizationModal.tsx
+  📄 WorkflowModals.tsx
+📄 ModalVerifyEmail.tsx
+📄 ModalVerifyPhone.tsx
+📄 MultiGarageAdminPanel.tsx
+📄 NewInitializationWizard.tsx
+📄 NotificationCenter.tsx
+📄 OrganisationOnboarding.tsx
+📄 OrganizationSelect.tsx
+📄 OrganizationSetupModal.tsx
+📄 PageNavigation.tsx
+📄 PhotoEvidenceModal.tsx
+📄 PlanUpgrader.tsx
+📄 PostAuthHandler.tsx
+📄 PricingManagement.tsx
+📄 PricingModal.tsx
+📄 project_structure.txt
+📄 RepairForm.tsx
+📄 ReparationDetailModal.tsx
+📄 ReparationModal.tsx
+📄 SignUpForm.tsx
+📄 SimpleAuthGuard.tsx
+📄 SimpleOrganizationModal.tsx
+📄 SimpleSetup.tsx
+📄 SmsValidationModal.tsx
+📄 SplashScreen.tsx
+📄 SplashScreenManager.tsx
+📄 StockDetailModal.tsx
+📄 StockModal.tsx
+📄 SuperAdminCreationModal.tsx
+📄 SuperAdminDashboard.tsx
+📄 SuperAdminLoginModal.tsx
+📄 TenantManagement.tsx
+📄 ThankYouMessage.tsx
+📄 ThirdPartyForm.tsx
+📁 ui
+  📄 accordion.tsx
+  📄 accordion_copie.tsx
+  📄 alert-dialog.tsx
+  📄 alert-dialog_copie.tsx
+  📄 alert.tsx
+  📄 alert_copie.tsx
+  📄 aspect-ratio.tsx
+  📄 aspect-ratio_copie.tsx
+  📄 avatar-upload.tsx
+  📄 avatar.tsx
+  📄 avatar_copie.tsx
+  📄 badge.tsx
+  📄 badge_copie.tsx
+  📄 base-modal.tsx
+  📄 breadcrumb-enhanced.tsx
+  📄 breadcrumb.tsx
+  📄 breadcrumb_copie.tsx
+  📄 button.tsx
+  📄 button_copie.tsx
+  📄 calendar.tsx
+  📄 calendar_copie.tsx
+  📄 card.tsx
+  📄 card_copie.tsx
+  📄 carousel.tsx
+  📄 carousel_copie.tsx
+  📄 chart.tsx
+  📄 chart_copie.tsx
+  📄 checkbox.tsx
+  📄 checkbox_copie.tsx
+  📄 collapsible.tsx
+  📄 collapsible_copie.tsx
+  📄 command.tsx
+  📄 command_copie.tsx
+  📄 context-menu.tsx
+  📄 context-menu_copie.tsx
+  📄 dialog.tsx
+  📄 dialog_copie.tsx
+  📄 draggable-form-modal.tsx
+  📄 draggable-modal.tsx
+  📄 drawer.tsx
+  📄 drawer_copie.tsx
+  📄 dropdown-menu.tsx
+  📄 dropdown-menu_copie.tsx
+  📄 email-auth-input.tsx
+  📄 email-field-pro.tsx
+  📄 email-field.tsx
+  📄 file-upload.tsx
+  📄 form.tsx
+  📄 form_copie.tsx
+  📄 hover-card.tsx
+  📄 hover-card_copie.tsx
+  📄 icons.tsx
+  📄 index.ts
+  📄 input-otp.tsx
+  📄 input-otp_copie.tsx
+  📄 input.tsx
+  📄 input_copie.tsx
+  📄 interactive-table.tsx
+  📄 label.tsx
+  📄 label_copie.tsx
+  📄 loading-enhanced.tsx
+  📄 loading-spinner.tsx
+  📄 menubar.tsx
+  📄 menubar_copie.tsx
+  📄 modal-button.tsx
+  📄 modal-form-field.tsx
+  📄 modal-header.tsx
+  📄 modal.tsx
+  📄 navigation-menu.tsx
+  📄 navigation-menu_copie.tsx
+  📄 notification-enhanced.tsx
+  📄 page-transition.tsx
+  📄 pagination.tsx
+  📄 pagination_copie.tsx
+  📄 password-field-pro.tsx
+  📄 password-field.tsx
+  📄 phone-field-pro.tsx
+  📄 phone-field.tsx
+  📄 popover.tsx
+  📄 popover_copie.tsx
+  📄 progress.tsx
+  📄 progress_copie.tsx
+  📄 radio-group.tsx
+  📄 radio-group_copie.tsx
+  📄 resizable.tsx
+  📄 resizable_copie.tsx
+  📄 scroll-area.tsx
+  📄 scroll-area_copie.tsx
+  📄 scrollable-content.tsx
+  📄 select.tsx
+  📄 select_copie.tsx
+  📄 separator.tsx
+  📄 separator_copie.tsx
+  📄 sheet.tsx
+  📄 sheet_copie.tsx
+  📄 sidebar.tsx
+  📄 sidebar_copie.tsx
+  📄 skeleton.tsx
+  📄 skeleton_copie.tsx
+  📄 slider.tsx
+  📄 slider_copie.tsx
+  📄 sonner.tsx
+  📄 sonner_copie.tsx
+  📄 switch.tsx
+  📄 switch_copie.tsx
+  📄 table.tsx
+  📄 table_copie.tsx
+  📄 tabs.tsx
+  📄 tabs_copie.tsx
+  📄 textarea.tsx
+  📄 textarea_copie.tsx
+  📄 theme-toggle.tsx
+  📄 toast-enhanced.tsx
+  📄 toast-system.tsx
+  📄 toast.tsx
+  📄 toaster.tsx
+  📄 toaster_copie.tsx
+  📄 toast_copie.tsx
+  📄 toggle-group.tsx
+  📄 toggle-group_copie.tsx
+  📄 toggle.tsx
+  📄 toggle_copie.tsx
+  📄 tooltip.tsx
+  📄 tooltip_copie.tsx
+  📄 use-toast.ts
+  📄 use-toast_copie.ts
+  📄 welcome-message.tsx
+  📄 whatsapp-button.tsx
+  📄 whatsapp-card.tsx
+  📄 whatsapp-form-field.tsx
+  📄 whatsapp-modal.tsx
+📄 UnifiedFooter.tsx
+📄 UnifiedHeader.module.css
+📄 UnifiedHeader.tsx
+📄 UserMenu.tsx
+📄 UserMenuDebug.tsx
+📄 VehicleDetailModal.tsx
+📄 VehicleForm.tsx
+📁 workflow
+  📄 AdminForm.tsx
+  📄 GarageForm.tsx
+  📄 OrganizationForm.tsx
+  📄 SMSValidationForm.tsx
+  📁 steps
+    📄 SMSValidationStep.tsx
+  📄 SuperAdminForm.tsx
+  📄 WorkflowManager.tsx
+📄 WorkflowGuard.tsx
+📄 WorkflowProgressBar.tsx
+📄 WorkflowTest.tsx

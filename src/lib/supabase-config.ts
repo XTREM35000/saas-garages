@@ -2,7 +2,7 @@
 
 const validateConfig = () => {
   const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const key = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !key) {
     throw new Error('❌ Variables Supabase manquantes dans .env');
