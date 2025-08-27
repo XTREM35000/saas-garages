@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Shield, Eye, EyeOff, Loader2, AlertTriangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,10 +10,27 @@ import { EmailFieldPro } from '@/components/ui/email-field-pro';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+interface SuperAdmin {
+  id: string;
+  created_at: string;
+}
+
+interface Profile {
+  id: string;
+  role: string;
+  email: string;
+  created_at: string;
+}
+
 interface SuperAdminLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: () => void;
+  onLoginSuccess: (data: { user: any; profile: any }) => void;
+}
+
+interface LoginFormData {
+  email: string;
+  password: string;
 }
 
 const SuperAdminLoginModal: React.FC<SuperAdminLoginModalProps> = ({
@@ -20,7 +38,7 @@ const SuperAdminLoginModal: React.FC<SuperAdminLoginModalProps> = ({
   onClose,
   onLoginSuccess
 }) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: ''
   });
@@ -28,33 +46,119 @@ const SuperAdminLoginModal: React.FC<SuperAdminLoginModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState('');
+
+  const testConnection = async () => {
+    try {
+      // Test simple de l'API Supabase
+      const { data, error } = await supabase.auth.getSession();
+
+      console.log('🔍 Test connexion Supabase:', {
+        hasSession: !!data.session,
+        error: error?.message || null
+      });
+
+      return !error;
+    } catch (err) {
+      console.error('❌ Erreur test connexion:', err);
+      return false;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.email || !formData.password) {
-      toast.error('Veuillez remplir tous les champs');
-      return;
-    }
-
+    setError('');
     setIsLoading(true);
 
     try {
-      // Simulation d'une vérification Super Admin
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // 1. Log des données de tentative
+      console.log('🔄 Tentative connexion...', {
+        email: formData.email,
+        timestamp: new Date().toISOString()
+      });
 
-      // Vérification simple pour la démo
-      // En production, cela devrait vérifier contre la base de données
-      if (formData.email.includes('admin') && formData.password.length >= 6) {
-        toast.success('Connexion réussie ! Accès autorisé.');
-        onLoginSuccess();
-        onClose();
-        setFormData({ email: '', password: '' });
-      } else {
-        toast.error('Accès refusé. Seuls les Super Admins peuvent accéder à cette section.');
+      // 2. Vérification préliminaire de l'email dans super_admins
+      const { data: adminCheck, error: checkError } = await supabase
+        .from('super_admins')
+        .select('email')
+        .eq('email', formData.email)
+        .single();
+
+      if (checkError) {
+        console.error('❌ Erreur vérification super_admin:', checkError);
+        throw new Error('Email non autorisé');
       }
-    } catch (error) {
-      toast.error('Erreur lors de la connexion');
+
+      if (!adminCheck) {
+        console.warn('⚠️ Email non trouvé dans super_admins');
+        throw new Error('Email non autorisé pour l\'accès super admin');
+      }
+
+      // 3. Tentative de connexion
+      console.log('✅ Email validé, tentative connexion...');
+
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        console.error('❌ Erreur connexion:', signInError);
+        throw new Error(
+          signInError.message === 'Invalid login credentials'
+            ? 'Email ou mot de passe incorrect'
+            : 'Erreur de connexion'
+        );
+      }
+
+      if (!signInData?.user) {
+        throw new Error('Utilisateur non trouvé');
+      }
+
+      // 4. Récupération des données du profil
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, role, created_at')
+        .eq('id', signInData.user.id)
+        .single();
+
+      if (profileError || !profileData) {
+        console.error('❌ Erreur profil:', profileError);
+        throw new Error('Erreur lors de la récupération du profil');
+      }
+
+      // 5. Vérification du rôle
+      if (profileData.role !== 'super_admin') {
+        throw new Error('Accès refusé : rôle super admin requis');
+      }
+
+      // 6. Succès
+      console.log('✅ Connexion super admin validée !');
+
+      const userData = {
+        user: signInData.user,
+        profile: profileData
+      };
+
+      toast.success('Connexion Super Admin réussie ! 🎉');
+      onLoginSuccess(userData);
+      onClose();
+
+    } catch (error: any) {
+      console.error('❌ Erreur complète:', {
+        type: error.name,
+        message: error.message,
+        details: error
+      });
+
+      const errorMessage =
+        error.message.includes('schéma') ? 'Erreur de connexion à la base de données' :
+          error.message.includes('credentials') ? 'Email ou mot de passe incorrect' :
+            error.message;
+
+      setError(errorMessage);
+      toast.error(errorMessage);
+
     } finally {
       setIsLoading(false);
     }
@@ -121,6 +225,14 @@ const SuperAdminLoginModal: React.FC<SuperAdminLoginModalProps> = ({
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
     };
+  }, [isOpen]);
+
+  // Reset du formulaire à la fermeture
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({ email: '', password: '' });
+      setError('');
+    }
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -245,6 +357,12 @@ const SuperAdminLoginModal: React.FC<SuperAdminLoginModalProps> = ({
                     </Button>
                   </div>
                 </div>
+
+                {error && (
+                  <div className="mt-4 text-red-600 text-sm">
+                    {error}
+                  </div>
+                )}
 
                 <div className="pt-4">
                   <Button

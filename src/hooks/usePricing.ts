@@ -15,8 +15,8 @@ interface UsePricingReturn {
 
 // État global pour les prix (simulation d'une base de données)
 let globalPricing: PricingData = {
-  pricing_month: 25000,
-  pricing_year: 250000
+  pricing_month: 75000,
+  pricing_year: 500000
 };
 
 // Événements personnalisés pour la synchronisation
@@ -31,10 +31,10 @@ export const usePricing = (): UsePricingReturn => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Simulation d'un délai de chargement
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       setPricing(globalPricing);
     } catch (err) {
       console.error('Erreur lors de la récupération des prix:', err);

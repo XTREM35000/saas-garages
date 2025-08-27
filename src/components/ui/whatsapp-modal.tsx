@@ -13,6 +13,7 @@ interface WhatsAppModalProps {
   showSuperAdminIndicator?: boolean;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   className?: string;
+  headerLogo?: React.ReactNode;
 }
 
 export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
@@ -23,7 +24,8 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
   description,
   showSuperAdminIndicator = false,
   size = 'lg',
-  className = ''
+  className = '',
+  headerLogo
 }) => {
   const [dragY, setDragY] = React.useState(0);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -46,7 +48,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
     }
 
     // Limiter le drag vertical
-    const maxDragY = 200;
+    const maxDragY = 100;
     const clampedY = Math.max(-maxDragY, Math.min(maxDragY, info.offset.y));
     setDragY(clampedY);
   };
@@ -175,6 +177,11 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
             )}
 
             <div className="p-6 text-center">
+              {headerLogo && (
+                <div className="flex justify-center mb-3">
+                  {headerLogo}
+                </div>
+              )}
               {title && (
                 <h2 className="text-2xl font-bold mb-2 text-white">
                   {title}

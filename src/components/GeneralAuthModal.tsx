@@ -98,15 +98,28 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
       const fullEmail = `${formData.email}@${formData.slug}.com`;
 
       // Vérifier que l'organisation existe
-      const { data: org, error: orgError } = await supabase
+      // ✅ Typage explicite sur "organizations" avec jointure garages
+      const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('*')
-        .eq('slug', formData.slug)
+        .select(`
+                  id,
+                  name,
+                  created_at,
+                  garages (
+                    id,
+                    name,
+                    address,
+                    phone,
+                    created_at
+                  )
+                `)
+        // Adjust the filter to match your schema, e.g., filter by owner or member
+        // .eq('user_id', session.user.id)
         .single();
 
-      if (orgError || !org) {
-        toast.error('Organisation non trouvée. Vérifiez le slug ou contactez votre administrateur.');
-        return;
+      if (orgError || !orgData) {
+        // Handle the error or missing data appropriately
+        throw orgError || new Error("Organization not found");
       }
 
       // Authentifier l'utilisateur
@@ -133,13 +146,13 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
       }
 
       // Vérifier que l'utilisateur appartient bien à cette organisation
-      if (profile.organizations?.slug !== orgSlug) {
+      if (profile.organisation_id !== orgData.id) {
         toast.error('Accès non autorisé à cette organisation');
         return;
       }
 
       toast.success('Connexion réussie ! 🎉');
-      onAuthSuccess({ user: authData.user, profile, organization: org });
+      onAuthSuccess({ user: authData.user, profile, organization: orgData });
 
     } catch (error) {
       console.error('❌ Erreur authentification:', error);
@@ -184,7 +197,7 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
           <div className="flex items-center justify-between mb-6">
             <div></div> {/* Spacer */}
             <div className="flex justify-center">
-              <AnimatedLogo size="large" />
+              <AnimatedLogo size={64} />
             </div>
             <div className="flex items-center space-x-2">
               <Button
