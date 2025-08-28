@@ -83,24 +83,7 @@ const SuperAdminLoginModal: React.FC<SuperAdminLoginModalProps> = ({
     setIsLoading(true);
 
     try {
-      // 0. Test de connexion
-      const connectionOk = await testConnection();
-      if (!connectionOk) {
-        throw new Error('Problème de connexion à Supabase');
-      }
-
-      // 1. Log des données de tentative
-      console.log('🔄 Tentative connexion...', {
-        email: formData.email,
-        timestamp: new Date().toISOString()
-      });
-
-      // 2. Vérification temporairement désactivée (pour avancer)
-      console.log('⚠️ Vérification super_admin temporairement désactivée');
-
-      // 3. Tentative de connexion
-      console.log('✅ Email validé, tentative connexion...');
-
+      // 1. Tentative de connexion
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
@@ -119,20 +102,28 @@ const SuperAdminLoginModal: React.FC<SuperAdminLoginModalProps> = ({
         throw new Error('Utilisateur non trouvé');
       }
 
-      // 4. Vérification du profil temporairement désactivée
-      console.log('⚠️ Vérification profil temporairement désactivée');
+      // 2. VÉRIFICATION RÉELLE DU RÔLE SUPER_ADMIN
+      console.log('🔍 Vérification rôle super_admin...');
 
-      // Créer un profil factice pour continuer
-      const profileData = {
-        id: signInData.user.id,
-        email: formData.email,
-        role: 'super_admin',
-        created_at: new Date().toISOString()
-      };
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', signInData.user.id)
+        .eq('role', 'super_admin')
+        .single();
 
-      // 6. Succès
-      console.log('✅ Connexion super admin validée !');
+      if (profileError || !profileData) {
+        console.error('❌ Accès refusé - Pas super_admin:', profileError);
 
+        // Déconnexion pour sécurité
+        await supabase.auth.signOut();
+
+        throw new Error('Accès réservé aux Super Administrateurs');
+      }
+
+      console.log('✅ Super Admin confirmé:', profileData);
+
+      // 3. Succès
       const userData = {
         user: signInData.user,
         profile: profileData
@@ -143,20 +134,9 @@ const SuperAdminLoginModal: React.FC<SuperAdminLoginModalProps> = ({
       onClose();
 
     } catch (error: any) {
-      console.error('❌ Erreur complète:', {
-        type: error.name,
-        message: error.message,
-        details: error
-      });
-
-      const errorMessage =
-        error.message.includes('schéma') ? 'Erreur de connexion à la base de données' :
-          error.message.includes('credentials') ? 'Email ou mot de passe incorrect' :
-            error.message;
-
-      setError(errorMessage);
-      toast.error(errorMessage);
-
+      console.error('❌ Erreur connexion:', error);
+      setError(error.message);
+      toast.error(error.message);
     } finally {
       setIsLoading(false);
     }

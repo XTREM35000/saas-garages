@@ -132,6 +132,17 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
   const getErrorMessage = (error: any): string => {
     if (typeof error === 'string') return error;
 
+    // Erreurs spécifiques de l'API Auth
+    if (error?.message?.includes('User already registered')) {
+      return 'Cet email est déjà utilisé.';
+    }
+    if (error?.message?.includes('Password should be at least')) {
+      return 'Le mot de passe doit contenir au moins 6 caractères.';
+    }
+    if (error?.message?.includes('Invalid email')) {
+      return 'Format d\'email invalide.';
+    }
+
     // Gestion des erreurs Supabase
     if (error?.code === '23505') {
       if (error.message.includes('email')) {
@@ -222,48 +233,77 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
     }
 
     try {
-      // Appel RPC pour créer l'Admin
-      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('create_admin_complete', {
-        p_email: formData.email,
-        p_password: formData.password,
-        p_name: formData.name,
-        p_phone: formData.phone,
-        p_avatar_url: formData.avatarUrl || null
+      // 🔥 REMPLACEZ L'APPEL RPC PAR L'API ADMIN SUPABASE
+      console.log('🔍 Création du user via API Admin...');
+
+      // 1. Création du user avec l'API Admin (ça crée automatiquement l'identité)
+      const { data: userData, error: userError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password,
+        email_confirm: true, // Confirmation automatique
+        user_metadata: {
+          full_name: formData.name,
+          phone: formData.phone,
+          role: 'admin'
+        }
       });
 
-      if (rpcError) {
-        console.error('❌ Erreur RPC:', rpcError);
-        toast.error(getErrorMessage(rpcError));
+      if (userError) {
+        console.error('❌ Erreur création user:', userError);
+        toast.error(`Erreur création: ${getErrorMessage(userError)}`);
         return;
       }
 
-      if (rpcData && rpcData.success) {
-        console.log('✅ Admin créé avec succès:', rpcData);
-
-        // Afficher le message de succès
-        setShowSuccess(true);
-
-        // Attendre 2 secondes puis continuer
-        setTimeout(() => {
-          setShowSuccess(false);
-          // Passer les données complètes pour la progression
-          onComplete({
-            admin_id: rpcData.admin_id,
-            user_id: rpcData.user_id,
-            profile_id: rpcData.profile_id,
-            admin_name: formData.name,
-            success: true
-          });
-        }, 2000);
-
-        toast.success('Administrateur créé avec succès ! 🎉');
-      } else {
-        console.error('❌ Erreur création Admin:', rpcData);
-        toast.error('Erreur lors de la création de l\'administrateur');
+      if (!userData.user) {
+        throw new Error('Aucun user créé');
       }
+
+      console.log('✅ User créé avec identité:', userData.user);
+
+      // 2. Création du profil dans votre table profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userData.user.id,
+          email: formData.email,
+          role: 'admin',
+          full_name: formData.name,
+          phone: formData.phone,
+          avatar_url: formData.avatarUrl
+        });
+
+      if (profileError) {
+        console.error('❌ Erreur création profil:', profileError);
+        
+        // Compensation: supprimer le user auth si le profil échoue
+        await supabase.auth.admin.deleteUser(userData.user.id);
+        
+        toast.error(`Erreur profil: ${getErrorMessage(profileError)}`);
+        return;
+      }
+
+      console.log('✅ Profil créé avec succès');
+
+      // 3. Afficher le message de succès
+      setShowSuccess(true);
+
+      // Attendre 2 secondes puis continuer
+      setTimeout(() => {
+        setShowSuccess(false);
+        onComplete({
+          admin_id: userData.user.id,
+          user_id: userData.user.id,
+          profile_id: userData.user.id,
+          admin_name: formData.name,
+          success: true
+        });
+      }, 2000);
+
+      toast.success('Administrateur créé avec succès ! 🎉');
+
     } catch (error) {
       console.error('❌ Erreur inattendue:', error);
-      toast.error('Une erreur inattendue s\'est produite');
+      toast.error(getErrorMessage(error));
     }
   };
 

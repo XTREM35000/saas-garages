@@ -86,33 +86,74 @@ export const SuperAdminModal: React.FC<ModalProps & { onComplete: () => void }> 
         return;
       }
 
-      // Création du Super Admin
-      const { data: superAdminData, error: createSAError } = await supabase.rpc('create_super_admin', {
-        p_email: formData.email,
-        p_name: `${formData.first_name} ${formData.last_name}`,
-        p_password: formData.password
+      // 🔥 REMPLACEZ LES APPELS RPC PAR L'API ADMIN SUPABASE
+      console.log('🔍 Création du Super Admin via API Admin...');
+
+      // 1. Création du user avec l'API Admin (ça crée automatiquement l'identité)
+      const { data: userData, error: userError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password,
+        email_confirm: true, // Confirmation automatique
+        user_metadata: {
+          full_name: `${formData.first_name} ${formData.last_name}`,
+          phone: formData.phone,
+          role: 'super_admin'
+        }
       });
 
-      if (createSAError) throw createSAError;
-
-      // Forcer le typage
-      const superAdmin = superAdminData as SuperAdminResponse;
-
-      if (!superAdmin || !superAdmin.user_id) {
-        throw new Error("Impossible de récupérer l'ID utilisateur du Super Admin créé.");
+      if (userError) {
+        console.error('❌ Erreur création user:', userError);
+        throw new Error(`Erreur création: ${userError.message}`);
       }
 
-      // Création du profil associé
-      const { data: profile, error: profileError } = await supabase.rpc('create_profile', {
-        user_id: superAdmin.user_id,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        phone: formData.phone,
-        avatar_url: formData.avatar_url,
-        theme: formData.theme
-      });
+      if (!userData.user) {
+        throw new Error('Aucun user créé');
+      }
 
-      if (profileError) throw profileError;
+      console.log('✅ User créé avec identité:', userData.user);
+
+      // 2. Création du profil dans votre table profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userData.user.id,
+          email: formData.email,
+          role: 'super_admin',
+          full_name: `${formData.first_name} ${formData.last_name}`,
+          phone: formData.phone,
+          avatar_url: formData.avatar_url
+        });
+
+      if (profileError) {
+        console.error('❌ Erreur création profil:', profileError);
+
+        // Compensation: supprimer le user auth si le profil échoue
+        await supabase.auth.admin.deleteUser(userData.user.id);
+
+        throw new Error(`Erreur profil: ${profileError.message}`);
+      }
+
+      // 3. Création de l'entrée super_admin
+      const { error: superAdminError } = await supabase
+        .from('super_admins')
+        .insert({
+          id: userData.user.id,
+          email: formData.email,
+          name: `${formData.first_name} ${formData.last_name}`,
+          phone: formData.phone
+        });
+
+      if (superAdminError) {
+        console.error('❌ Erreur création super_admin:', superAdminError);
+
+        // Compensation: supprimer le user auth et le profil si super_admin échoue
+        await supabase.auth.admin.deleteUser(userData.user.id);
+        await supabase.from('profiles').delete().eq('id', userData.user.id);
+
+        throw new Error(`Erreur super_admin: ${superAdminError.message}`);
+      }
+
+      console.log('✅ Super Admin créé avec succès');
 
       toast({
         title: "Super Admin créé",

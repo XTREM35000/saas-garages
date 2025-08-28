@@ -151,56 +151,111 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
     }
 
     try {
-      // Vérifier que la fonction RPC est disponible
-      console.log('🔍 Vérification de la fonction RPC...');
+      // 🔥 REMPLACEZ L'APPEL RPC PAR L'API ADMIN SUPABASE
+      console.log('🔍 Création du Super Admin via API Admin...');
 
-      // Appel RPC pour créer le Super Admin
-      const rpcParams = {
-        p_email: formData.email,
-        p_password: formData.password,
-        p_name: `${formData.firstName} ${formData.lastName}`,
-        p_phone: formData.phone
-      };
+      // 1. Création du user avec l'API Admin (ça crée automatiquement l'identité)
+      const { data: userData, error: userError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password,
+        email_confirm: true, // Confirmation automatique
+        user_metadata: {
+          full_name: `${formData.firstName} ${formData.lastName}`,
+          phone: formData.phone,
+          role: 'super_admin'
+        }
+      });
 
-      console.log('🔍 Paramètres RPC:', rpcParams);
-
-      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('create_super_admin_complete', rpcParams);
-
-      if (rpcError) {
-        console.error('❌ Erreur RPC:', rpcError);
-        toast.error(`Erreur lors de la création: ${rpcError.message}`);
+      if (userError) {
+        console.error('❌ Erreur création user:', userError);
+        toast.error(`Erreur création: ${getErrorMessage(userError)}`);
         return;
       }
 
-      if (rpcData && rpcData.success) {
-        console.log('✅ Super Admin créé avec succès:', rpcData);
-
-        // Afficher le message de succès
-        setShowSuccess(true);
-
-        // Attendre 2 secondes puis continuer
-        setTimeout(() => {
-          setShowSuccess(false);
-          onComplete({
-            user: { id: rpcData.user_id },
-            profile: { id: rpcData.profile_id },
-            superAdmin: { id: rpcData.super_admin_id }
-          });
-        }, 2000);
-
-        toast.success('Super Administrateur créé avec succès ! 🎉');
-      } else {
-        console.error('❌ Erreur création Super Admin:', rpcData);
-        toast.error('Erreur lors de la création du Super Administrateur');
+      if (!userData.user) {
+        throw new Error('Aucun user créé');
       }
+
+      console.log('✅ User créé avec identité:', userData.user);
+
+      // 2. Création du profil dans votre table profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userData.user.id,
+          email: formData.email,
+          role: 'super_admin',
+          full_name: `${formData.firstName} ${formData.lastName}`,
+          phone: formData.phone
+        });
+
+      if (profileError) {
+        console.error('❌ Erreur création profil:', profileError);
+
+        // Compensation: supprimer le user auth si le profil échoue
+        await supabase.auth.admin.deleteUser(userData.user.id);
+
+        toast.error(`Erreur profil: ${getErrorMessage(profileError)}`);
+        return;
+      }
+
+      // 3. Création de l'entrée super_admin
+      const { error: superAdminError } = await supabase
+        .from('super_admins')
+        .insert({
+          id: userData.user.id,
+          email: formData.email,
+          name: `${formData.firstName} ${formData.lastName}`,
+          phone: formData.phone
+        });
+
+      if (superAdminError) {
+        console.error('❌ Erreur création super_admin:', superAdminError);
+
+        // Compensation: supprimer le user auth et le profil si super_admin échoue
+        await supabase.auth.admin.deleteUser(userData.user.id);
+        await supabase.from('profiles').delete().eq('id', userData.user.id);
+
+        toast.error(`Erreur super_admin: ${getErrorMessage(superAdminError)}`);
+        return;
+      }
+
+      console.log('✅ Super Admin créé avec succès');
+
+      // 4. Afficher le message de succès
+      setShowSuccess(true);
+
+      // Attendre 2 secondes puis continuer
+      setTimeout(() => {
+        setShowSuccess(false);
+        onComplete({
+          user: { id: userData.user.id },
+          profile: { id: userData.user.id },
+          superAdmin: { id: userData.user.id }
+        });
+      }, 2000);
+
+      toast.success('Super Administrateur créé avec succès ! 🎉');
+
     } catch (error) {
       console.error('❌ Erreur inattendue:', error);
-      toast.error('Une erreur inattendue s\'est produite');
+      toast.error(getErrorMessage(error));
     }
   };
 
   const getErrorMessage = (error: any): string => {
     if (typeof error === 'string') return error;
+
+    // Erreurs spécifiques de l'API Auth
+    if (error?.message?.includes('User already registered')) {
+      return 'Cet email est déjà utilisé.';
+    }
+    if (error?.message?.includes('Password should be at least')) {
+      return 'Le mot de passe doit contenir au moins 6 caractères.';
+    }
+    if (error?.message?.includes('Invalid email')) {
+      return 'Format d\'email invalide.';
+    }
 
     // Gestion des erreurs Supabase
     if (error?.code === '23505') {

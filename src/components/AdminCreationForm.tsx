@@ -110,19 +110,62 @@ export const AdminCreationForm: React.FC<AdminCreationFormProps> = ({
         avatarUrl = publicUrl.publicUrl;
       }
 
-      // Utilisation de la fonction RPC pour créer l'administrateur
-      const { data: result, error } = await supabase.rpc('create_admin_complete', {
-        p_email: formData.email,
-        p_password: formData.password,
-        p_name: formData.name,
-        p_phone: formData.phone || null,
-        p_avatar_url: avatarUrl
+      // 🔥 REMPLACEZ L'APPEL RPC PAR L'API ADMIN SUPABASE
+      console.log('🔍 Création du user via API Admin...');
+
+      // 1. Création du user avec l'API Admin (ça crée automatiquement l'identité)
+      const { data: userData, error: userError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password,
+        email_confirm: true, // Confirmation automatique
+        user_metadata: {
+          full_name: formData.name,
+          phone: formData.phone,
+          role: 'admin'
+        }
       });
 
-      if (error) throw error;
-      if (!result?.success) {
-        throw new Error(result?.error || 'Erreur création administrateur');
+      if (userError) {
+        console.error('❌ Erreur création user:', userError);
+        throw new Error(`Erreur création: ${userError.message}`);
       }
+
+      if (!userData.user) {
+        throw new Error('Aucun user créé');
+      }
+
+      console.log('✅ User créé avec identité:', userData.user);
+
+      // 2. Création du profil dans votre table profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userData.user.id,
+          email: formData.email,
+          role: 'admin',
+          full_name: formData.name,
+          phone: formData.phone,
+          avatar_url: avatarUrl
+        });
+
+      if (profileError) {
+        console.error('❌ Erreur création profil:', profileError);
+
+        // Compensation: supprimer le user auth si le profil échoue
+        await supabase.auth.admin.deleteUser(userData.user.id);
+
+        throw new Error(`Erreur profil: ${profileError.message}`);
+      }
+
+      console.log('✅ Profil créé avec succès');
+
+      const result = {
+        success: true,
+        admin_id: userData.user.id,
+        user_id: userData.user.id,
+        profile_id: userData.user.id,
+        admin_name: formData.name
+      };
 
       toast.success('Administrateur créé avec succès ! 🎉');
       onComplete(result);
