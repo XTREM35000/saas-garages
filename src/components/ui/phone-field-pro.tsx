@@ -33,7 +33,7 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
   value,
   onChange,
   onCountryChange,
-  countryCode = "FR",
+  countryCode = "CI",
   error,
   disabled = false,
   placeholder,
@@ -88,9 +88,59 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
     return value;
   };
 
+  const FORBIDDEN_EMAIL_DOMAINS = [
+    ".com", ".fr",
+  ];
+
+  // Nettoyage des emails (réutilisable)
+  const cleanEmailDomains = (value: string): string => {
+    if (!value) return value;
+    let cleanedValue = value;
+
+    // Si un @ est présent, on coupe tout ce qui suit (empêcher insertion d'email complet)
+    if (cleanedValue.includes('@')) {
+      cleanedValue = cleanedValue.split('@')[0];
+    }
+
+    // Retirer les domaines connus même sans @ (ex: collage partiel)
+    FORBIDDEN_EMAIL_DOMAINS.forEach(domain => {
+      const domainPattern = new RegExp(domain, 'gi');
+      cleanedValue = cleanedValue.replace(domainPattern, '');
+    });
+
+    // Nettoyer d'éventuelles terminaisons type .com / .fr / .net etc.
+    cleanedValue = cleanedValue.replace(/\.[a-z]{2,10}/gi, '');
+
+    return cleanedValue;
+  };
+
+  // Bloquer à la saisie les caractères/segments interdits
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const key = e.key;
+    // Bloquer @, lettres, et point
+    if (/[@A-Za-z]/.test(key) || key === '.') {
+      e.preventDefault();
+      return;
+    }
+  };
+
+  const handleBeforeInput = (e: React.FormEvent<HTMLInputElement> & { data?: string }) => {
+    const data = (e as any).data as string | undefined;
+    if (!data) return;
+    // Si l'insert contient des lettres, @ ou fragment de domaine, on bloque
+    if (/@|[A-Za-z]|\.[a-z]/i.test(data)) {
+      e.preventDefault?.();
+      (e.nativeEvent as any)?.preventDefault?.();
+    }
+  };
+
   // Gestion du changement de valeur
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
+    let newValue = e.target.value;
+
+    // Nettoyer les domaines emails (saisie ou collage)
+    newValue = cleanEmailDomains(newValue);
+
     // Nettoyer et garder seulement les chiffres
     const cleanValue = newValue.replace(/\D/g, '');
 
@@ -141,9 +191,9 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
     if (!country) return "Numéro de téléphone";
 
     switch (localCountryCode) {
-      case 'FR':
-        return "06 12 34 56 78";
       case 'CI':
+        return "07 58 96 61 56";
+      case 'FR':
       case 'SN':
       case 'ML':
       case 'BF':
@@ -176,6 +226,31 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
   const hasError = error || showError;
   const currentCountry = COUNTRY_CODES[localCountryCode as keyof typeof COUNTRY_CODES];
 
+  function handlePaste(event: React.ClipboardEvent<HTMLInputElement>): void {
+    event.preventDefault();
+    const pastedData = event.clipboardData.getData('Text');
+    // Nettoyer les domaines emails
+    let cleanedValue = cleanEmailDomains(pastedData);
+    // Garder seulement les chiffres
+    const cleanValue = cleanedValue.replace(/\D/g, '');
+
+    if (localCountryCode === 'CI') {
+      let finalValue = cleanValue;
+      if (!finalValue.startsWith('225')) {
+        finalValue = '225' + finalValue;
+      }
+      onChange(finalValue);
+    } else {
+      const country = COUNTRY_CODES[localCountryCode as keyof typeof COUNTRY_CODES];
+      const fullNumber = country ? country.code.replace('+', '') + cleanValue : cleanValue;
+      onChange(fullNumber);
+    }
+
+    setTouched(true);
+    const isValid = cleanValue.length >= 8;
+    setIsValid(isValid);
+    onValidationChange?.(isValid);
+  }
   return (
     <div className={cn("space-y-2", className)}>
       {label && (
@@ -197,7 +272,7 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
               className="flex items-center gap-2 min-w-[120px] justify-between"
             >
               <span className="text-lg">{currentCountry?.flag || '🌍'}</span>
-              <span className="text-xs">{currentCountry?.code || '+33'}</span>
+              <span className="text-xs">{currentCountry?.code || '+225'}</span>
               <ChevronDown className="w-3 h-3" />
             </Button>
 
@@ -225,6 +300,7 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
             type="tel"
             value={getDisplayValue()}
             onChange={handleChange}
+            onPaste={handlePaste}
             onBlur={handleBlur}
             placeholder={getPlaceholder()}
             disabled={disabled}
@@ -236,6 +312,10 @@ export const PhoneFieldPro: React.FC<PhoneFieldProProps> = ({
               disabled && "bg-gray-50 cursor-not-allowed"
             )}
             autoComplete="tel"
+            inputMode="tel"
+            pattern="[0-9\s]*"
+            onKeyDown={handleKeyDown}
+            onBeforeInput={handleBeforeInput as any}
           />
 
           {/* Indicateur de validation */}

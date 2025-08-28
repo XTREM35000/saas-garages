@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { EmailFieldPro } from '@/components/ui/email-field-pro';
 import { PhoneFieldPro } from '@/components/ui/phone-field-pro';
 import { PasswordFieldPro } from '@/components/ui/password-field-pro';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import AvatarUpload from '@/components/ui/avatar-upload';
 import '../styles/whatsapp-theme.css';
 
@@ -138,111 +136,64 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
-
-  const handleSubmit = async () => {
-    // Validation des champs
-    const fields: (keyof FormData)[] = ['firstName', 'lastName', 'email', 'phone', 'password'];
-    for (const field of fields) {
-      const validation = validateField(field, formData[field]);
-      if (!validation.isValid) {
-        toast.error(validation.error);
-        return;
-      }
-    }
-
+  const createSuperAdmin = async (formData: FormData) => {
     try {
-      // 🔥 REMPLACEZ L'APPEL RPC PAR L'API ADMIN SUPABASE
-      console.log('🔍 Création du Super Admin via API Admin...');
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const url = `${baseUrl}/functions/v1/create-super-admin-with-profile`;
 
-      // 1. Création du user avec l'API Admin (ça crée automatiquement l'identité)
-      const { data: userData, error: userError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password,
-        email_confirm: true, // Confirmation automatique
-        user_metadata: {
-          full_name: `${formData.firstName} ${formData.lastName}`,
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(anonKey ? { Authorization: `Bearer ${anonKey}` } : {})
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
           phone: formData.phone,
-          role: 'super_admin'
-        }
+          avatarUrl: formData.avatarUrl
+        })
       });
 
-      if (userError) {
-        console.error('❌ Erreur création user:', userError);
-        toast.error(`Erreur création: ${getErrorMessage(userError)}`);
-        return;
+      let result: any = null;
+      const contentType = response.headers.get('content-type') || '';
+
+      if (contentType.includes('application/json')) {
+        try {
+          result = await response.json();
+        } catch (_) {
+          result = null;
+        }
+      } else {
+        const text = await response.text().catch(() => '');
+        if (text) {
+          try {
+            result = JSON.parse(text);
+          } catch (_) {
+            result = { message: text };
+          }
+        }
       }
 
-      if (!userData.user) {
-        throw new Error('Aucun user créé');
+      if (!response.ok) {
+        const errorPayload = result?.error || result || { message: 'Request failed' };
+        throw { status: response.status, ...errorPayload };
       }
 
-      console.log('✅ User créé avec identité:', userData.user);
-
-      // 2. Création du profil dans votre table profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userData.user.id,
-          email: formData.email,
-          role: 'super_admin',
-          full_name: `${formData.firstName} ${formData.lastName}`,
-          phone: formData.phone
-        });
-
-      if (profileError) {
-        console.error('❌ Erreur création profil:', profileError);
-
-        // Compensation: supprimer le user auth si le profil échoue
-        await supabase.auth.admin.deleteUser(userData.user.id);
-
-        toast.error(`Erreur profil: ${getErrorMessage(profileError)}`);
-        return;
+      if (result?.error) {
+        throw result.error;
       }
 
-      // 3. Création de l'entrée super_admin
-      const { error: superAdminError } = await supabase
-        .from('super_admins')
-        .insert({
-          id: userData.user.id,
-          email: formData.email,
-          name: `${formData.firstName} ${formData.lastName}`,
-          phone: formData.phone
-        });
-
-      if (superAdminError) {
-        console.error('❌ Erreur création super_admin:', superAdminError);
-
-        // Compensation: supprimer le user auth et le profil si super_admin échoue
-        await supabase.auth.admin.deleteUser(userData.user.id);
-        await supabase.from('profiles').delete().eq('id', userData.user.id);
-
-        toast.error(`Erreur super_admin: ${getErrorMessage(superAdminError)}`);
-        return;
-      }
-
-      console.log('✅ Super Admin créé avec succès');
-
-      // 4. Afficher le message de succès
-      setShowSuccess(true);
-
-      // Attendre 2 secondes puis continuer
-      setTimeout(() => {
-        setShowSuccess(false);
-        onComplete({
-          user: { id: userData.user.id },
-          profile: { id: userData.user.id },
-          superAdmin: { id: userData.user.id }
-        });
-      }, 2000);
-
-      toast.success('Super Administrateur créé avec succès ! 🎉');
+      return { data: result?.data ?? result ?? null };
 
     } catch (error) {
-      console.error('❌ Erreur inattendue:', error);
-      toast.error(getErrorMessage(error));
+      console.error('❌ Erreur création super admin:', error);
+      return { error };
     }
-  };
-
+  }
   const getErrorMessage = (error: any): string => {
     if (typeof error === 'string') return error;
 
@@ -352,6 +303,38 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
     );
   }
 
+  async function handleSubmit(event: React.MouseEvent<HTMLButtonElement, MouseEvent>): Promise<void> {
+    event.preventDefault();
+
+    // Validate all fields before submitting
+    const fields: (keyof FormData)[] = ['firstName', 'lastName', 'email', 'phone', 'password'];
+    for (const field of fields) {
+      const { isValid, error } = validateField(field, formData[field]);
+      if (!isValid) {
+        toast.error(error || 'Champ invalide');
+        return;
+      }
+    }
+
+    try {
+      const result = await createSuperAdmin(formData);
+
+      if (result?.error) {
+        toast.error(getErrorMessage(result.error));
+        return;
+      }
+
+      setShowSuccess(true);
+      onComplete(result?.data || formData);
+      // Optionally close modal after a delay
+      setTimeout(() => {
+        setShowSuccess(false);
+        onClose();
+      }, 2000);
+    } catch (error: any) {
+      toast.error(getErrorMessage(error));
+    }
+  }
   return (
     <WhatsAppModal isOpen={isOpen} onClose={onClose}>
       <div className="max-w-4xl mx-auto">
