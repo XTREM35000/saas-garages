@@ -14,3 +14,17 @@ export interface UserCreationResponse {
     role: string;
   };
 }
+
+export interface EdgeFunctionResponse {
+  data?: {
+    user: {
+      id: string;
+      email: string;
+    };
+  };
+  error?: {
+    message: string;
+    code?: string;
+    details?: any;
+  };
+}

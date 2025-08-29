@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { createClient } from '@supabase/supabase-js';
 
 export interface SuperAdminData {
   name: string;
@@ -19,7 +20,7 @@ export interface AuthData {
  * Service centralisé pour la gestion des Super Admins
  */
 export class SuperAdminService {
-  
+
   /**
    * Vérifie si un Super Admin existe déjà dans le système
    */
@@ -29,12 +30,12 @@ export class SuperAdminService {
         .from('super_admins')
         .select('id')
         .limit(1);
-      
+
       if (error) {
         console.error('❌ [SuperAdminService] Erreur vérification:', error);
         return false;
       }
-      
+
       return data && data.length > 0;
     } catch (error) {
       console.error('❌ [SuperAdminService] Erreur inattendue:', error);
@@ -48,41 +49,109 @@ export class SuperAdminService {
    */
   static async createSuperAdmin(userData: SuperAdminData): Promise<{ success: boolean; userId?: string; error?: string }> {
     try {
-      console.log('🔐 [SuperAdminService] Création Super Admin:', userData.email);
+      console.log('🔐 [SuperAdminService] Tentative création Super Admin:', {
+        email: userData.email,
+        firstName: userData.name.split(' ')[0],
+        lastName: userData.name.split(' ')[1] || ''
+      });
 
-      // Vérifier qu'aucun Super Admin n'existe déjà
+      // Vérification préliminaire
       const existingSuper = await this.checkSuperAdminExists();
       if (existingSuper) {
+        console.warn('⚠️ Un Super Admin existe déjà');
         return { success: false, error: 'Un Super Admin existe déjà' };
       }
 
-      // Utiliser la fonction RPC pour la création complète
-      const { data: result, error } = await (supabase as any).rpc('create_super_admin_complete', {
-        p_email: userData.email,
-        p_password: userData.password,
-        p_name: userData.name,
-        p_phone: userData.phone || null
+      // Utiliser directement l'API REST de Supabase Auth
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+      if (!baseUrl || !serviceKey) {
+        throw new Error('Configuration Supabase manquante');
+      }
+
+      console.log('📡 Appel API Supabase Auth...');
+
+      // 1. Créer l'utilisateur via l'API REST
+      const authResponse = await fetch(`${baseUrl}/auth/v1/admin/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${serviceKey}`,
+          'apikey': serviceKey
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.password,
+          email_confirm: true,
+          user_metadata: {
+            firstName: userData.name.split(' ')[0],
+            lastName: userData.name.split(' ')[1] || '',
+            phone: userData.phone || '',
+            avatarUrl: '',
+            role: 'superadmin'
+          }
+        })
       });
 
-      if (error) {
-        console.error('❌ [SuperAdminService] Erreur RPC:', error);
-        return { success: false, error: error.message };
+      if (!authResponse.ok) {
+        const errorData = await authResponse.json();
+        console.error('❌ Erreur API Auth:', errorData);
+        throw new Error(errorData.error?.message || 'Erreur création utilisateur');
       }
 
-      if (!result.success) {
-        return { success: false, error: result.error };
+      const authResult = await authResponse.json();
+      const userId = authResult.id;
+
+      if (!userId) {
+        throw new Error('Aucun ID utilisateur retourné');
       }
 
-      console.log('✅ [SuperAdminService] Super Admin créé:', result.user_id);
-      toast.success('Super Admin créé avec succès!');
+      console.log('✅ Utilisateur créé:', userId);
+
+      // 2. Vérifier que le profil a été créé automatiquement par le trigger
+      // Attendre un peu pour que le trigger s'exécute
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 3. Vérifier la création du profil et super_admin
+      const supabase = createClient(baseUrl, serviceKey);
       
-      return { success: true, userId: result.user_id };
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
 
-    } catch (error: any) {
-      console.error('❌ [SuperAdminService] Erreur création:', error);
-      const errorMessage = error.message || 'Erreur lors de la création du Super Admin';
-      toast.error(errorMessage);
-      return { success: false, error: errorMessage };
+      if (profileError || !profile) {
+        console.error('❌ Erreur profil:', profileError);
+        throw new Error('Profil non créé automatiquement');
+      }
+
+      const { data: superAdmin, error: superAdminError } = await supabase
+        .from('super_admins')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (superAdminError || !superAdmin) {
+        console.error('❌ Erreur super admin:', superAdminError);
+        throw new Error('Super Admin non créé automatiquement');
+      }
+
+      console.log('✅ Super Admin créé avec succès:', {
+        userId,
+        profile: profile.id,
+        superAdmin: superAdmin.id
+      });
+
+      return { success: true, userId };
+
+    } catch (error) {
+      console.error('❌ Erreur création Super Admin:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Erreur inconnue' 
+      };
     }
   }
 
@@ -128,7 +197,7 @@ export class SuperAdminService {
 
       console.log('✅ [SuperAdminService] Utilisateur promu en Super Admin');
       toast.success('Promotion réussie!');
-      
+
       return { success: true };
 
     } catch (error: any) {
@@ -187,7 +256,7 @@ export class SuperAdminService {
       // Si c'est le premier utilisateur ET qu'aucun Super Admin n'existe
       if (isFirst && !hasSuper) {
         console.log('🎯 [SuperAdminService] Premier utilisateur détecté, création automatique Super Admin');
-        
+
         const result = await this.createSuperAdmin({
           name: authData.name,
           email: authData.email,

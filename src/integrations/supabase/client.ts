@@ -41,3 +41,5 @@ export const getSupabaseAdmin = () => {
 // Export des instances pour la rétrocompatibilité
 export const supabase = getSupabaseClient();
 export const supabaseAdmin = getSupabaseAdmin();
+
+export default supabase;

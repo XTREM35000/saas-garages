@@ -9,6 +9,7 @@ import { PhoneFieldPro } from '@/components/ui/phone-field-pro';
 import { PasswordFieldPro } from '@/components/ui/password-field-pro';
 import { toast } from 'sonner';
 import AvatarUpload from '@/components/ui/avatar-upload';
+import { createClient } from '@supabase/supabase-js';
 import '../styles/whatsapp-theme.css';
 
 interface SuperAdminCreationModalProps {
@@ -42,6 +43,7 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
     password: '',
     avatarUrl: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   // Réinitialiser le formulaire quand le modal s'ouvre
   useEffect(() => {
@@ -139,55 +141,117 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
   const createSuperAdmin = async (formData: FormData) => {
     try {
       const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const url = `${baseUrl}/functions/v1/create-super-admin-with-profile`;
+      const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
-      const response = await fetch(url, {
+      if (!baseUrl || !serviceKey) {
+        throw new Error('Configuration Supabase manquante');
+      }
+
+      console.log('🔐 Création Super Admin via API REST:', {
+        email: formData.email,
+        firstName: formData.firstName,
+        lastName: formData.lastName
+      });
+
+      // 1. Créer l'utilisateur via l'API REST de Supabase Auth
+      const authResponse = await fetch(`${baseUrl}/auth/v1/admin/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(anonKey ? { Authorization: `Bearer ${anonKey}` } : {})
+          'Authorization': `Bearer ${serviceKey}`,
+          'apikey': serviceKey
         },
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone,
-          avatarUrl: formData.avatarUrl
+          email_confirm: true,
+          user_metadata: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            phone: formData.phone || '',
+            avatarUrl: formData.avatarUrl || '',
+            role: 'superadmin'
+          }
         })
       });
 
-      let result: any = null;
-      const contentType = response.headers.get('content-type') || '';
+      if (!authResponse.ok) {
+        const errorData = await authResponse.json();
+        console.error('❌ Erreur API Auth:', errorData);
+        throw {
+          status: authResponse.status,
+          message: errorData.error?.message || 'Erreur création utilisateur',
+          code: errorData.error?.status || 'auth_error',
+          details: errorData
+        };
+      }
 
-      if (contentType.includes('application/json')) {
-        try {
-          result = await response.json();
-        } catch (_) {
-          result = null;
-        }
-      } else {
-        const text = await response.text().catch(() => '');
-        if (text) {
-          try {
-            result = JSON.parse(text);
-          } catch (_) {
-            result = { message: text };
+      const authResult = await authResponse.json();
+      const userId = authResult.id;
+
+      if (!userId) {
+        throw {
+          status: 400,
+          message: 'Aucun ID utilisateur retourné',
+          code: 'user_creation_failed'
+        };
+      }
+
+      console.log('✅ Utilisateur créé:', userId);
+
+      // 2. Attendre que le trigger s'exécute
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // 3. Vérifier la création du profil et super_admin
+      const supabase = createClient(baseUrl, serviceKey);
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (profileError || !profile) {
+        console.error('❌ Erreur profil:', profileError);
+        throw {
+          status: 400,
+          message: 'Profil non créé automatiquement',
+          code: 'profile_creation_failed',
+          details: profileError
+        };
+      }
+
+      const { data: superAdmin, error: superAdminError } = await supabase
+        .from('super_admins')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (superAdminError || !superAdmin) {
+        console.error('❌ Erreur super admin:', superAdminError);
+        throw {
+          status: 400,
+          message: 'Super Admin non créé automatiquement',
+          code: 'super_admin_creation_failed',
+          details: superAdminError
+        };
+      }
+
+      console.log('✅ Super Admin créé avec succès:', {
+        userId,
+        profile: profile.id,
+        superAdmin: superAdmin.id
+      });
+
+      return {
+        data: {
+          user: {
+            id: userId,
+            email: formData.email,
+            role: 'superadmin'
           }
         }
-      }
-
-      if (!response.ok) {
-        const errorPayload = result?.error || result || { message: 'Request failed' };
-        throw { status: response.status, ...errorPayload };
-      }
-
-      if (result?.error) {
-        throw result.error;
-      }
-
-      return { data: result?.data ?? result ?? null };
+      };
 
     } catch (error) {
       console.error('❌ Erreur création super admin:', error);
@@ -316,23 +380,37 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
       }
     }
 
-    try {
-      const result = await createSuperAdmin(formData);
+    setIsLoading(true);
 
-      if (result?.error) {
-        toast.error(getErrorMessage(result.error));
-        return;
+    try {
+      const response = await fetch('/functions/create-super-admin-with-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          avatarUrl: formData.avatarUrl
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur lors de la création');
       }
 
-      setShowSuccess(true);
-      onComplete(result?.data || formData);
-      // Optionally close modal after a delay
-      setTimeout(() => {
-        setShowSuccess(false);
-        onClose();
-      }, 2000);
+      toast.success('Super Admin créé avec succès !');
+      onComplete(result.data);
+      onClose();
+
     } catch (error: any) {
-      toast.error(getErrorMessage(error));
+      console.error('❌ Erreur création super admin:', error);
+      toast.error(error.message);
+    } finally {
+      setIsLoading(false);
     }
   }
   return (
@@ -423,7 +501,7 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
                 className="btn-whatsapp-primary"
                 disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password}
               >
-                Créer le Super Administrateur
+                {isLoading ? 'Création en cours...' : 'Créer le Super Administrateur'}
               </Button>
             </div>
           </CardContent>
