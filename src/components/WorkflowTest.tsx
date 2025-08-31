@@ -33,15 +33,12 @@ const WorkflowTest: React.FC = () => {
 
   const getStepInfo = (step: WorkflowStep) => {
     const stepInfo: Record<WorkflowStep, { title: string; description: string; icon: string }> = {
-      init: { title: 'Initialisation', description: 'Démarrage du workflow', icon: '🚀' },
-      loading: { title: 'Chargement', description: 'Chargement en cours', icon: '⏳' },
       super_admin_check: { title: 'Super Admin', description: 'Vérification/Création du Super Admin', icon: '👑' },
       pricing_selection: { title: 'Plan Tarifaire', description: 'Sélection du plan de prix', icon: '💰' },
       admin_creation: { title: 'Administrateur', description: 'Création de l\'administrateur', icon: '👤' },
       org_creation: { title: 'Organisation', description: 'Création de l\'organisation', icon: '🏢' },
       sms_validation: { title: 'Validation SMS', description: 'Validation par SMS', icon: '📱' },
       garage_setup: { title: 'Configuration Garage', description: 'Configuration du garage', icon: '🔧' },
-      dashboard: { title: 'Tableau de bord', description: 'Accès au dashboard', icon: '📊' },
       completed: { title: 'Terminé', description: 'Workflow complété', icon: '🎉' }
     };
 

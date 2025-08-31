@@ -6,14 +6,13 @@ export type IconType = React.ComponentType<{ size?: number; color?: string }>;
 
 // Define IconType here if './common.types' does not exist or is misplaced
 export type WorkflowStep =
-  | 'super_admin'
-  | 'auth'
-  | 'pricing'
-  | 'admin'
-  | 'organization'
-  | 'sms'
-  | 'garage'
-  | 'dashboard';
+  | 'super_admin_check'
+  | 'pricing_selection'
+  | 'admin_creation'
+  | 'org_creation'
+  | 'sms_validation'
+  | 'garage_setup'
+  | 'completed';
 
 // Type pour l'état en base de données
 export interface DBWorkflowState {
@@ -69,14 +68,13 @@ export interface WorkflowStepConfig {
 }
 
 export const WORKFLOW_STEPS: WorkflowStep[] = [
-  'super_admin',
-  'auth',
-  'pricing',
-  'admin',
-  'organization',
-  'sms',
-  'garage',
-  'dashboard'
+  'super_admin_check',
+  'pricing_selection',
+  'admin_creation',
+  'org_creation',
+  'sms_validation',
+  'garage_setup',
+  'completed'
 ];
 
 export const getNextStep = (currentStep: WorkflowStep): WorkflowStep | null => {

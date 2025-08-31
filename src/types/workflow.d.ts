@@ -1,13 +1,12 @@
 // Types de workflow unifiés
 export type WorkflowStep =
-  | 'super_admin'
-  | 'auth'
-  | 'pricing'
-  | 'admin'
-  | 'organization'
-  | 'sms'
-  | 'garage'
-  | 'dashboard';
+  | 'super_admin_check'
+  | 'pricing_selection'
+  | 'admin_creation'
+  | 'org_creation'
+  | 'sms_validation'
+  | 'garage_setup'
+  | 'completed';
 
 export interface WorkflowState {
   currentStep: WorkflowStep;
@@ -50,14 +49,13 @@ export interface WorkflowStepConfig {
 }
 
 export const WORKFLOW_STEPS: WorkflowStep[] = [
-  'super_admin',
-  'auth',
-  'pricing',
-  'admin',
-  'organization',
-  'sms',
-  'garage',
-  'dashboard'
+  'super_admin_check',
+  'pricing_selection', 
+  'admin_creation',
+  'org_creation',
+  'sms_validation',
+  'garage_setup',
+  'completed'
 ];
 
 export const getNextStep = (currentStep: WorkflowStep): WorkflowStep | null => {

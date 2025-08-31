@@ -61,7 +61,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
       {/* Header avec logo animé et badge de rôle */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <AnimatedLogo size="small" />
+          <AnimatedLogo size={32} />
           <div className="text-left">
             <h2 className="text-2xl font-bold text-[#128C7E]">{title}</h2>
             {subtitle && (

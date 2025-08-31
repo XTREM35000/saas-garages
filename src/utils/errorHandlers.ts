@@ -1,5 +1,14 @@
 import { toast } from 'sonner';
-import { WorkflowError, WorkflowStep } from '@/types/workflow.d';
+import { WorkflowStep } from '@/types/workflow.d';
+
+// Types d'erreurs workflow
+export interface WorkflowError {
+  step: WorkflowStep;
+  type: 'rpc' | 'auth' | 'rls' | 'network' | 'validation' | 'timeout';
+  message: string;
+  timestamp: Date;
+  details?: any;
+}
 
 // Types d'erreurs spécifiques
 export enum ErrorType {

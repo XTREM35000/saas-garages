@@ -3,13 +3,13 @@ import { WorkflowStep } from '@/types/workflow.d';
 
 // Adaptateur pour convertir les anciens steps vers les nouveaux
 const STEP_MAPPING: Record<string, WorkflowStep> = {
-  'super_admin_check': 'super_admin',
-  'pricing_selection': 'pricing', 
-  'admin_creation': 'admin',
-  'org_creation': 'organization',
-  'sms_validation': 'sms',
-  'garage_setup': 'garage',
-  'dashboard': 'dashboard'
+  'super_admin': 'super_admin_check',
+  'pricing': 'pricing_selection', 
+  'admin': 'admin_creation',
+  'organization': 'org_creation',
+  'sms': 'sms_validation',
+  'garage': 'garage_setup',
+  'dashboard': 'completed'
 };
 
 interface SimpleWorkflowAdapterProps {
@@ -24,7 +24,7 @@ export const SimpleWorkflowAdapter: React.FC<SimpleWorkflowAdapterProps> = ({
 };
 
 export const mapLegacyStep = (oldStep: string): WorkflowStep => {
-  return STEP_MAPPING[oldStep] || 'dashboard';
+  return STEP_MAPPING[oldStep] || 'completed';
 };
 
 export default SimpleWorkflowAdapter;

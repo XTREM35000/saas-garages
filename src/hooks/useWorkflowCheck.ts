@@ -32,7 +32,7 @@ export function useWorkflowCheck(): UseWorkflowCheckResult {
 
       // Appel de la fonction RPC pour obtenir l'état complet
       const { data, error: rpcError } = await supabase
-        .rpc('get_workflow_state');
+        .rpc('get_workflow_state') as { data: WorkflowCheckState | null, error: any };
 
       if (rpcError) {
         console.error('❌ [useWorkflowCheck] Erreur RPC:', rpcError);
