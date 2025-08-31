@@ -1,3 +1,5 @@
+//src\App.tsx
+//
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
@@ -79,22 +81,44 @@ function App() {
     }
   };
 
-  // Vérification initiale
+  // Vérification initiale modifiée
   useEffect(() => {
     const checkInitialSetup = async () => {
       try {
-        const { data: exists } = await supabase.rpc('check_super_admin_exists');
-        if (!exists) {
+        setIsLoading(true);
+        console.log('🔍 Vérification configuration initiale...');
+
+        const { data: workflowState, error } = await supabase.rpc('check_workflow_state');
+
+        if (error) throw error;
+
+        console.log('🔄 État workflow détaillé:', workflowState);
+
+        // Vérification plus précise
+        const needsWizard = !workflowState.has_super_admin ||
+          !workflowState.has_admin ||
+          !workflowState.has_organization ||
+          !workflowState.has_sms_validated ||
+          !workflowState.has_garage;
+
+        if (needsWizard) {
+          console.log(`⚠️ Configuration incomplète → Wizard (${workflowState.current_step})`);
           setShowWizard(true);
+        } else {
+          console.log('✅ Configuration complète');
+          setShowWizard(false);
         }
+
       } catch (error) {
-        console.error('❌ Erreur vérification initiale:', error);
+        console.error('❌ Erreur vérification:', error);
+        toast.error('Erreur lors de la vérification du système');
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (isAuthenticated) {
+    // N'effectuer la vérification que si on a une session et pas déjà en cours
+    if (isAuthenticated && !isLoading) {
       checkInitialSetup();
     }
   }, [isAuthenticated]);
@@ -141,31 +165,10 @@ function App() {
     return <div>Chargement...</div>;
   }
 
-  if (user && organization) {
-    return (
-      <AuthProvider supabaseClient={supabase}>
-        <WorkflowProvider>
-          <Router>
-            <Dashboard
-              user={{ ...user, garageData: null }}
-              organization={{
-                ...organization,
-                ownerName: organization?.name || "Owner",
-                themeColor: "#128C7E"
-              }}
-              themeColor="#128C7E"
-              ownerName={organization?.name || "Owner"}
-            />
-            <Toaster position="top-right" richColors />
-          </Router>
-        </WorkflowProvider>
-      </AuthProvider>
-    );
-  }
-
   return (
     <AuthProvider supabaseClient={supabase}>
       <WorkflowProvider>
+        {/* Afficher le modal d'auth si nécessaire */}
         {showAuthModal && (
           <GeneralAuthModal
             isOpen={showAuthModal}
@@ -179,19 +182,28 @@ function App() {
           />
         )}
 
-        <NewInitializationWizard
-          isOpen={showWizard}
-          onComplete={handleWizardComplete}
-        />
+        {/* N'afficher le wizard que si explicitement nécessaire */}
+        {showWizard && (
+          <NewInitializationWizard
+            isOpen={showWizard}
+            onComplete={handleWizardComplete}
+          />
+        )}
 
-        {/* Bouton de configuration (visible uniquement pour les super admins) */}
-        {profile?.role === 'super_admin' && !showWizard && (
-          <button
-            onClick={startInitialization}
-            className="fixed bottom-4 right-4 px-4 py-2 bg-primary text-white rounded-md shadow-lg hover:bg-primary/90 transition-colors"
-          >
-            Démarrer la configuration
-          </button>
+        {/* Le reste de votre application */}
+        {!showWizard && !showAuthModal && user && organization && (
+          <Router>
+            <Dashboard
+              user={{ ...user, garageData: null }}
+              organization={{
+                ...organization,
+                ownerName: organization?.name || "Owner",
+                themeColor: "#128C7E"
+              }}
+              themeColor="#128C7E"
+              ownerName={organization?.name || "Owner"}
+            />
+          </Router>
         )}
 
         <Toaster position="top-right" richColors />

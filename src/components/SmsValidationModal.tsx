@@ -1,284 +1,314 @@
+// src\components\SmsValidationModal.tsx
+// 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Icons } from '@/components/ui/icons';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { cn } from '@/lib/utils';
 import { WhatsAppModal } from './ui/whatsapp-modal';
-import { MessageSquare, CheckCircle, AlertCircle } from 'lucide-react';
-import { AnimatedLogo } from './AnimatedLogo';
+import { CheckCircle, Search, AlertCircle } from 'lucide-react';
 
 interface SmsValidationModalProps {
   isOpen: boolean;
-  onComplete: (data: any) => void;
   onClose: () => void;
-  onSubmit: (code: string) => Promise<void>;
-  organizationData: {
+  onComplete: (validationData: any) => void;
+  onSubmit: (validationData: any) => void;  // Ajout du type de paramètre
+  organizationData?: {
+    id: string;
     name: string;
-    slug: string;
-    adminName: string;
+    slug?: string;
+    phone: string;
   };
-  isLoading?: boolean;
+}
+
+interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  phone: string;
 }
 
 export const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
   isOpen,
-  onComplete,
   onClose,
+  onComplete,
   onSubmit,
-  organizationData,
-  isLoading = false
+  organizationData
 }) => {
-  const [smsCode, setSmsCode] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [error, setError] = useState('');
-  const [countdown, setCountdown] = useState(0);
-  const [canResend, setCanResend] = useState(false);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedOrganization, setSelectedOrganization] = useState<string>('');
+  const [slugInput, setSlugInput] = useState('');
+  const [code, setCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const [isSlugValid, setIsSlugValid] = useState(false);
+  const [foundOrganization, setFoundOrganization] = useState<Organization | null>(null);
 
-  // Réinitialiser le formulaire quand le modal s'ouvre
+  // Charger les organisations
   useEffect(() => {
     if (isOpen) {
-      setSmsCode('');
-      setShowSuccess(false);
-      setCountdown(60);
-      setCanResend(false);
+      loadOrganizations();
     }
   }, [isOpen]);
 
-  // Gestion du compte à rebours
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      setCanResend(true);
-    }
-  }, [countdown]);
-
-  // Envoyer le code SMS
-  const handleSendSms = async () => {
+  const loadOrganizations = async () => {
     try {
-      // Simuler l'envoi SMS (en production, appeler l'API SMS)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name, slug, phone')
+        .order('name');
 
-      toast.success('Code SMS envoyé !');
-      setCountdown(60);
-      setCanResend(false);
+      if (error) throw error;
+      setOrganizations(data || []);
     } catch (error) {
-      toast.error('Erreur lors de l\'envoi du SMS');
+      console.error('Erreur chargement organisations:', error);
+      toast.error('Erreur lors du chargement des organisations');
     }
   };
 
-  // Valider le code SMS
-  const handleValidateCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  // Vérifier le slug
+  const checkSlug = async () => {
+    if (!slugInput.trim()) return;
 
-    if (!smsCode.trim()) {
-      setError('Veuillez entrer le code de validation');
+    setIsChecking(true);
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name, slug, phone')
+        .eq('slug', slugInput.trim())
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          setIsSlugValid(false);
+          setFoundOrganization(null);
+          toast.error('Aucune organisation trouvée avec ce slug');
+        } else {
+          throw error;
+        }
+      } else {
+        setIsSlugValid(true);
+        setFoundOrganization(data);
+        setSelectedOrganization(data.id);
+        toast.success('Organisation trouvée !');
+      }
+    } catch (error) {
+      console.error('Erreur vérification slug:', error);
+      toast.error('Erreur lors de la vérification du slug');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  // Réinitialiser le formulaire
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedOrganization('');
+      setSlugInput('');
+      setCode('');
+      setIsSlugValid(false);
+      setFoundOrganization(null);
+    }
+  }, [isOpen]);
+
+  // Si organizationData est fourni, l'utiliser directement
+  useEffect(() => {
+    if (organizationData) {
+      setSelectedOrganization(organizationData.id);
+      // setFoundOrganization(organizationData);
+      setIsSlugValid(true);
+    }
+  }, [organizationData]);
+
+  // Valider le code SMS
+  const handleValidate = async () => {
+    if (!selectedOrganization) {
+      toast.error('Veuillez sélectionner une organisation');
       return;
     }
 
+    setIsLoading(true);
     try {
-      // Validation du code
-      if (smsCode !== '1234') {
-        throw new Error('Code invalide. Pour le test, utilisez 1234');
+      if (code === '123456') {
+        // 1. INSÉRER DANS SMS_VALIDATIONS
+        const { data: insertedValidation, error: validationError } = await supabase
+          .from('sms_validations')
+          .insert({
+            organization_id: selectedOrganization,
+            phone_number: foundOrganization?.phone || organizationData?.phone || '',
+            validation_code: code,
+            is_used: true,
+            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+          })
+          .select()
+          .single();
+
+        if (validationError) throw validationError;
+
+        // 2. METTRE À JOUR ORGANIZATIONS
+        const { error: orgError } = await supabase
+          .from('organizations')
+          .update({
+            is_phone_validated: true,
+            validated_at: new Date().toISOString()
+          })
+          .eq('id', selectedOrganization);
+
+        if (orgError) throw orgError;
+
+        console.log('✅ SMS validé avec succès');
+
+        // 3. PASSER À L'ÉTAPE SUIVANTE
+        const validationData = {
+          isValidated: true,
+          organizationId: selectedOrganization,
+          organization: foundOrganization || organizationData,
+          validationId: insertedValidation.id
+        };
+
+        // Important: d'abord onComplete pour mise à jour du workflow
+        await onComplete(validationData);
+        
+        // Ensuite fermer le modal
+        onClose();
+        
+        // Enfin, déclencher la transition vers l'étape suivante
+        onSubmit(validationData);
+
+      } else {
+        throw new Error('Code invalide');
       }
-
-      // Log des informations de validation
-      console.log('✅ Validation SMS réussie:', {
-        code: smsCode,
-        organization: organizationData.name,
-        slug: organizationData.slug,
-        admin: organizationData.adminName
-      });
-
-      await onSubmit(smsCode);
-
-      // Afficher un toast de succès
-      toast.success(`Organisation ${organizationData.name} activée !`);
-
-      setShowSuccess(true);
-
-      // Attendre 2 secondes avant de compléter
-      setTimeout(() => {
-        onComplete({
-          organizationName: organizationData.name,
-          organizationSlug: organizationData.slug,
-          adminName: organizationData.adminName,
-          verified: true
-        });
-      }, 2000);
-
     } catch (error: any) {
-      console.error('❌ Erreur validation SMS:', error);
-      setError(error.message || 'Code incorrect');
-      toast.error(error.message || 'Code incorrect');
+      console.error('❌ Erreur validation:', error);
+      toast.error(error.message || 'Code invalide, veuillez réessayer');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Modal de succès
-  if (showSuccess) {
-    return (
-      <WhatsAppModal
-        isOpen={isOpen}
-        onClose={onClose}
-        title="Validation Réussie!"
-      >
-        <div className="text-center p-6">
-          <div className="w-16 h-16 mx-auto mb-4">
-            <AnimatedLogo
-              mainIcon={CheckCircle}
-              secondaryIcon={MessageSquare}
-              mainColor="text-whatsapp"
-              secondaryColor="text-whatsapp-light"
-              waterDrop={true}
+  const selectedOrgData = organizations.find(org => org.id === selectedOrganization);
+
+  return (
+    <WhatsAppModal isOpen={isOpen} onClose={onClose}>
+      <div className="p-6 max-w-md mx-auto">
+        <h2 className="text-2xl font-bold text-[#128C7E] mb-6 text-center">
+          Validation SMS Organisation
+        </h2>
+
+        {/* Sélection de l'organisation */}
+        <div className="space-y-4 mb-6">
+          <div className="space-y-2">
+            <Label htmlFor="organization" className="text-[#128C7E] font-medium">
+              Sélectionnez l'organisation
+            </Label>
+            <Select
+              value={selectedOrganization}
+              onValueChange={setSelectedOrganization}
+            >
+              <SelectTrigger className="modal-whatsapp-input">
+                <SelectValue placeholder="Choisissez une organisation" />
+              </SelectTrigger>
+              <SelectContent>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name} ({org.slug})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="text-center text-gray-500">OU</div>
+
+          {/* Recherche par slug */}
+          <div className="space-y-2">
+            <Label htmlFor="slug" className="text-[#128C7E] font-medium">
+              Rechercher par slug
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="slug"
+                value={slugInput}
+                onChange={(e) => setSlugInput(e.target.value)}
+                placeholder="Entrez le slug de l'organisation"
+                className="modal-whatsapp-input"
+                disabled={isChecking}
+              />
+              <Button
+                onClick={checkSlug}
+                disabled={!slugInput.trim() || isChecking}
+                className="btn-whatsapp-primary"
+                size="icon"
+              >
+                <Search className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Organisation sélectionnée */}
+        {selectedOrganization && (
+          <div className="bg-[#128C7E]/10 border border-[#128C7E]/20 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-4 h-4 text-[#128C7E]" />
+              <span className="font-semibold text-[#128C7E]">Organisation sélectionnée</span>
+            </div>
+            <p className="text-sm">
+              <strong>{selectedOrgData?.name}</strong><br />
+              Slug: <code>{selectedOrgData?.slug}</code><br />
+              Téléphone: {selectedOrgData?.phone}
+            </p>
+          </div>
+        )}
+
+        {/* Champ code OTP (désactivé si pas d'organisation) */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="code" className="text-[#128C7E] font-medium">
+              Code de validation
+            </Label>
+            <Input
+              id="code"
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Entrez le code à 6 chiffres"
+              maxLength={6}
+              className="text-center text-2xl tracking-widest modal-whatsapp-input"
+              disabled={!selectedOrganization || isLoading}
             />
           </div>
 
-          <h3 className="text-lg font-semibold text-whatsapp mb-2">
-            Plan Tarifaire Activé
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Redirection vers votre espace...
-          </p>
-
-          <div className="loading-whatsapp-spinner" />
-        </div>
-      </WhatsAppModal>
-    );
-  }
-
-  // Modal de validation
-  return (
-    <WhatsAppModal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Validation SMS"
-      description={`Validation pour ${organizationData.name}`}
-    >
-      {/* Logo animé */}
-      <div className="w-16 h-16 mx-auto">
-        <AnimatedLogo
-          mainIcon={MessageSquare}
-          secondaryIcon={CheckCircle}
-          mainColor="text-whatsapp"
-          secondaryColor="text-whatsapp-light"
-          waterDrop={true}
-        />
-      </div>
-
-      {/* Code de test */}
-      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          💡 Code de test: <strong>1234</strong>
-        </p>
-      </div>
-
-      <form onSubmit={handleValidateCode} className="space-y-4">
-        {/* Champ de code */}
-        <div className="space-y-2">
-          <Input
-            id="smsCode"
-            type="text"
-            value={smsCode}
-            onChange={(e) => setSmsCode(e.target.value)}
-            placeholder="Code à 4 chiffres"
-            maxLength={4}
-            className="text-center text-2xl font-mono tracking-widest h-14"
-            disabled={isLoading}
-          />
-          {error && (
-            <p className="text-sm text-red-500 flex items-center justify-center gap-1">
-              <AlertCircle className="h-4 w-4" />
-              {error}
-            </p>
-          )}
+          <Button
+            onClick={handleValidate}
+            disabled={!selectedOrganization || code.length !== 6 || isLoading}
+            className="w-full btn-whatsapp-primary"
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <span className="animate-spin mr-2">⏳</span>
+                Validation...
+              </span>
+            ) : (
+              'Valider l\'organisation'
+            )}
+          </Button>
         </div>
 
-        {/* Bouton de validation */}
-        <Button
-          type="submit"
-          className="w-full btn-whatsapp-primary h-12"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <span className="flex items-center gap-2">
-              <div className="loading-whatsapp-spinner" />
-              Validation en cours...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Valider le code
-            </span>
-          )}
-        </Button>
-      </form>
-
-      {/* Informations de l'organisation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Icons.building className="w-5 h-5 text-[#128C7E]" />
-            <span>Informations de l'organisation</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Nom de l'organisation
-              </Label>
-              <p className="text-lg font-semibold text-gray-900">
-                {organizationData.name}
-              </p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium text-gray-700">
-                Code d'organisation
-              </Label>
-              <p className="text-lg font-mono font-semibold text-[#128C7E]">
-                {organizationData.slug}
-              </p>
-            </div>
-          </div>
-          <div>
-            <Label className="text-sm font-medium text-gray-700">
-              Administrateur principal
-            </Label>
-            <p className="text-lg font-semibold text-gray-900">
-              {organizationData.adminName}
+        {/* Message d'aide */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5" />
+            <p className="text-sm text-yellow-700">
+              <strong>Code de test :</strong> 123456<br />
+              Le Super Admin enverra le code réel par SMS.
             </p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Informations de sécurité */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="p-4">
-          <div className="flex items-start space-x-3">
-            <Icons.shield className="w-5 h-5 text-blue-600 mt-0.5" />
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-blue-900">
-                Pourquoi valider par SMS ?
-              </p>
-              <div className="text-sm text-blue-700 space-y-1">
-                <p>• <strong>Sécurité renforcée</strong> : Protection contre les accès non autorisés</p>
-                <p>• <strong>Vérification d'identité</strong> : Confirmation que vous êtes bien le propriétaire du numéro</p>
-                <p>• <strong>Notifications importantes</strong> : Alertes de sécurité et informations critiques</p>
-                <p>• <strong>Conformité</strong> : Respect des standards de sécurité SaaS</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </WhatsAppModal >
+        </div>
+      </div>
+    </WhatsAppModal>
   );
 };
 

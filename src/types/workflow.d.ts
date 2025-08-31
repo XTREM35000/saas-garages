@@ -8,15 +8,18 @@ export type WorkflowStep =
   | 'garage_setup'
   | 'completed';
 
-export interface WorkflowState {
-  currentStep: WorkflowStep;
-  completedSteps: WorkflowStep[];
-  isDemo: boolean;
-  loading: boolean;
-  error: string | null;
-  userId?: string;
-  metadata?: Record<string, any>;
-  lastActiveOrg?: string | null;
+// src/types/workflow.types.ts
+export interface WorkflowCheckState {
+  has_super_admin: boolean;
+  has_admin: boolean;
+  has_organization: boolean;
+  has_sms_validated: boolean; // Cette propriété doit exister
+  has_garage: boolean;
+  current_step: string;
+  is_completed: boolean;
+  organization_id?: string;
+  organization_name?: string;
+  organization_phone?: string;
 }
 
 export interface WorkflowContextType {
@@ -50,7 +53,7 @@ export interface WorkflowStepConfig {
 
 export const WORKFLOW_STEPS: WorkflowStep[] = [
   'super_admin_check',
-  'pricing_selection', 
+  'pricing_selection',
   'admin_creation',
   'org_creation',
   'sms_validation',
@@ -60,10 +63,10 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
 
 export const getNextStep = (currentStep: WorkflowStep): WorkflowStep | null => {
   const currentIndex = WORKFLOW_STEPS.indexOf(currentStep);
-  
+
   if (currentIndex === -1 || currentIndex === WORKFLOW_STEPS.length - 1) {
     return null;
   }
-  
+
   return WORKFLOW_STEPS[currentIndex + 1];
 };

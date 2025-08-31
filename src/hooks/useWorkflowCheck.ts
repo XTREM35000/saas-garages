@@ -1,25 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+// src/hooks/useWorkflowCheck.ts
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { WorkflowCheckState, WorkflowStep } from '@/types/workflow.types';
 
-interface WorkflowCheckState {
-  has_super_admin: boolean;
-  has_admin: boolean;
-  has_organization: boolean;
-  has_garage: boolean;
-  current_step: string;
-  is_completed: boolean;
-}
-
-interface UseWorkflowCheckResult {
-  isChecking: boolean;
-  workflowState: WorkflowCheckState | null;
-  error: string | null;
-  checkWorkflowState: () => Promise<void>;
-}
-
-export function useWorkflowCheck(): UseWorkflowCheckResult {
-  const [isChecking, setIsChecking] = useState(true);
+export function useWorkflowCheck() {
+  const [isChecking, setIsChecking] = useState(false);
   const [workflowState, setWorkflowState] = useState<WorkflowCheckState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,78 +12,127 @@ export function useWorkflowCheck(): UseWorkflowCheckResult {
     try {
       setIsChecking(true);
       setError(null);
+      console.log('🔍 Début vérification workflow...');
 
-      console.log('🔍 [useWorkflowCheck] Vérification état workflow...');
-
-      // Appel des fonctions RPC individuelles qui existent déjà
+      // Vérifications de base avec Promise.all
       const [
         { data: hasSuperAdmin, error: superAdminError },
         { data: hasAdmin, error: adminError },
-        { data: hasOrganization, error: orgError },
-        { data: hasGarage, error: garageError }
       ] = await Promise.all([
         supabase.rpc('check_super_admin_exists'),
         supabase.rpc('check_admin_exists'),
-        supabase.rpc('check_organization_exists'),
-        supabase.rpc('check_garage_exists')
       ]);
 
-      // Vérifier les erreurs
-      if (superAdminError || adminError || orgError || garageError) {
-        const error = superAdminError || adminError || orgError || garageError;
-        console.error('❌ [useWorkflowCheck] Erreur RPC:', error);
-        throw error;
+      if (superAdminError || adminError) {
+        throw superAdminError || adminError;
       }
 
-      // Déterminer l'étape courante
-      let current_step = 'completed';
-      let is_completed = true;
+      console.log('✅ Vérifications de base:', { hasSuperAdmin, hasAdmin });
 
-      if (!hasSuperAdmin) {
-        current_step = 'super_admin';
-        is_completed = false;
-      } else if (!hasAdmin) {
-        current_step = 'admin';
-        is_completed = false;
-      } else if (!hasOrganization) {
-        current_step = 'organization';
-        is_completed = false;
-      } else if (!hasGarage) {
-        current_step = 'garage';
-        is_completed = false;
+      // Vérifications conditionnelles
+      let hasPricingSelected = false;
+      let hasOrganization = false;
+      let hasSmsValidated = false;
+      let hasGarage = false;
+      let organizationData = null;
+
+      if (hasAdmin) {
+        // Vérifier le plan sélectionné
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: adminData } = await supabase
+            .from('admins')
+            .select('selected_plan_id')
+            .eq('id', user.id)
+            .single();
+
+          hasPricingSelected = !!adminData?.selected_plan_id;
+          console.log('✅ Plan sélectionné:', hasPricingSelected);
+        }
+
+        // Vérifier l'organisation si nécessaire
+        try {
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('id, name, phone')
+            .eq('is_active', true)
+            .maybeSingle();
+
+          if (orgData) {
+            hasOrganization = true;
+            organizationData = orgData;
+            console.log('✅ Organisation trouvée:', orgData);
+
+            // Vérifier la validation SMS
+            const { data: smsData } = await supabase
+              .from('sms_validations')
+              .select('id')
+              .eq('organization_id', orgData.id)
+              .eq('is_used', true)
+              .maybeSingle();
+
+            hasSmsValidated = !!smsData;
+            console.log('✅ SMS validé:', hasSmsValidated);
+
+            // Vérifier le garage
+            const { data: garageData } = await supabase
+              .from('garages')
+              .select('id')
+              .eq('organization_id', orgData.id)
+              .eq('is_active', true)
+              .maybeSingle();
+
+            hasGarage = !!garageData;
+            console.log('✅ Garage existe:', hasGarage);
+          }
+        } catch (orgError) {
+          console.warn('⚠️ Erreur vérification organisation:', orgError);
+        }
       }
 
+      // Construction de l'état final
       const workflowData: WorkflowCheckState = {
-        has_super_admin: hasSuperAdmin || false,
-        has_admin: hasAdmin || false,
-        has_organization: hasOrganization || false,
-        has_garage: hasGarage || false,
-        current_step,
-        is_completed
+        has_super_admin: hasSuperAdmin,
+        has_admin: hasAdmin,
+        has_pricing_selected: hasPricingSelected, // Maintenant cette propriété est valide
+        has_organization: hasOrganization,
+        has_sms_validated: hasSmsValidated,
+        has_garage: hasGarage,
+        current_step: determineCurrentStep({ // Fonction helper pour déterminer l'étape
+          has_super_admin: hasSuperAdmin,
+          has_admin: hasAdmin,
+          has_pricing_selected: hasPricingSelected,
+          has_organization: hasOrganization,
+          has_sms_validated: hasSmsValidated,
+          has_garage: hasGarage
+        }),
+        is_completed: false,
+        organization_id: organizationData?.id,
+        organization_name: organizationData?.name,
+        organization_phone: organizationData?.phone
       };
 
-      console.log('✅ [useWorkflowCheck] État workflow:', workflowData);
+      console.log('📊 État workflow final:', workflowData);
       setWorkflowState(workflowData);
 
-    } catch (err: any) {
-      console.error('❌ [useWorkflowCheck] Erreur:', err);
-      const errorMessage = err.message || 'Erreur de vérification du workflow';
-      setError(errorMessage);
-      toast.error(errorMessage);
+    } catch (err) {
+      console.error('❌ Erreur vérification workflow:', err);
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
       setIsChecking(false);
     }
   }, []);
 
-  // Vérification initiale
-  useEffect(() => {
-    checkWorkflowState();
-  }, [checkWorkflowState]);
+  return { isChecking, workflowState, error, checkWorkflowState };
+}
 
-  return {
-    isChecking,
-    workflowState,
-    error,
-    checkWorkflowState
-  };
+// Fonction helper pour déterminer l'étape courante
+function determineCurrentStep(state: Partial<WorkflowCheckState>): WorkflowStep {
+  if (!state.has_super_admin) return 'super_admin';
+  if (!state.has_admin) return 'admin';
+  if (!state.has_pricing_selected) return 'pricing';
+  if (!state.has_organization) return 'organization';
+  if (!state.has_sms_validated) return 'sms_validation';
+  if (!state.has_garage) return 'garage';
+  return 'completed';
 }

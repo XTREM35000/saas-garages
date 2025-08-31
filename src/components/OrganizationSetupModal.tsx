@@ -11,11 +11,26 @@ import AvatarUpload from '@/components/ui/avatar-upload';
 import { generateSlug, isValidSlug } from '@/utils/slugGenerator';
 import '../styles/whatsapp-theme.css';
 
+
+// Ajoutez ces imports en haut du fichier
+import { CopyIcon } from 'lucide-react';
+// Define OrganizationSetupModalProps locally if not exported from workflow.types
 interface OrganizationSetupModalProps {
   isOpen: boolean;
-  onComplete: (orgData: any) => void;
+  onComplete: (data: any) => void;
   selectedPlan?: string;
 }
+
+// Ajoutez cette fonction dans le composant
+const copyToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success('Copié dans le presse-papier ! 📋');
+  } catch (err) {
+    console.error('Erreur lors de la copie:', err);
+    toast.error('Erreur lors de la copie');
+  }
+};
 
 interface FormData {
   name: string;
@@ -51,6 +66,7 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
     website: '',
     logoUrl: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   // Réinitialiser le formulaire quand le modal s'ouvre
   useEffect(() => {
@@ -116,13 +132,19 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
 
   // Générer le slug, sous-domaine et email d'entreprise
   useEffect(() => {
-    if (formData.name && formData.name.length >= 8) {
-      const slug = generateSlug(formData.name);
-      if (slug) {
-        setGeneratedSlug(slug);
-        setGeneratedSubdomain(`https://${slug}.garageconnect.com`);
-        setGeneratedEmail(`contact@${slug}.com`);
-      }
+    if (formData.name && formData.name.length >= 5) {
+      const baseSlug = generateSlug(formData.name) + "-2025";
+      // const baseSlug = generateSlug(formData.name);
+
+      // Ajouter un timestamp pour l'unicité
+      const timestamp = Date.now().toString(36).slice(-4);
+      const finalSlug = `${baseSlug}-${timestamp}`;
+
+      setGeneratedSlug(finalSlug);
+      setGeneratedSubdomain(`${finalSlug}.com`);
+      setGeneratedEmail(`contact@${finalSlug}.com`);
+
+      console.log('🏷️ Slug généré:', finalSlug);
     } else {
       setGeneratedSlug('');
       setGeneratedSubdomain('');
@@ -171,7 +193,18 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
   };
 
   const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'name') {
+      // Nettoyer la valeur : pas d'espaces, que des caractères valides pour un slug
+      const cleanedValue = value
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '') // Garder seulement lettres, chiffres, tirets
+        .replace(/-+/g, '-') // Éviter les tirets multiples
+        .replace(/^-|-$/g, ''); // Enlever les tirets en début/fin
+
+      setFormData(prev => ({ ...prev, [field]: cleanedValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const getErrorMessage = (error: any): string => {
@@ -259,74 +292,60 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    // Validation des champs
-    const fields: (keyof FormData)[] = ['name', 'description', 'address', 'city', 'country', 'phone', 'email'];
-    for (const field of fields) {
-      const validation = validateField(field, formData[field]);
-      if (!validation.isValid) {
-        toast.error(validation.error);
-      return;
-      }
-    }
+    setIsLoading(true);
 
     try {
-      // Appel RPC pour créer l'organisation
-      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('create_organization_complete', {
-        p_name: formData.name,
-        p_description: formData.description,
-        p_slug: generatedSlug,
-        p_address: formData.address,
-        p_city: formData.city,
-        p_country: formData.country,
-        p_phone: formData.phone,
-        p_email: formData.email,
-        p_website: formData.website || null,
-        p_logo_url: formData.logoUrl || null,
-        p_plan_type: selectedPlan,
-        p_subdomain: generatedSubdomain,
-        p_company_email: generatedEmail
+      // 1. Création de l'organisation
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: formData.name,
+          description: formData.description,
+          address: formData.address,
+          city: formData.city,
+          country: formData.country,
+          phone: formData.phone,
+          email: formData.email,
+          website: formData.website || null,
+          logo_url: formData.logoUrl || null,
+          plan_type: selectedPlan || 'starter',
+          slug: generatedSlug,
+          subdomain: generatedSubdomain,
+          company_email: generatedEmail,
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (orgError) throw orgError;
+
+      console.log('✅ Organisation créée avec succès:', orgData);
+
+      // 2. Envoyer à onComplete avec les données pour la validation SMS
+      onComplete({
+        organization: orgData,
+        smsData: {
+          phone: formData.phone,
+          organizationName: formData.name,
+          organizationId: orgData.id
+        }
       });
 
-      if (rpcError) {
-        console.error('❌ Erreur RPC:', rpcError);
-        toast.error(getErrorMessage(rpcError));
-        return;
-      }
-
-      if (rpcData && rpcData.success) {
-        console.log('✅ Organisation créée avec succès:', rpcData);
-
-        // Afficher le message de succès
-        setShowSuccess(true);
-
-        // Attendre 3 secondes puis continuer
-        setTimeout(() => {
-          setShowSuccess(false);
-          onComplete({
-            organization_id: rpcData.organization_id,
-            organization: rpcData.organization,
-            success: true
-          });
-        }, 3000);
-
-        toast.success('Organisation créée avec succès ! 🎉');
-      } else {
-        console.error('❌ Erreur création organisation:', rpcData);
-        toast.error('Erreur lors de la création de l\'organisation');
-      }
     } catch (error) {
-      console.error('❌ Erreur inattendue:', error);
-      toast.error('Une erreur inattendue s\'est produite');
+      console.error('❌ Erreur création:', error);
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsLoading(false);
     }
   };
 
   if (showSuccess) {
     return (
-      <WhatsAppModal isOpen={isOpen} onClose={() => {}}>
+      <WhatsAppModal isOpen={isOpen} onClose={() => { }}>
         <div className="text-center p-8">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <div className="text-green-500 text-3xl">✅</div>
-            </div>
+          </div>
           <h3 className="text-2xl font-bold text-[#128C7E] mb-4">Organisation créée !</h3>
           <p className="text-gray-600 mb-6">
             Félicitations ! Votre organisation a été créée avec succès.
@@ -350,7 +369,7 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
   }
 
   return (
-    <WhatsAppModal isOpen={isOpen} onClose={() => {}}>
+    <WhatsAppModal isOpen={isOpen} onClose={() => { }}>
       <div className="max-w-4xl mx-auto">
         {/* Utilisation du composant AvatarUpload réutilisable */}
         <AvatarUpload
@@ -371,48 +390,57 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
                 <h3 className="text-lg font-semibold text-[#128C7E]">Informations de base</h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-[#128C7E] font-medium">Nom de l'organisation *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-[#128C7E] font-medium">
+                  Nom de l'organisation *
+                </Label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <span className="text-gray-500 text-sm">ORG-</span>
+                  </div>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="modal-whatsapp-input"
-                    placeholder="Nom de votre organisation"
+                    className="modal-whatsapp-input pl-12" // Ajoutez du padding à gauche
+                    placeholder="votre-organisation"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="website" className="text-[#128C7E] font-medium">Site web</Label>
-                  <Input
-                    id="website"
-                    value={formData.website}
-                    onChange={(e) => handleInputChange('website', e.target.value)}
-                    className="modal-whatsapp-input"
-                    placeholder="https://votre-site.com"
-                  />
-                </div>
+                <p className="text-xs text-gray-500">
+                  Le nom complet sera: <strong>ORG-{formData.name || 'votre-organisation'}</strong>
+                </p>
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-[#128C7E] font-medium">Description *</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
+                <Label htmlFor="website" className="text-[#128C7E] font-medium">Site web</Label>
+                <Input
+                  id="website"
+                  value={formData.website}
+                  onChange={(e) => handleInputChange('website', e.target.value)}
                   className="modal-whatsapp-input"
-                  placeholder="Décrivez votre organisation et ses activités"
-                  rows={3}
+                  placeholder="https://votre-site.com"
                 />
-                    </div>
-                  </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-[#128C7E] font-medium">Description *</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                className="modal-whatsapp-input"
+                placeholder="Décrivez votre organisation et ses activités"
+                rows={3}
+              />
+            </div>
+
 
             {/* Adresse */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-2 h-2 bg-[#25D366] rounded-full"></div>
                 <h3 className="text-lg font-semibold text-[#25D366]">Adresse</h3>
-                    </div>
+              </div>
 
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -437,19 +465,19 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
                       placeholder="Votre ville"
                     />
                   </div>
-                    <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label htmlFor="country" className="text-[#25D366] font-medium">Pays *</Label>
-                      <Input
+                    <Input
                       id="country"
                       value={formData.country}
                       onChange={(e) => handleInputChange('country', e.target.value)}
                       className="modal-whatsapp-input"
                       placeholder="Votre pays"
                     />
-                    </div>
-                        </div>
-                      </div>
-                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Contact */}
             <div className="space-y-4">
@@ -469,7 +497,7 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
                     placeholder="Numéro de téléphone"
                   />
                 </div>
-                  <div className="space-y-2">
+                <div className="space-y-2">
                   <Label htmlFor="email" className="text-[#075E54] font-medium">Email *</Label>
                   <Input
                     id="email"
@@ -486,23 +514,55 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
             {generatedSlug && (
               <div className="space-y-4">
                 <div className="flex items-center space-x-2 mb-4">
-                  <div className="w-2 h-2 bg-[#FFD700] rounded-full"></div>
-                  <h3 className="text-lg font-semibold text-[#FFD700]">Informations générées automatiquement</h3>
+                  <div className="w-2 h-2 bg-[#8B5CF6] rounded-full"></div>
+                  <h3 className="text-lg font-semibold text-[#8B5CF6]">Informations générées automatiquement</h3>
                 </div>
 
-                <div className="bg-[#FFD700]/10 border border-[#FFD700]/20 rounded-lg p-4">
+                <div className="bg-[#8B5CF6]/10 border border-[#8B5CF6]/20 rounded-lg p-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    {/* Slug avec icône copier */}
                     <div>
-                      <p className="font-medium text-[#FFD700] mb-1">Slug</p>
-                      <code className="bg-white px-2 py-1 rounded text-xs">{generatedSlug}</code>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-medium text-[#8B5CF6]">Slug</p>
+                        <button
+                          onClick={() => copyToClipboard(generatedSlug)}
+                          className="text-[#8B5CF6] hover:text-[#7C3AED] transition-colors"
+                          title="Copier le slug"
+                        >
+                          <CopyIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <code className="bg-white px-2 py-1 rounded text-xs block truncate">{generatedSlug}</code>
                     </div>
+
+                    {/* Sous-domaine avec icône copier */}
                     <div>
-                      <p className="font-medium text-[#FFD700] mb-1">Sous-domaine</p>
-                      <code className="bg-white px-2 py-1 rounded text-xs">{generatedSubdomain}</code>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-medium text-[#8B5CF6]">Sous-domaine</p>
+                        <button
+                          onClick={() => copyToClipboard(generatedSubdomain)}
+                          className="text-[#8B5CF6] hover:text-[#7C3AED] transition-colors"
+                          title="Copier le sous-domaine"
+                        >
+                          <CopyIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <code className="bg-white px-2 py-1 rounded text-xs block truncate">{generatedSubdomain}</code>
                     </div>
+
+                    {/* Email avec icône copier */}
                     <div>
-                      <p className="font-medium text-[#FFD700] mb-1">Email entreprise</p>
-                      <code className="bg-white px-2 py-1 rounded text-xs">{generatedEmail}</code>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-medium text-[#8B5CF6]">Email entreprise</p>
+                        <button
+                          onClick={() => copyToClipboard(generatedEmail)}
+                          className="text-[#8B5CF6] hover:text-[#7C3AED] transition-colors"
+                          title="Copier l'email"
+                        >
+                          <CopyIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <code className="bg-white px-2 py-1 rounded text-xs block truncate">{generatedEmail}</code>
                     </div>
                   </div>
                 </div>
@@ -514,15 +574,24 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
               <Button
                 onClick={handleSubmit}
                 className="btn-whatsapp-primary"
-                disabled={!formData.name || !formData.description || !formData.address || !formData.city || !formData.country || !formData.phone || !formData.email}
+                disabled={!formData.name || !formData.description || !formData.address ||
+                  !formData.city || !formData.country || !formData.phone ||
+                  !formData.email || isLoading}
               >
-                    Créer l'Organisation
+                {isLoading ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Création en cours...
+                  </>
+                ) : (
+                  'Créer l\'Organisation'
+                )}
               </Button>
             </div>
           </CardContent>
         </Card>
-        </div>
-    </WhatsAppModal>
+      </div>
+    </WhatsAppModal >
   );
 };
 

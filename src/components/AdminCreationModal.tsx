@@ -10,12 +10,7 @@ import { PasswordFieldPro } from '@/components/ui/password-field-pro';
 import { toast } from 'sonner';
 import AvatarUpload from '@/components/ui/avatar-upload';
 import '../styles/whatsapp-theme.css';
-
-interface AdminCreationModalProps {
-  isOpen: boolean;
-  onComplete: (adminData: any) => void;
-  onClose: () => void;
-}
+import { AdminCreationModalProps } from '@/types/workflow.types';
 
 interface FormData {
   firstName: string;
@@ -29,7 +24,8 @@ interface FormData {
 export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
   isOpen,
   onComplete,
-  onClose
+  onClose,
+  selectedPlan
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);

@@ -11,6 +11,7 @@ import { AnimatedLogo } from '@/components/AnimatedLogo';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface GarageSetupModalProps {
   isOpen: boolean;
@@ -38,6 +39,20 @@ interface ValidationErrors {
   phone?: string;
   email?: string;
 }
+
+const AFRICAN_COUNTRIES = [
+  { value: 'BF', label: 'Burkina Faso' },
+  { value: 'ML', label: 'Mali' },
+  { value: 'NG', label: 'Nigéria' },
+  { value: 'TG', label: 'Togo' },
+  { value: 'BJ', label: 'Bénin' },
+  { value: 'LB', label: 'Liban' },
+  { value: 'DZ', label: 'Algérie' },
+  { value: 'TN', label: 'Tunisie' },
+  { value: 'MA', label: 'Maroc' },
+  { value: 'CI', label: 'Côte d\'Ivoire' },
+  { value: 'OTHER', label: 'Autre pays' }
+] as const;
 
 export const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
   isOpen,
@@ -102,7 +117,7 @@ export const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
 
       case 'postalCode':
         if (!value.trim()) return 'Le code postal est obligatoire';
-        if (!/^[0-9]{5}$/.test(value)) return 'Le code postal doit contenir 5 chiffres';
+        if (!/^[0-9]{4}$/.test(value)) return 'Le code postal doit contenir 4 chiffres';
         break;
 
       case 'phone':
@@ -395,7 +410,7 @@ export const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
                         className={cn(
                           errors.postalCode && "border-red-500 focus:border-red-500"
                         )}
-                        placeholder="75001"
+                        placeholder="5341"
                         maxLength={5}
                       />
                       {errors.postalCode && (
@@ -405,19 +420,21 @@ export const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
 
                     <div className="space-y-2">
                       <Label htmlFor="country">Pays</Label>
-                      <select
-                        id="country"
+                      <Select
                         value={formData.country}
-                        onChange={(e) => handleFieldChange('country', e.target.value)}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        onValueChange={(value) => handleFieldChange('country', value)}
                       >
-                        <option value="France">France</option>
-                        <option value="Belgique">Belgique</option>
-                        <option value="Suisse">Suisse</option>
-                        <option value="Luxembourg">Luxembourg</option>
-                        <option value="Canada">Canada</option>
-                        <option value="Autre">Autre</option>
-                      </select>
+                        <SelectTrigger className="modal-whatsapp-input">
+                          <SelectValue placeholder="Sélectionnez le pays" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AFRICAN_COUNTRIES.map((country) => (
+                            <SelectItem key={country.value} value={country.value}>
+                              {country.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

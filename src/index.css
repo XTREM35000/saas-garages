@@ -18,6 +18,7 @@
 /* ============================= */
 
 @layer base {
+
   /* === iCloud Theme === */
   :root {
     --background: 216 100% 98%;
@@ -119,6 +120,20 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
+  }
+
+  /* Dans votre fichier CSS */
+  .copy-btn {
+    transition: all 0.2s ease;
+  }
+
+  .copy-btn:hover {
+    transform: scale(1.1);
+    background-color: #8B5CF6/10;
+  }
+
+  .copy-btn:active {
+    transform: scale(0.95);
   }
 
   /* Smooth transitions pour theme switching */

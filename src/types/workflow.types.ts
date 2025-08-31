@@ -6,12 +6,12 @@ export type IconType = React.ComponentType<{ size?: number; color?: string }>;
 
 // Define IconType here if './common.types' does not exist or is misplaced
 export type WorkflowStep =
-  | 'super_admin_check'
-  | 'pricing_selection'
-  | 'admin_creation'
-  | 'org_creation'
+  | 'super_admin'
+  | 'admin'
+  | 'pricing'
+  | 'organization'
   | 'sms_validation'
-  | 'garage_setup'
+  | 'garage'
   | 'completed';
 
 // Type pour l'état en base de données
@@ -28,14 +28,17 @@ export interface DBWorkflowState {
 
 // Type pour l'état dans le contexte React
 export interface WorkflowState {
-  currentStep: WorkflowStep;
-  completedSteps: WorkflowStep[];
-  isDemo: boolean;
-  loading: boolean;
-  error: string | null;
-  userId?: string;
-  metadata?: Record<string, any>;
-  lastActiveOrg?: string | null;
+  has_super_admin: boolean;
+  has_admin: boolean;
+  has_pricing_selected: boolean;
+  has_organization: boolean;
+  has_sms_validated: boolean;
+  has_garage: boolean;
+  current_step: WorkflowStep;
+  is_completed: boolean;
+  organization_id?: string;
+  organization_name?: string;
+  organization_phone?: string;
 }
 
 export interface WorkflowContextType {
@@ -68,13 +71,12 @@ export interface WorkflowStepConfig {
 }
 
 export const WORKFLOW_STEPS: WorkflowStep[] = [
-  'super_admin_check',
-  'pricing_selection',
-  'admin_creation',
-  'org_creation',
+  'super_admin',
+  'admin',
+  'pricing',
+  'organization',
   'sms_validation',
-  'garage_setup',
-  'completed'
+  'garage'
 ];
 
 export const getNextStep = (currentStep: WorkflowStep): WorkflowStep | null => {
@@ -86,3 +88,86 @@ export const getNextStep = (currentStep: WorkflowStep): WorkflowStep | null => {
 
   return WORKFLOW_STEPS[currentIndex + 1];
 };
+
+export interface AdminData {
+  email: string;
+  password: string;
+  [key: string]: any;
+}
+
+export interface OptimizedWorkflowWizardProps {
+  isOpen: boolean;
+  onComplete: (step: WorkflowStep) => Promise<void>;
+  workflowState: WorkflowCheckState | null; // Changé de initialState à workflowState
+}
+
+export interface WorkflowCheckState {
+  has_super_admin: boolean;
+  has_admin: boolean;
+  has_pricing_selected: boolean;
+  has_organization: boolean;
+  has_sms_validated: boolean;
+  has_garage: boolean;
+  current_step: WorkflowStep;
+  is_completed: boolean;
+  organization_id?: string;
+  organization_name?: string;
+  organization_phone?: string;
+}
+
+export interface AdminCreationModalProps {
+  isOpen: boolean;
+  onComplete: () => void;
+  onClose: () => void;
+  selectedPlan: PlanDetails | null; // Changement ici : accepte PlanDetails au lieu de string
+}
+
+export interface PricingPlan {
+  id: PlanType;
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+  limitations: string[];
+  popular?: boolean;
+  icon: IconType;
+  buttonColors: {
+    bg: string;
+    hover: string;
+    text: string;
+  };
+  cardGradient: string;
+}
+
+export type PlanType = 'free' | 'monthly' | 'annual' | 'license';
+
+export interface PlanDetails {
+  id: string;
+  name: string;
+  price: string;
+  duration: number;
+  features: string[];
+  type: 'free' | 'monthly' | 'annual' | 'license'; // Type de plan
+  limitations: string[];    // Limitations éventuelles
+  selected_at: string;      // Date de sélection au format ISO
+}
+
+export interface PricingModalProps {
+  isOpen: boolean;
+  onSelectPlan: (plan: PlanDetails) => Promise<void>;
+}
+
+export interface WorkflowData {
+  currentStep: string;
+  planDetails?: PlanDetails;
+  organizationData?: any;
+  validationData?: any;
+}
+
+export interface WorkflowStateProps {
+  workflowState: WorkflowCheckState | null;
+  isChecking: boolean;
+  error: string | null;
+  checkWorkflowState: () => Promise<void>;
+}

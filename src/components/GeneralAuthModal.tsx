@@ -63,6 +63,37 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
     }
   }, [isOpen]);
 
+  // Vérification initiale
+  useEffect(() => {
+    const checkAdminExists = async () => {
+      if (!isOpen) return;
+
+      try {
+        console.log('🔍 Vérification existence admin...');
+
+        const { data: exists, error } = await supabase
+          .rpc('check_admin_exists');
+
+        if (error) throw error;
+
+        // Si un admin existe, ne pas montrer HomePage
+        if (exists) {
+          console.log('✅ Admin existe déjà → Afficher login direct');
+          setShowHomePage(false);
+        } else {
+          console.log('⚠️ Pas d\'admin → Afficher HomePage');
+          setShowHomePage(true);
+        }
+
+      } catch (error) {
+        console.error('❌ Erreur vérification admin:', error);
+        toast.error('Erreur lors de la vérification du système');
+      }
+    };
+
+    checkAdminExists();
+  }, [isOpen]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
 
@@ -189,6 +220,68 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
     toast.success('Vous pouvez maintenant vous connecter avec votre nouveau mot de passe');
   };
 
+  // Modifions aussi la fonction qui ouvre HomePage manuellement
+  const handleShowHomePage = async () => {
+    try {
+      const { data: exists, error } = await supabase
+        .rpc('check_admin_exists');
+
+      if (error) throw error;
+
+      if (exists) {
+        toast.info('Un administrateur existe déjà dans le système');
+        return;
+      }
+
+      setShowHomePage(true);
+    } catch (error) {
+      console.error('❌ Erreur:', error);
+      toast.error('Erreur lors de la vérification');
+    }
+  };
+
+  // Nouvelle fonction pour gérer le clic sur "Nouveau Tenant"
+  const handleNewTenant = async () => {
+    try {
+      console.log('🔄 Vérification nouveau tenant...');
+      setIsLoading(true);
+
+      // 1. Vérifier si un super admin existe
+      const { data: hasSuperAdmin, error: superAdminError } = await supabase
+        .rpc('check_super_admin_exists');
+
+      if (superAdminError) throw superAdminError;
+
+      // 2. Décider quel modal afficher
+      if (!hasSuperAdmin) {
+        console.log('⚠️ Pas de super admin → Afficher création super admin');
+        // Fermer le modal actuel et ouvrir le workflow
+        onClose();
+        onNewTenant();
+      } else {
+        // Si un super admin existe, vérifier si un admin existe
+        const { data: hasAdmin, error: adminError } = await supabase
+          .rpc('check_admin_exists');
+
+        if (adminError) throw adminError;
+
+        if (!hasAdmin) {
+          console.log('⚠️ Super admin existe mais pas d\'admin → Afficher création admin');
+          onClose();
+          onNewTenant();
+        } else {
+          toast.info('Un administrateur existe déjà dans le système');
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Erreur vérification tenant:', error);
+      toast.error('Erreur lors de la vérification du système');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <WhatsAppModal isOpen={isOpen} onClose={onClose} size="xl">
       <div className="max-w-4xl mx-auto">
@@ -201,7 +294,7 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
             </div>
             <div className="flex items-center space-x-2">
               <Button
-                onClick={() => setShowHomePage(true)}
+                onClick={handleShowHomePage} // Utiliser la nouvelle fonction
                 variant="ghost"
                 className="text-[#128C7E] hover:text-[#25D366] hover:bg-[#128C7E]/10 px-3 py-2"
               >
@@ -397,12 +490,22 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
 
             {/* Bouton Nouveau Tenant */}
             <Button
-              onClick={onNewTenant}
+              onClick={handleNewTenant}
+              disabled={isLoading}
               variant="outline"
               className="w-full py-3 text-lg border-2 border-[#128C7E] text-[#128C7E] hover:bg-[#128C7E] hover:text-white transition-all duration-200"
             >
-              <Building2 className="w-5 h-5 mr-2" />
-              Nouveau Tenant ?
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-[#128C7E] border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Vérification...
+                </div>
+              ) : (
+                <>
+                  <Building2 className="w-5 h-5 mr-2" />
+                  Nouveau Tenant ?
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>
