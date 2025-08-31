@@ -63,8 +63,8 @@ export class SuperAdminService {
       }
 
       // Utiliser directement l'API REST de Supabase Auth
-      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+      const baseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+      const serviceKey = import.meta.env.PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
 
       if (!baseUrl || !serviceKey) {
         throw new Error('Configuration Supabase manquante');
@@ -115,7 +115,7 @@ export class SuperAdminService {
 
       // 3. Vérifier la création du profil et super_admin
       const supabase = createClient(baseUrl, serviceKey);
-      
+
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -148,9 +148,9 @@ export class SuperAdminService {
 
     } catch (error) {
       console.error('❌ Erreur création Super Admin:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Erreur inconnue' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue'
       };
     }
   }

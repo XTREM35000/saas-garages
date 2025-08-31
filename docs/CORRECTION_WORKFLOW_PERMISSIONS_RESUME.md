@@ -3,7 +3,7 @@
 ## 🚨 Problème Initial
 ```
 {code: '42501', details: null, hint: null, message: 'permission denied for table workflow_states'}
-POST https://metssugfqsnttghfrsxx.supabase.co/rest/v1/workflow_states 401 (Unauthorized)
+POST https://bmkmiqpasfaprfpfynms.supabase.co/rest/v1/workflow_states 401 (Unauthorized)
 ```
 
 ## ✅ Solution Appliquée

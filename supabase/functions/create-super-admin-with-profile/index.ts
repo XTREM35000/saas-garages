@@ -1,134 +1,145 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS, GET"
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: corsHeaders
-    });
+  console.log("=== CRÉATION SUPER ADMIN ===");
+
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Initialiser Supabase avec la clé de service
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '', 
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    // Récupérer les données du body
-    const { 
-      email, 
-      password, 
-      firstName, 
-      lastName, 
-      phone, 
-      avatarUrl 
-    } = await req.json();
-
-    // Validation des données
-    if (!email || !password || !firstName || !lastName) {
+    if (!supabaseUrl || !serviceRoleKey) {
       return new Response(
-        JSON.stringify({
-          error: {
-            message: 'Email, mot de passe, prénom et nom sont requis',
-            code: 'missing_required_fields'
-          }
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
+        JSON.stringify({ error: "Configuration manquante" }),
+        { headers: corsHeaders, status: 500 }
       );
     }
 
-    console.log('🔐 Création Super Admin:', { email, firstName, lastName });
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const body = await req.json();
 
-    // 1️⃣ Créer l'utilisateur dans auth.users
-    const { data: { user }, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
+    const { email, password, firstName, lastName, phone, avatarUrl } = body;
+
+    console.log("📦 Données reçues:", { email, firstName, lastName });
+
+    // Validation
+    if (!email || !password || !firstName || !lastName) {
+      return new Response(
+        JSON.stringify({ error: "Email, password, firstName et lastName requis" }),
+        { headers: corsHeaders, status: 400 }
+      );
+    }
+
+    // 1. Création de l'utilisateur Auth
+    console.log("🔐 Création user Auth...");
+    const { data: userData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email.trim(),
+      password: password,
       email_confirm: true,
       user_metadata: {
-        firstName,
-        lastName,
-        phone: phone || '',
-        avatarUrl: avatarUrl || '',
-        role: 'superadmin' // Important: définir le rôle ici
-      }
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone: phone ? phone.replace(/\s/g, '') : '',
+        avatar_url: avatarUrl || '',
+        role: 'super_admin'
+      },
     });
 
     if (authError) {
-      console.error('❌ Erreur auth:', authError);
+      console.error("❌ Erreur auth:", authError);
       return new Response(
-        JSON.stringify({
-          error: {
-            message: authError.message,
-            code: authError.status || 'auth_error',
-            details: authError
-          }
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
+        JSON.stringify({ error: authError.message }),
+        { headers: corsHeaders, status: 400 }
       );
     }
 
-    if (!user) {
+    if (!userData.user) {
       return new Response(
-        JSON.stringify({
-          error: {
-            message: 'Échec création utilisateur',
-            code: 'user_creation_failed'
-          }
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
+        JSON.stringify({ error: "Aucun utilisateur créé" }),
+        { headers: corsHeaders, status: 400 }
       );
     }
 
-    console.log('✅ Utilisateur créé:', user.id);
+    console.log("✅ User Auth créé:", userData.user.id);
 
-    // Le trigger sur auth.users s'occupe automatiquement de créer le profile et super_admin
-    // grâce aux métadonnées avec role: 'superadmin'
+    // 2. Création du profil
+    console.log("👤 Création profil...");
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: userData.user.id,
+        email: userData.user.email,
+        role: 'super_admin',
+        full_name: `${firstName.trim()} ${lastName.trim()}`,
+        phone: phone ? phone.replace(/\s/g, '') : '',
+        avatar_url: avatarUrl || '',
+        organization_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
 
+    if (profileError) {
+      console.error("❌ Erreur profil:", profileError);
+      // Compensation : suppression de l'user auth
+      await supabaseAdmin.auth.admin.deleteUser(userData.user.id);
+      return new Response(
+        JSON.stringify({ error: "Erreur création profil: " + profileError.message }),
+        { headers: corsHeaders, status: 400 }
+      );
+    }
+
+    console.log("✅ Profil créé");
+
+    // 3. Création super_admin
+    console.log("⭐ Création super_admin...");
+    const { error: superAdminError } = await supabaseAdmin
+      .from('super_admins')
+      .insert({
+        user_id: userData.user.id,
+        permissions: ['all'],
+        is_active: true,
+        pricing_plan_id: null,
+        trial_ends_at: null,
+        created_at: new Date().toISOString()
+      });
+
+    if (superAdminError) {
+      console.warn("⚠️ Erreur super_admin:", superAdminError);
+      // On ne compense pas car le profil est déjà créé
+    } else {
+      console.log("✅ Super_admin créé");
+    }
+
+    // Succès
     return new Response(
       JSON.stringify({
+        success: true,
         data: {
           user: {
-            id: user.id,
-            email: user.email,
-            role: 'superadmin'
+            id: userData.user.id,
+            email: userData.user.email,
+            role: "super_admin"
           }
         }
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
+      { headers: corsHeaders, status: 200 }
     );
 
   } catch (error) {
-    console.error('❌ Erreur générale:', error);
+    console.error("💥 Erreur inattendue:", error);
     return new Response(
-      JSON.stringify({
-        error: {
-          message: error.message || 'Erreur interne du serveur',
-          code: 'unexpected_failure',
-          details: error
-        }
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400
-      }
+      JSON.stringify({ error: error.message }),
+      { headers: corsHeaders, status: 500 }
     );
   }
 });

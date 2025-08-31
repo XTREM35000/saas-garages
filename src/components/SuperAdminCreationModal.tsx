@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { PhoneFieldPro } from '@/components/ui/phone-field-pro';
 import { PasswordFieldPro } from '@/components/ui/password-field-pro';
 import { toast } from 'sonner';
 import AvatarUpload from '@/components/ui/avatar-upload';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 import '../styles/whatsapp-theme.css';
 
 interface SuperAdminCreationModalProps {
@@ -27,16 +27,11 @@ interface FormData {
   avatarUrl: string;
 }
 
-// Configuration des URLs selon l'environnement
-const API_BASE_URL = import.meta.env.DEV
-  ? '/api'
-  : 'https://metssugfqsnttghfrsxx.supabase.co/functions/v1';
-
-export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = ({
+export const SuperAdminCreationModal = ({
   isOpen,
   onComplete,
   onClose
-}) => {
+}: SuperAdminCreationModalProps) => {
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -55,55 +50,90 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/create_super_admin_complete`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          name: `${formData.firstName} ${formData.lastName}`,
-          phone: formData.phone
-        })
+      // Validation améliorée
+      if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
+        throw new Error("Tous les champs obligatoires doivent être remplis");
+      }
+
+      if (formData.password.length < 6) {
+        throw new Error("Le mot de passe doit contenir au moins 6 caractères");
+      }
+
+      console.log('🔄 Création Super Admin via Edge Function...', formData);
+
+      // Utilisation directe de fetch avec la clé de service
+      const response = await fetch(
+        `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/create-super-admin-with-profile`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            email: formData.email.trim(),
+            password: formData.password,
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            phone: formData.phone.replace(/\s/g, ''),
+            avatarUrl: formData.avatarUrl
+          })
+        }
+      );
+
+      // Vérifiez le statut HTTP
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ HTTP Error:', response.status, errorText);
+        throw new Error(`Erreur serveur (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('📥 Réponse reçue:', data);
+
+      // Gestion des erreurs de la function
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      if (!data?.success) {
+        throw new Error('Erreur inconnue lors de la création');
+      }
+
+      console.log('✅ Super Admin créé avec succès:', data);
+
+      toast.success(`Super Admin ${formData.firstName} créé avec succès! 🎉`, {
+        duration: 5000
       });
 
-      if (!response.ok) {
-        let errorMessage;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || `Erreur HTTP ${response.status}`;
-        } catch {
-          errorMessage = `Erreur réseau ou CORS (${response.status})`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error("Réponse invalide du serveur");
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || "Erreur inconnue lors de la création");
-      }
-
-      // Succès
-      toast.success('Super Admin créé avec succès! 🎉');
       onComplete(data);
       onClose();
+      resetForm();
 
     } catch (err: any) {
-      console.error("❌ Erreur création super admin:", err);
-      setError(err.message || "Erreur inconnue");
-      toast.error(err.message);
+      console.error("❌ Erreur création complète:", err);
+      const errorMessage = err.message || "Erreur lors de la création du Super Admin";
+      setError(errorMessage);
+
+      toast.error(errorMessage, {
+        duration: 7000
+      });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      avatarUrl: ''
+    });
+    setAvatarPreview(null);
+    setError(null);
   };
 
   const handleAvatarChange = (file: File) => {
@@ -118,14 +148,21 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (error) setError(null);
+  };
+
+  const isFormValid = () => {
+    return formData.firstName &&
+      formData.lastName &&
+      formData.email &&
+      formData.phone &&
+      formData.password &&
+      formData.password.length >= 6;
   };
 
   return (
     <WhatsAppModal isOpen={isOpen} onClose={onClose}>
       <div className="max-w-4xl mx-auto">
-
-
-        {/* Utilisation du composant AvatarUpload réutilisable */}
         <AvatarUpload
           avatarPreview={avatarPreview}
           onAvatarChange={handleAvatarChange}
@@ -146,23 +183,29 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName" className="text-[#128C7E] font-medium">Prénom</Label>
+                  <Label htmlFor="firstName" className="text-[#128C7E] font-medium">
+                    Prénom *
+                  </Label>
                   <Input
                     id="firstName"
                     value={formData.firstName}
                     onChange={(e) => handleInputChange('firstName', e.target.value)}
                     className="modal-whatsapp-input"
                     placeholder="Votre prénom"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName" className="text-[#128C7E] font-medium">Nom</Label>
+                  <Label htmlFor="lastName" className="text-[#128C7E] font-medium">
+                    Nom *
+                  </Label>
                   <Input
                     id="lastName"
                     value={formData.lastName}
                     onChange={(e) => handleInputChange('lastName', e.target.value)}
                     className="modal-whatsapp-input"
                     placeholder="Votre nom"
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -179,11 +222,13 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
                 <EmailFieldPro
                   value={formData.email}
                   onChange={(value) => handleInputChange('email', value)}
-                  placeholder="Votre adresse email"
+                  placeholder="Votre adresse email *"
+                  disabled={isLoading}
                 />
                 <PhoneFieldPro
                   value={formData.phone}
                   onChange={(value) => handleInputChange('phone', value)}
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -198,23 +243,39 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
               <PasswordFieldPro
                 value={formData.password}
                 onChange={(value) => handleInputChange('password', value)}
+                disabled={isLoading}
               />
             </div>
+
+            {/* Affichage des erreurs */}
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
 
             {/* Bouton de soumission */}
             <div className="flex justify-end pt-4">
               <Button
                 onClick={handleSubmit}
                 className="btn-whatsapp-primary"
-                disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password}
+                disabled={!isFormValid() || isLoading}
+                size="lg"
               >
-                {isLoading ? 'Création en cours...' : 'Créer le Super Administrateur'}
+                {isLoading ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Création en cours...
+                  </>
+                ) : (
+                  'Créer le Super Administrateur'
+                )}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Footer avec branding Thierry Gogo */}
+        {/* Footer avec branding */}
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
             <div className="flex items-center space-x-3">
@@ -225,14 +286,13 @@ export const SuperAdminCreationModal: React.FC<SuperAdminCreationModalProps> = (
               />
               <div>
                 <h4 className="font-semibold text-gray-900 text-sm">Thierry Gogo</h4>
-                <p className="text-xs text-gray-600">Développeur FullStack (Frontend & Backend)</p>
+                <p className="text-xs text-gray-600">Développeur FullStack</p>
                 <p className="text-xs text-gray-500">FREELANCE</p>
               </div>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-600">Whatsapp +225 0758966156 / 0103644527</p>
               <p className="text-xs text-gray-500">01 BP 5341 Abidjan 01</p>
-              <p className="text-xs text-gray-500">Cocody, RIVIERA 3</p>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
@@ -7,17 +7,21 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8082,
-    proxy: mode === 'development' ? {
-      '/api': {
-        target: 'https://metssugfqsnttghfrsxx.supabase.co/functions/v1',
+    port: 8080,
+    proxy: {
+      // 🎯 SUPPRIMEZ L'ANCIEN PROJET
+      '/functions': {
+        target: 'https://bmkmiqpasfaprfpfynms.supabase.co', // ← NOUVEAU PROJET
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        secure: true
+      },
+      '/api': {
+        target: 'https://bmkmiqpasfaprfpfynms.supabase.co/functions/v1', // ← NOUVEAU
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
       }
-    } : undefined
+    }
   },
   plugins: [
     react(),
@@ -26,7 +30,7 @@ export default defineConfig(({ mode }) => ({
   ].filter(Boolean),
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
-}))
+}));

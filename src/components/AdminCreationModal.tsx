@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +8,6 @@ import { EmailFieldPro } from '@/components/ui/email-field-pro';
 import { PhoneFieldPro } from '@/components/ui/phone-field-pro';
 import { PasswordFieldPro } from '@/components/ui/password-field-pro';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import AvatarUpload from '@/components/ui/avatar-upload';
 import '../styles/whatsapp-theme.css';
 
@@ -19,7 +18,8 @@ interface AdminCreationModalProps {
 }
 
 interface FormData {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone: string;
   password: string;
@@ -35,18 +35,21 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     password: '',
     avatarUrl: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   // Réinitialiser le formulaire quand le modal s'ouvre
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
         phone: '',
         password: '',
@@ -55,39 +58,9 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
       setCurrentStep(1);
       setShowSuccess(false);
       setAvatarPreview(null);
+      setIsLoading(false);
     }
   }, [isOpen]);
-
-  // Event listeners pour les pictos de test
-  useEffect(() => {
-    const handleFillFormError = () => {
-      setFormData({
-        name: 'A',
-        email: 'invalid-email',
-        phone: '123',
-        password: 'weak',
-        avatarUrl: ''
-      });
-    };
-
-    const handleFillFormSuccess = () => {
-      setFormData({
-        name: 'Marie Dubois',
-        email: 'marie.dubois@example.com',
-        phone: '+33 6 98 76 54 32',
-        password: 'SecureAdmin123',
-        avatarUrl: ''
-      });
-    };
-
-    window.addEventListener('fillFormError', handleFillFormError);
-    window.addEventListener('fillFormSuccess', handleFillFormSuccess);
-
-    return () => {
-      window.removeEventListener('fillFormError', handleFillFormError);
-      window.removeEventListener('fillFormSuccess', handleFillFormSuccess);
-    };
-  }, []);
 
   const handleAvatarChange = (file: File) => {
     const reader = new FileReader();
@@ -99,32 +72,6 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const validateField = (field: string, value: string): { isValid: boolean; error?: string } => {
-    switch (field) {
-      case 'name':
-        if (!value.trim()) return { isValid: false, error: 'Le nom complet est requis' };
-        if (value.length < 3) return { isValid: false, error: 'Le nom doit contenir au moins 3 caractères' };
-        break;
-      case 'email':
-        if (!value.trim()) return { isValid: false, error: 'L\'email est requis' };
-        // Validation simplifiée : contient @ et un point après
-        if (!value.includes('@') || !value.includes('.')) return { isValid: false, error: 'Format d\'email invalide' };
-        break;
-      case 'phone':
-        if (!value.trim()) return { isValid: false, error: 'Le téléphone est requis' };
-        // Validation simplifiée : au moins 8 chiffres
-        const cleanPhone = value.replace(/\D/g, '');
-        if (cleanPhone.length < 8) return { isValid: false, error: 'Format de téléphone invalide' };
-        break;
-      case 'password':
-        if (!value.trim()) return { isValid: false, error: 'Le mot de passe est requis' };
-        if (value.length < 8) return { isValid: false, error: 'Le mot de passe doit contenir au moins 8 caractères' };
-        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) return { isValid: false, error: 'Le mot de passe doit contenir au moins une minuscule, une majuscule et un chiffre' };
-        break;
-    }
-    return { isValid: true };
-  };
-
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -132,75 +79,26 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
   const getErrorMessage = (error: any): string => {
     if (typeof error === 'string') return error;
 
-    // Erreurs spécifiques de l'API Auth
+    // Erreurs spécifiques de l'API
     if (error?.message?.includes('User already registered')) {
       return 'Cet email est déjà utilisé.';
     }
-    if (error?.message?.includes('Password should be at least')) {
-      return 'Le mot de passe doit contenir au moins 6 caractères.';
+    if (error?.message?.includes('already exists')) {
+      return 'Cet email ou numéro de téléphone est déjà utilisé.';
     }
-    if (error?.message?.includes('Invalid email')) {
+    if (error?.message?.includes('Format d\'email invalide')) {
       return 'Format d\'email invalide.';
-    }
-
-    // Gestion des erreurs Supabase
-    if (error?.code === '23505') {
-      if (error.message.includes('email')) {
-        return 'Cette adresse email est déjà utilisée par un autre utilisateur.';
-      }
-      if (error.message.includes('phone')) {
-        return 'Ce numéro de téléphone est déjà utilisé par un autre utilisateur.';
-      }
-      return 'Une donnée similaire existe déjà dans le système.';
-    }
-
-    if (error?.code === '23503') {
-      return 'Impossible de créer l\'administrateur : données de référence manquantes.';
-    }
-
-    if (error?.code === '42501') {
-      return 'Permission refusée. Contactez votre administrateur système.';
-    }
-
-    if (error?.code === '23514') {
-      return 'Les données fournies ne respectent pas les contraintes de validation.';
-    }
-
-    if (error?.code === '42P01') {
-      return 'Erreur de configuration de la base de données.';
-    }
-
-    if (error?.code === '08000') {
-      return 'Erreur de connexion à la base de données.';
-    }
-
-    if (error?.code === '57014') {
-      return 'Opération annulée par l\'utilisateur.';
     }
 
     // Erreurs HTTP
     if (error?.status === 400) {
-      return 'Requête invalide. Vérifiez les données saisies.';
+      return 'Données invalides. Vérifiez les informations saisies.';
     }
-
     if (error?.status === 401) {
       return 'Non autorisé. Veuillez vous reconnecter.';
     }
-
-    if (error?.status === 403) {
-      return 'Accès interdit. Permissions insuffisantes.';
-    }
-
-    if (error?.status === 404) {
-      return 'Service non trouvé. Contactez le support.';
-    }
-
     if (error?.status === 500) {
       return 'Erreur serveur interne. Réessayez plus tard.';
-    }
-
-    if (error?.status === 503) {
-      return 'Service temporairement indisponible.';
     }
 
     // Erreurs réseau
@@ -208,102 +106,77 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
       return 'Erreur de connexion réseau. Vérifiez votre connexion internet.';
     }
 
-    if (error?.message?.includes('timeout')) {
-      return 'Délai d\'attente dépassé. Réessayez.';
-    }
-
-    // Erreurs de validation
-    if (error?.message?.includes('validation')) {
-      return 'Données invalides. Vérifiez les informations saisies.';
-    }
-
-    // Erreur par défaut
     return error?.message || 'Une erreur inattendue s\'est produite. Contactez le support.';
   };
 
   const handleSubmit = async () => {
-    // Validation des champs
-    const fields: (keyof FormData)[] = ['name', 'email', 'phone', 'password'];
-    for (const field of fields) {
-      const validation = validateField(field, formData[field]);
-      if (!validation.isValid) {
-        toast.error(validation.error);
-        return;
-      }
-    }
+    setIsLoading(true);
 
     try {
-      // 🔥 REMPLACEZ L'APPEL RPC PAR L'API ADMIN SUPABASE
-      console.log('🔍 Création du user via API Admin...');
+      // Validation basique
+      if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {
+        throw new Error("Tous les champs obligatoires doivent être remplis");
+      }
 
-      // 1. Création du user avec l'API Admin (ça crée automatiquement l'identité)
-      const { data: userData, error: userError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password,
-        email_confirm: true, // Confirmation automatique
-        user_metadata: {
-          full_name: formData.name,
-          phone: formData.phone,
-          role: 'admin'
-        }
+      if (formData.password.length < 6) {
+        throw new Error("Le mot de passe doit contenir au moins 6 caractères");
+      }
+
+      console.log('🔄 Création Admin via Edge Function...', {
+        ...formData,
+        password: '********' // Masquer le mot de passe dans les logs
       });
 
-      if (userError) {
-        console.error('❌ Erreur création user:', userError);
-        toast.error(`Erreur création: ${getErrorMessage(userError)}`);
-        return;
+      // Appel de la fonction Edge
+      const response = await fetch(
+        `${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/create-admin-with-profile`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            email: formData.email.trim(),
+            password: formData.password,
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            phone: formData.phone.replace(/\s/g, ''),
+            avatarUrl: formData.avatarUrl || null
+          })
+        }
+      );
+
+      // Vérification de la réponse
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur HTTP:', response.status, errorText);
+        throw new Error(`Erreur serveur (${response.status}): ${errorText}`);
       }
 
-      if (!userData.user) {
-        throw new Error('Aucun user créé');
+      const data = await response.json();
+      console.log('✅ Admin créé avec succès:', data);
+
+      // Vérification du succès
+      if (!data?.success) {
+        throw new Error(data?.error || 'Erreur inconnue lors de la création');
       }
 
-      console.log('✅ User créé avec identité:', userData.user);
-
-      // 2. Création du profil dans votre table profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userData.user.id,
-          email: formData.email,
-          role: 'admin',
-          full_name: formData.name,
-          phone: formData.phone,
-          avatar_url: formData.avatarUrl
-        });
-
-      if (profileError) {
-        console.error('❌ Erreur création profil:', profileError);
-        
-        // Compensation: supprimer le user auth si le profil échoue
-        await supabase.auth.admin.deleteUser(userData.user.id);
-        
-        toast.error(`Erreur profil: ${getErrorMessage(profileError)}`);
-        return;
-      }
-
-      console.log('✅ Profil créé avec succès');
-
-      // 3. Afficher le message de succès
+      // Afficher le succès et continuer
       setShowSuccess(true);
+      toast.success(`Administrateur ${formData.firstName} créé avec succès ! 🎉`);
 
-      // Attendre 2 secondes puis continuer
+      // Délai avant fermeture
       setTimeout(() => {
-        setShowSuccess(false);
-        onComplete({
-          admin_id: userData.user.id,
-          user_id: userData.user.id,
-          profile_id: userData.user.id,
-          admin_name: formData.name,
-          success: true
-        });
+        onComplete(data);
+        onClose();
       }, 2000);
 
-      toast.success('Administrateur créé avec succès ! 🎉');
-
-    } catch (error) {
-      console.error('❌ Erreur inattendue:', error);
+    } catch (error: any) {
+      console.error('❌ Erreur création admin:', error);
       toast.error(getErrorMessage(error));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -319,16 +192,24 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
             Félicitations ! Votre administrateur a été créé avec succès.
           </p>
           <div className="w-16 h-16 border-4 border-[#128C7E]/20 border-t-[#128C7E] rounded-full animate-spin mx-auto mb-6"></div>
-          <p className="text-sm text-gray-500 mb-4">Redirection automatique vers la création de l'organisation...</p>
+          <p className="text-sm text-gray-500 mb-4">Redirection automatique...</p>
         </div>
       </WhatsAppModal>
     );
   }
 
+  const isFormValid = () => {
+    return formData.firstName &&
+      formData.lastName &&
+      formData.email &&
+      formData.phone &&
+      formData.password &&
+      formData.password.length >= 6;
+  };
+
   return (
     <WhatsAppModal isOpen={isOpen} onClose={onClose}>
       <div className="max-w-4xl mx-auto">
-        {/* Utilisation du composant AvatarUpload réutilisable */}
         <AvatarUpload
           avatarPreview={avatarPreview}
           onAvatarChange={handleAvatarChange}
@@ -347,15 +228,27 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
                 <h3 className="text-lg font-semibold text-[#128C7E]">Informations personnelles</h3>
               </div>
 
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-[#128C7E] font-medium">Nom complet</Label>
+                  <Label htmlFor="firstName" className="text-[#128C7E] font-medium">Prénom *</Label>
                   <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
                     className="modal-whatsapp-input"
-                    placeholder="Prénom et nom de l'administrateur"
+                    placeholder="Prénom"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-[#128C7E] font-medium">Nom *</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    className="modal-whatsapp-input"
+                    placeholder="Nom"
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -372,11 +265,13 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
                 <EmailFieldPro
                   value={formData.email}
                   onChange={(value) => handleInputChange('email', value)}
-                  placeholder="Adresse email de l'administrateur"
+                  placeholder="Adresse email *"
+                  disabled={isLoading}
                 />
                 <PhoneFieldPro
                   value={formData.phone}
                   onChange={(value) => handleInputChange('phone', value)}
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -391,6 +286,7 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
               <PasswordFieldPro
                 value={formData.password}
                 onChange={(value) => handleInputChange('password', value)}
+                disabled={isLoading}
               />
             </div>
 
@@ -399,15 +295,23 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
               <Button
                 onClick={handleSubmit}
                 className="btn-whatsapp-primary"
-                disabled={!formData.name || !formData.email || !formData.phone || !formData.password}
+                disabled={!isFormValid() || isLoading}
+                size="lg"
               >
-                Créer l'Administrateur
+                {isLoading ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Création en cours...
+                  </>
+                ) : (
+                  'Créer l\'Administrateur'
+                )}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Footer avec branding Thierry Gogo */}
+        {/* Footer avec branding */}
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
             <div className="flex items-center space-x-3">
@@ -418,14 +322,13 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
               />
               <div>
                 <h4 className="font-semibold text-gray-900 text-sm">Thierry Gogo</h4>
-                <p className="text-xs text-gray-600">Développeur FullStack (Frontend & Backend)</p>
+                <p className="text-xs text-gray-600">Développeur FullStack</p>
                 <p className="text-xs text-gray-500">FREELANCE</p>
               </div>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-600">Whatsapp +225 0758966156 / 0103644527</p>
               <p className="text-xs text-gray-500">01 BP 5341 Abidjan 01</p>
-              <p className="text-xs text-gray-500">Cocody, RIVIERA 3</p>
             </div>
           </div>
         </div>
@@ -435,4 +338,3 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
 };
 
 export default AdminCreationModal;
-

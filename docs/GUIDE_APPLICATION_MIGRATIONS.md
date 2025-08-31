@@ -59,7 +59,7 @@ $body = @{
 
 Invoke-RestMethod `
   -Method Post `
-  -Uri "https://metssugfqsnttghfrsxx.supabase.co/rest/v1/rpc/create_super_admin_complete" `
+  -Uri "https://bmkmiqpasfaprfpfynms.supabase.co/rest/v1/rpc/create_super_admin_complete" `
   -Headers $headers `
   -Body $body
 ```

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { Toaster, toast } from 'sonner';
 import { WorkflowProvider } from '@/contexts/WorkflowProvider';
 import { AuthProvider } from '@/contexts/AuthProvider';
 import GeneralAuthModal from '@/components/GeneralAuthModal';
@@ -12,6 +12,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { OrganizationWithGarages } from '@/types/organization';
+import { useAuthSession } from '@/hooks/useAuthSession';
 
 // Define DatabaseProfile type if not already imported
 type DatabaseProfile = {
@@ -22,90 +23,81 @@ type DatabaseProfile = {
 
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [organization, setOrganization] = useState<OrganizationWithGarages | null>(null);
+  const [profile, setProfile] = useState<DatabaseProfile | null>(null);
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthSession();
+
+  const startInitialization = () => {
+    console.log('🚀 Démarrage du workflow d\'initialisation');
+    setShowWizard(true);
+  };
+
+  const handleWizardComplete = () => {
+    console.log('✅ Configuration initiale terminée');
+    setShowWizard(false);
+    toast.success('Configuration initiale terminée ! 🎉');
+    checkAppState(); // Recharger l'état de l'application
+  };
 
   const checkAppState = async () => {
     try {
+      setIsLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (session?.user) {
-        setUser(session.user);
-
-        // ✅ Typage explicite sur la table "profiles"
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single<DatabaseProfile>();
-
-        if (profileError) throw profileError;
-
-        // ✅ Typage explicite sur "organizations" avec jointure garages
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select(`
-            id,
-            name,
-            created_at,
-            garages (
-              id,
-              name,
-              address,
-              phone,
-              created_at
-            )
-          `)
-          // Adjust the filter to match your schema, e.g., filter by owner or member
-          // .eq('user_id', session.user.id)
-          .single();
-
-        if (orgError || !orgData) {
-          // Handle the error or missing data appropriately
-          throw orgError || new Error("Organization not found");
-        }
-
-        setOrganization({
-          ...orgData,
-          user_id: profileData.user_id || session.user.id, // Ensure user_id is present
-          garages: Array.isArray(orgData.garages) ? orgData.garages : [] // Ensure garages is always an array
-        }); // Cast if necessary
-        setIsLoading(false);
-        return;
-      } else {
+      if (!session?.user) {
         setShowAuthModal(true);
-        setIsLoading(false);
         return;
       }
 
-      // ✅ Vérifier Super Admin
-      const { data: superAdmins, error: superAdminError } = await supabase
-        .from('super_admins')
-        .select('id')
-        .limit(1);
+      setUser(session.user);
 
-      if (superAdminError) {
-        setShowSuperAdminModal(true);
-        return;
-      }
+      // Vérifier le profil et l'organisation
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*, organizations(*)')
+        .eq('id', session.user.id)
+        .single();
 
-      if (superAdmins && superAdmins.length > 0) {
-        setShowOnboarding(true);
+      if (profileError) throw profileError;
+
+      if (profile?.organizations?.length > 0) {
+        setOrganization(profile.organizations[0]);
       } else {
-        setShowSuperAdminModal(true);
+        // Pas d'organisation → démarrer le workflow
+        startInitialization();
       }
 
     } catch (error) {
-      console.error('Erreur checkAppState:', error);
-      setShowOnboarding(true);
+      console.error('❌ Erreur checkAppState:', error);
+      toast.error('Erreur lors de la vérification du système');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Vérification initiale
+  useEffect(() => {
+    const checkInitialSetup = async () => {
+      try {
+        const { data: exists } = await supabase.rpc('check_super_admin_exists');
+        if (!exists) {
+          setShowWizard(true);
+        }
+      } catch (error) {
+        console.error('❌ Erreur vérification initiale:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      checkInitialSetup();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!showSplash) {
@@ -140,12 +132,12 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Splash
+  // Rendu conditionnel
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} duration={2000} />;
   }
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return <div>Chargement...</div>;
   }
 
@@ -178,7 +170,7 @@ function App() {
           <GeneralAuthModal
             isOpen={showAuthModal}
             onClose={() => setShowAuthModal(false)}
-            onNewTenant={() => setShowOnboarding(true)}
+            onNewTenant={startInitialization}
             onAuthSuccess={(data) => {
               setUser(data.user);
               setOrganization(data.organization);
@@ -187,20 +179,21 @@ function App() {
           />
         )}
 
-        {showSuperAdminModal && (
-          <SuperAdminCreationModal
-            isOpen={showSuperAdminModal}
-            onComplete={() => window.location.reload()}
-            onClose={() => setShowSuperAdminModal(false)}
-          />
+        <NewInitializationWizard
+          isOpen={showWizard}
+          onComplete={handleWizardComplete}
+        />
+
+        {/* Bouton de configuration (visible uniquement pour les super admins) */}
+        {profile?.role === 'super_admin' && !showWizard && (
+          <button
+            onClick={startInitialization}
+            className="fixed bottom-4 right-4 px-4 py-2 bg-primary text-white rounded-md shadow-lg hover:bg-primary/90 transition-colors"
+          >
+            Démarrer la configuration
+          </button>
         )}
 
-        {showOnboarding && (
-          <NewInitializationWizard
-            isOpen={showOnboarding}
-            onComplete={() => window.location.reload()}
-          />
-        )}
         <Toaster position="top-right" richColors />
       </WorkflowProvider>
     </AuthProvider>

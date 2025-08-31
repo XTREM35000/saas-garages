@@ -16,7 +16,7 @@
 
 ```typescript
 // ANCIEN CODE (ligne 116-135)
-const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/setup-super-admin`, {
+const response = await fetch(`${import.meta.env.PUBLIC_SUPABASE_URL}/functions/v1/setup-super-admin`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({...})

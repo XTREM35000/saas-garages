@@ -45,4 +45,4 @@ if [ -d "supabase/functions/notify-stock-alert" ]; then
 fi
 
 echo "🎉 Toutes les Edge Functions ont été déployées avec succès!"
-echo "🔗 URL de setup-super-admin: https://metssugfqsnttghfrsxx.supabase.co/functions/v1/setup-super-admin"
+echo "🔗 URL de setup-super-admin: https://bmkmiqpasfaprfpfynms.supabase.co/functions/v1/setup-super-admin"
