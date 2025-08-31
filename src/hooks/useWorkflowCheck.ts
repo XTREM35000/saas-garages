@@ -1,70 +1,66 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-// import { supabase } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { WorkflowStep } from '@/types/workflow.types';
 
-interface WorkflowCheckResult {
-  isChecking: boolean;
-  currentStep: WorkflowStep;
-  error?: string;
+interface WorkflowCheckState {
+  has_super_admin: boolean;
+  has_admin: boolean; 
+  has_organization: boolean;
+  has_garage: boolean;
+  current_step: string;
+  is_completed: boolean;
 }
 
-export function useWorkflowCheck(): WorkflowCheckResult {
-  const navigate = useNavigate();
+interface UseWorkflowCheckResult {
+  isChecking: boolean;
+  workflowState: WorkflowCheckState | null;
+  error: string | null;
+  checkWorkflowState: () => Promise<void>;
+}
+
+export function useWorkflowCheck(): UseWorkflowCheckResult {
   const [isChecking, setIsChecking] = useState(true);
-  const [currentStep, setCurrentStep] = useState<WorkflowStep>('init');
-  const [error, setError] = useState<string>();
+  const [workflowState, setWorkflowState] = useState<WorkflowCheckState | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const checkWorkflowStatus = async () => {
-      try {
-        // Vérifier l'utilisateur authentifié
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          navigate('/auth');
-          return;
-        }
+  const checkWorkflowState = useCallback(async () => {
+    try {
+      setIsChecking(true);
+      setError(null);
 
-        // Vérifier l'organisation
-        const { data: organization, error: orgError } = await supabase
-          .from('organisations')
-          .select('*')
-          .maybeSingle();
+      console.log('🔍 [useWorkflowCheck] Vérification état workflow...');
 
-        if (orgError) throw orgError;
+      // Appel de la fonction RPC pour obtenir l'état complet
+      const { data, error: rpcError } = await supabase
+        .rpc('get_workflow_state');
 
-        // Vérifier le rôle de l'utilisateur
-        const { data: userProfile, error: userError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-        if (userError) throw userError;
-
-        // Si l'organisation existe et l'utilisateur est admin
-        if (organization && userProfile?.role === 'admin') {
-          navigate('/dashboard', { replace: true });
-          return;
-        }
-
-      } catch (error) {
-        console.error('Erreur workflow check:', error);
-        toast.error("Erreur de vérification du workflow");
-        setError("Erreur de vérification du workflow");
-      } finally {
-        setIsChecking(false);
+      if (rpcError) {
+        console.error('❌ [useWorkflowCheck] Erreur RPC:', rpcError);
+        throw rpcError;
       }
-    };
 
-    checkWorkflowStatus();
-  }, [navigate]);
+      console.log('✅ [useWorkflowCheck] État workflow:', data);
+      setWorkflowState(data);
+
+    } catch (err: any) {
+      console.error('❌ [useWorkflowCheck] Erreur:', err);
+      const errorMessage = err.message || 'Erreur de vérification du workflow';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsChecking(false);
+    }
+  }, []);
+
+  // Vérification initiale
+  useEffect(() => {
+    checkWorkflowState();
+  }, [checkWorkflowState]);
 
   return {
     isChecking,
-    currentStep,
-    error
+    workflowState,
+    error,
+    checkWorkflowState
   };
 }

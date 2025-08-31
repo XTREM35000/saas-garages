@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { WorkflowProvider } from '@/contexts/WorkflowProvider';
-import NewInitializationWizard from '@/components/NewInitializationWizard';
+import OptimizedWorkflowWizard from '@/components/OptimizedWorkflowWizard';
 import CompletionSummaryModal from '@/components/CompletionSummaryModal';
 import SplashScreen from '@/components/SplashScreen';
 
@@ -82,7 +82,7 @@ const WorkflowGuard: React.FC<WorkflowGuardProps> = ({ children }) => {
 
   return (
     <WorkflowProvider>
-      <NewInitializationWizard
+      <OptimizedWorkflowWizard
         isOpen={true}
         onComplete={handleWorkflowComplete}
       />

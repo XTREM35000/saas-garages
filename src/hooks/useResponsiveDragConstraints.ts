@@ -1,95 +1,102 @@
-// import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-// interface DragConstraints {
-//   top: number;
-//   bottom: number;
-// }
+interface DragConstraints {
+  top: number;
+  left: number;
+  right: number;
+  bottom: number;
+}
 
-// /**
-//  * Hook pour calculer automatiquement les limites de drag du modal
-//  * selon la taille de l'écran et la hauteur du contenu
-//  */
-// export const useResponsiveDragConstraints = (modalHeight: number = 600): DragConstraints => {
-//   const [constraints, setConstraints] = useState<DragConstraints>({ top: -280, bottom: 270 });
+interface BreakpointConstraints {
+  sm: DragConstraints;
+  md: DragConstraints;
+  lg: DragConstraints;
+  xl: DragConstraints;
+}
 
-//   const calculateConstraints = () => {
-//     const screenHeight = window.innerHeight;
-//     const screenWidth = window.innerWidth;
+const defaultConstraints: DragConstraints = {
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0
+};
 
-//     // Calcul basé sur la hauteur de l'écran
-//     let topLimit: number;
-//     let bottomLimit: number;
+const defaultBreakpointConstraints: BreakpointConstraints = {
+  sm: { top: -50, left: -50, right: 50, bottom: 50 },
+  md: { top: -100, left: -100, right: 100, bottom: 100 },
+  lg: { top: -150, left: -150, right: 150, bottom: 150 },
+  xl: { top: -200, left: -200, right: 200, bottom: 200 }
+};
 
-//     if (screenHeight >= 1080) {
-//       // Retour aux valeurs d'origine pour Desktop (1920x1080+)
-//       topLimit = -280;
-//       bottomLimit = 270;
-//     } else {
-//       // Garder les valeurs actuelles pour tout le reste
-//       if (screenHeight >= 900) {
-//         topLimit = -300;
-//         bottomLimit = 300;
-//       } else if (screenHeight >= 768) {
-//         topLimit = -180;
-//         bottomLimit = 180;
-//       } else if (screenHeight >= 667) {
-//         topLimit = -150;
-//         bottomLimit = 150;
-//       } else {
-//         topLimit = -120;
-//         bottomLimit = 120;
-//       }
+export function useResponsiveDragConstraints(): DragConstraints {
+  const [constraints, setConstraints] = useState<DragConstraints>(defaultConstraints);
 
-//       // Garder les ajustements mobiles existants
-//       if (screenWidth < screenHeight) {
-//         topLimit = Math.round(topLimit * 0.8);
-//         bottomLimit = Math.round(bottomLimit * 0.8);
-//       }
-//     }
+  const updateConstraints = useCallback(() => {
+    const width = window.innerWidth;
+    
+    let newConstraints: DragConstraints;
+    
+    if (width < 640) {
+      newConstraints = defaultBreakpointConstraints.sm;
+    } else if (width < 768) {
+      newConstraints = defaultBreakpointConstraints.md;
+    } else if (width < 1024) {
+      newConstraints = defaultBreakpointConstraints.lg;
+    } else {
+      newConstraints = defaultBreakpointConstraints.xl;
+    }
+    
+    setConstraints(newConstraints);
+  }, []);
 
-//     return { top: topLimit, bottom: bottomLimit };
-//   };
+  useEffect(() => {
+    updateConstraints();
+    window.addEventListener('resize', updateConstraints);
+    
+    return () => {
+      window.removeEventListener('resize', updateConstraints);
+    };
+  }, [updateConstraints]);
 
-//   useEffect(() => {
-//     const updateConstraints = () => {
-//       setConstraints(calculateConstraints());
-//     };
+  return constraints;
+}
 
-//     // Calcul initial
-//     updateConstraints();
+export function useBreakpointDragConstraints(
+  customConstraints?: Partial<BreakpointConstraints>
+): DragConstraints {
+  const [constraints, setConstraints] = useState<DragConstraints>(defaultConstraints);
 
-//     // Écouter les changements de taille
-//     window.addEventListener('resize', updateConstraints);
-//     window.addEventListener('orientationchange', updateConstraints);
+  const breakpointConstraints = {
+    ...defaultBreakpointConstraints,
+    ...customConstraints
+  };
 
-//     return () => {
-//       window.removeEventListener('resize', updateConstraints);
-//       window.removeEventListener('orientationchange', updateConstraints);
-//     };
-//   }, [modalHeight]);
+  const updateConstraints = useCallback(() => {
+    const width = window.innerWidth;
+    
+    let newConstraints: DragConstraints;
+    
+    if (width < 640) {
+      newConstraints = breakpointConstraints.sm;
+    } else if (width < 768) {
+      newConstraints = breakpointConstraints.md;
+    } else if (width < 1024) {
+      newConstraints = breakpointConstraints.lg;
+    } else {
+      newConstraints = breakpointConstraints.xl;
+    }
+    
+    setConstraints(newConstraints);
+  }, [breakpointConstraints]);
 
-//   return constraints;
-// };
+  useEffect(() => {
+    updateConstraints();
+    window.addEventListener('resize', updateConstraints);
+    
+    return () => {
+      window.removeEventListener('resize', updateConstraints);
+    };
+  }, [updateConstraints]);
 
-// /**
-//  * Hook simplifié avec valeurs prédéfinies pour chaque breakpoint
-//  */
-// export const useBreakpointDragConstraints = () => {
-//   const [constraints, setConstraints] = useState({ top: -50, bottom: 100 });
-
-//   useEffect(() => {
-//     const updateConstraints = () => {
-//       const isMobile = window.innerWidth < 768;
-//       setConstraints({
-//         top: -50,
-//         bottom: isMobile ? 100 : 300 // Réduire la limite de drag sur mobile
-//       });
-//     };
-
-//     updateConstraints();
-//     window.addEventListener('resize', updateConstraints);
-//     return () => window.removeEventListener('resize', updateConstraints);
-//   }, []);
-
-//   return constraints;
-// };
+  return constraints;
+}
