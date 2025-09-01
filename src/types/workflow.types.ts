@@ -143,8 +143,8 @@ export interface PlanDetails {
 
 export interface PricingModalProps {
   isOpen: boolean;
-  onSelectPlan: (planDetails: PlanDetails) => Promise<void>; <void>;
-adminCredentials ?: AdminCredentials;
+  onSelectPlan: (planDetails: PlanDetails) => Promise<void>;
+  adminCredentials?: AdminCredentials;
 }
 
 export interface WorkflowData {

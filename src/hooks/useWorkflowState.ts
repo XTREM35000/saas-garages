@@ -1,4 +1,4 @@
-// src/hooks/useWorkflowCheck.ts
+// src/hooks/useWorkflowState.ts
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,7 +11,7 @@ interface UseWorkflowCheckResult {
   checkWorkflowState: () => Promise<void>;
 }
 
-export function useWorkflowCheck(): UseWorkflowCheckResult {
+export function useWorkflowState(): UseWorkflowCheckResult {
   const [isChecking, setIsChecking] = useState(true);
   const [workflowState, setWorkflowState] = useState<WorkflowCheckState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,10 +102,11 @@ export function useWorkflowCheck(): UseWorkflowCheckResult {
       const workflowData: WorkflowCheckState = {
         has_super_admin: hasSuperAdmin || false,
         has_admin: hasAdmin || false,
+        has_pricing_selected: true, // Par défaut à true pour éviter les erreurs
         has_organization: hasOrganization || false,
         has_sms_validated: hasSmsValidated,
         has_garage: hasGarage || false,
-        current_step,
+        current_step: current_step as any,
         is_completed,
         organization_id: organizationId || undefined,
         organization_name: organizationName || undefined,
