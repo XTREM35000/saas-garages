@@ -1,15 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Star, Zap, Crown, Sparkles, AlertTriangle, Clock, Building, CreditCard, Loader2 } from 'lucide-react';
+import { Check, Star, Zap, Crown, Sparkles, AlertTriangle, Clock, Building, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { PricingModalProps, PlanDetails, PlanType } from '@/types/workflow.types';
-import { LucideIcon } from 'lucide-react';
+import { usePricing } from '@/hooks/usePricing';
+import { PlanDetails, PlanType, PricingModalProps } from '@/types/workflow.types';
 
-type PricingPlan = {
+interface PricingPlan {
   id: string;
   name: string;
   price: string;
@@ -17,142 +16,168 @@ type PricingPlan = {
   description: string;
   features: string[];
   limitations: string[];
-  popular: boolean;
-  icon: LucideIcon;
-  cardGradient: string;
+  popular?: boolean;
+  icon: React.ComponentType<any>;
   buttonColors: {
     bg: string;
     hover: string;
     text: string;
   };
-};
+  cardGradient: string;
+}
 
-export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onSelectPlan }) => {
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null); // Ajout du state manquant
+export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onSelectPlan, adminCredentials }) => {
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { pricing, loading: pricingLoading } = usePricing();
+
+  const plans: PricingPlan[] = [
+    {
+      id: 'free',
+      name: 'Essai Gratuit',
+      price: '0',
+      period: '7 jours',
+      description: 'Découvrez notre solution sans engagement',
+      icon: Star,
+      buttonColors: {
+        bg: 'bg-green-500',
+        hover: 'hover:bg-green-700',
+        text: 'text-white'
+      },
+      cardGradient: 'from-green-50 to-emerald-100',
+      features: [
+        '1 Organisation incluse',
+        '1 Garage (instance)',
+        'Jusqu\'à 5 collaborateurs',
+        'Gestion et opérations mécaniques de base',
+        'Support email'
+      ],
+      limitations: [
+        'Durée limitée à 7 jours',
+        'Fonctionnalités avancées désactivées',
+        'Redirection vers abonnement payant après expiration'
+      ]
+    },
+    {
+      id: 'monthly',
+      name: 'Mensuel',
+      price: pricing ? pricing.pricing_month.toLocaleString() : '25 000',
+      period: 'par mois',
+      description: 'Idéal pour croître votre activité',
+      icon: Zap,
+      buttonColors: {
+        bg: 'bg-orange-500',
+        hover: 'hover:bg-orange-700',
+        text: 'text-white'
+      },
+      cardGradient: 'from-orange-50 to-amber-100',
+      popular: true,
+      features: [
+        '1 Organisation',
+        'Switch entre instances de garage',
+        '3 instances maximum (garage/lavage-auto/buvette)',
+        'Jusqu\'à 20 collaborateurs',
+        'Toutes les fonctionnalités incluses',
+        'Support prioritaire WhatsApp',
+        'Sauvegardes automatiques',
+        'Rapports détaillés mensuels'
+      ],
+      limitations: [
+        'Limité à 1 organisation',
+        'Maximum 3 instances simultanées'
+      ]
+    },
+    {
+      id: 'annual',
+      name: 'Annuel',
+      price: pricing ? pricing.pricing_year.toLocaleString() : '250 000',
+      period: 'par an',
+      description: 'Solution complète pour entreprises établies',
+      icon: Crown,
+      buttonColors: {
+        bg: 'bg-blue-500',
+        hover: 'hover:bg-blue-700',
+        text: 'text-white'
+      },
+      cardGradient: 'from-blue-50 to-indigo-100',
+      features: [
+        '5 Organisations incluses',
+        'Multi-switch entre instances',
+        'Instances illimitées',
+        'Collaborateurs illimités',
+        'Tous types d\'activités supportés',
+        'Fonctionnalités premium avancées',
+        'Support premium 24/7',
+        'Formation personnalisée incluse',
+        'API d\'intégration complète',
+        'Analytiques et rapports avancés'
+      ],
+      limitations: [
+        'Engagement annuel requis'
+      ]
+    },
+    {
+      id: 'license',
+      name: 'Licence SaaS',
+      price: '1 000 000',
+      period: 'perpetuelle',
+      description: 'Solution complète pour revendeurs et entrepreneurs',
+      icon: Building,
+      buttonColors: {
+        bg: 'bg-purple-500',
+        hover: 'hover:bg-purple-700',
+        text: 'text-white'
+      },
+      cardGradient: 'from-purple-50 to-violet-100',
+      features: [
+        'Propriété complète du code source',
+        'Accès total aux backends et frontends',
+        'Droit de revendre sous votre marque',
+        'Droit de modification illimité',
+        'Documentation technique complète',
+        'Transfert de propriété intellectuelle',
+        '1 an de support technique inclus',
+        'Formation pour votre équipe'
+      ],
+      limitations: [
+        'Paiement unique et forfaitaire',
+        'Non-remboursable'
+      ]
+    }
+  ];
 
   const handlePlanSelect = async (plan: PricingPlan) => {
     try {
-      setSelectedPlan(plan.id); // Maintenant setSelectedPlan est défini
-      setIsLoading(true);
-
-      // 1. Vérifier l'utilisateur connecté
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!adminCredentials) {
         throw new Error('Veuillez d\'abord créer votre compte');
       }
 
-      console.log('🔄 Sélection du plan:', plan.name);
+      setSelectedPlan(plan.id);
+      setIsLoading(true);
 
-      // 2. Créer l'objet planDetails
       const planDetails: PlanDetails = {
         id: plan.id as PlanType,
         name: plan.name,
         price: plan.price,
-        duration: getDurationInDays(plan.period),
+        period: plan.period,
+        description: plan.description,
         features: plan.features,
-        type: plan.id as PlanType,
         limitations: plan.limitations,
+        type: plan.id as PlanType,
         selected_at: new Date().toISOString()
       };
 
-      // 3. Mettre à jour la table admins
-      const { error: updateError } = await supabase
-        .from('admins')
-        .update({
-          selected_plan_id: plan.id,
-          plan_selected_at: new Date().toISOString(),
-          plan_details: planDetails
-        })
-        .eq('id', user.id);
-
-      if (updateError) throw updateError;
-
-      // 4. Mettre à jour l'état local
-      setSelectedPlan(plan.id);
-
-      // 5. Notifier le parent
       await onSelectPlan(planDetails);
+      toast.success(`Plan ${plan.name} sélectionné avec succès!`);
 
-      toast.success(`Plan ${plan.name} sélectionné avec succès! 🎉`);
-
-    } catch (err) {
-      console.error('❌ Erreur sélection plan:', err);
-      const message = err instanceof Error ? err.message : 'Erreur de sélection du plan';
-      toast.error(message);
+    } catch (error: any) {
+      console.error('❌ Erreur sélection plan:', error);
+      toast.error(error.message);
       setSelectedPlan(null);
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Fonction utilitaire pour la conversion de la période
-  const getDurationInDays = (period: string): number => {
-    const periodMap: Record<string, number> = {
-      '7 jours': 7,
-      'par mois': 30,
-      'par an': 365,
-      'perpetuelle': -1
-    };
-
-    return periodMap[period] || 0;
-  };
-
-  // Example plans array, replace with your actual pricing data or fetch from API/hook
-  const plans: PricingPlan[] = [
-    {
-      id: 'free',
-      name: 'Gratuit',
-      price: '0',
-      period: '7 jours',
-      description: 'Essai gratuit avec fonctionnalités limitées.',
-      features: ['Gestion de base', 'Support communautaire'],
-      limitations: ['Limité à 1 garage', 'Pas d\'export de données'],
-      popular: false,
-      icon: Sparkles,
-      cardGradient: 'from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800',
-      buttonColors: { bg: 'bg-gray-500', hover: 'hover:bg-gray-600', text: 'text-white' }
-    },
-    {
-      id: 'monthly',
-      name: 'Mensuel',
-      price: '5000',
-      period: 'par mois',
-      description: 'Abonnement mensuel avec toutes les fonctionnalités.',
-      features: ['Gestion avancée', 'Support prioritaire', 'Export de données'],
-      limitations: [],
-      popular: false,
-      icon: Zap,
-      cardGradient: 'from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800',
-      buttonColors: { bg: 'bg-blue-500', hover: 'hover:bg-blue-600', text: 'text-white' }
-    },
-    {
-      id: 'annual',
-      name: 'Annuel',
-      price: '50000',
-      period: 'par an',
-      description: 'Abonnement annuel, économisez 17%.',
-      features: ['Toutes les fonctionnalités', 'Support premium', 'Export illimité'],
-      limitations: [],
-      popular: true,
-      icon: Crown,
-      cardGradient: 'from-yellow-100 to-yellow-200 dark:from-yellow-900 dark:to-yellow-800',
-      buttonColors: { bg: 'bg-yellow-500', hover: 'hover:bg-yellow-600', text: 'text-white' }
-    },
-    {
-      id: 'license',
-      name: 'Licence perpétuelle',
-      price: '150000',
-      period: 'perpetuelle',
-      description: 'Paiement unique pour une utilisation illimitée.',
-      features: ['Toutes les fonctionnalités', 'Support à vie', 'Export illimité'],
-      limitations: [],
-      popular: false,
-      icon: Building,
-      cardGradient: 'from-indigo-100 to-indigo-200 dark:from-indigo-900 dark:to-indigo-800',
-      buttonColors: { bg: 'bg-indigo-500', hover: 'hover:bg-indigo-600', text: 'text-white' }
-    }
-  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={() => { }}>
@@ -192,7 +217,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onSelectPlan
 
                 <CardHeader className="text-center pb-4">
                   <div className={`mx-auto mb-4 w-12 h-12 ${plan.buttonColors.bg} rounded-full flex items-center justify-center shadow-lg`}>
-                    <PlanIcon size={24} color="#fff" />
+                    <PlanIcon className="w-6 h-6 text-white" />
                   </div>
                   <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200">
                     {plan.name}

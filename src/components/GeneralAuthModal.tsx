@@ -243,40 +243,29 @@ export const GeneralAuthModal: React.FC<GeneralAuthModalProps> = ({
   // Nouvelle fonction pour gérer le clic sur "Nouveau Tenant"
   const handleNewTenant = async () => {
     try {
-      console.log('🔄 Vérification nouveau tenant...');
+      console.log('🔍 Vérification existence admin...');
       setIsLoading(true);
 
-      // 1. Vérifier si un super admin existe
-      const { data: hasSuperAdmin, error: superAdminError } = await supabase
-        .rpc('check_super_admin_exists');
+      // Vérifier si un admin existe déjà
+      const { data: hasAdmin, error: adminError } = await supabase
+        .rpc('check_admin_exists');
 
-      if (superAdminError) throw superAdminError;
+      if (adminError) throw adminError;
 
-      // 2. Décider quel modal afficher
-      if (!hasSuperAdmin) {
-        console.log('⚠️ Pas de super admin → Afficher création super admin');
-        // Fermer le modal actuel et ouvrir le workflow
+      if (hasAdmin) {
+        console.log('✅ Admin existe déjà → Continuer vers pricing');
+        // Au lieu d'afficher juste un message, on continue vers pricing
+        onClose(); // Fermer le modal d'auth
+        onNewTenant(); // Déclencher le workflow
+      } else {
+        console.log('➡️ Pas d\'admin → Démarrer workflow');
         onClose();
         onNewTenant();
-      } else {
-        // Si un super admin existe, vérifier si un admin existe
-        const { data: hasAdmin, error: adminError } = await supabase
-          .rpc('check_admin_exists');
-
-        if (adminError) throw adminError;
-
-        if (!hasAdmin) {
-          console.log('⚠️ Super admin existe mais pas d\'admin → Afficher création admin');
-          onClose();
-          onNewTenant();
-        } else {
-          toast.info('Un administrateur existe déjà dans le système');
-        }
       }
 
     } catch (error) {
-      console.error('❌ Erreur vérification tenant:', error);
-      toast.error('Erreur lors de la vérification du système');
+      console.error('❌ Erreur vérification admin:', error);
+      toast.error('Erreur lors de la vérification');
     } finally {
       setIsLoading(false);
     }

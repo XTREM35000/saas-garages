@@ -1,5 +1,5 @@
 // src/components/OptimizedWorkflowWizard.tsx
-import { OptimizedWorkflowWizardProps, WorkflowState, PlanDetails } from '@/types/workflow.types';
+import { OptimizedWorkflowWizardProps, WorkflowState, PlanDetails, AdminCredentials } from '@/types/workflow.types';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWorkflowCheck } from '@/hooks/useWorkflowCheck';
 import { toast } from 'sonner';
@@ -33,11 +33,12 @@ type WorkflowStep =
 export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = ({
   isOpen,
   onComplete,
-  workflowState // Utilisation de workflowState au lieu de initialState
+  workflowState
 }) => {
   const { isChecking, error, checkWorkflowState } = useWorkflowCheck();
   const [currentModal, setCurrentModal] = useState<WorkflowStep | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanDetails | null>(null);
+  const [adminCredentials, setAdminCredentials] = useState<AdminCredentials | null>(null);
 
   // Logs de débogage
   useEffect(() => {
@@ -45,10 +46,7 @@ export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = (
   }, [currentModal]);
 
   useEffect(() => {
-    if (workflowState) {
-      console.log('📊 État workflow mis à jour:', workflowState);
-      setCurrentModal(workflowState.current_step);
-    }
+    console.log('📊 Workflow state updated:', workflowState);
   }, [workflowState]);
 
   const determineCurrentModal = useCallback(() => {
@@ -117,11 +115,16 @@ export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = (
     toast.success(`${step.replace('_', ' ')} complété ! 🎉`);
   };
 
-  const handlePlanSelected = async (plan: PlanDetails) => {
-    setSelectedPlan(plan);
-    console.log('📋 Plan sélectionné:', plan);
-    setCurrentModal('organization');
+  const handlePlanSelected = async (planDetails: PlanDetails) => {
+    setSelectedPlan(planDetails);
+    console.log('📋 Plan sélectionné:', planDetails);
     await handleStepCompleted('pricing');
+    setCurrentModal('organization');
+  };
+
+  const handleAdminCreated = async (credentials: AdminCredentials) => {
+    setAdminCredentials(credentials);
+    await handleStepCompleted('admin');
   };
 
   const handleCompletionClose = () => {
@@ -188,6 +191,7 @@ export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = (
         <PricingModal
           isOpen={true}
           onSelectPlan={handlePlanSelected}
+          adminCredentials={adminCredentials}
         />
       )}
 

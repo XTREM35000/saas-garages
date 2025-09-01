@@ -1,11 +1,11 @@
 // src/hooks/useWorkflowCheck.ts
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { WorkflowCheckState, WorkflowStep } from '@/types/workflow.types';
 
 export function useWorkflowCheck() {
+  const [state, setState] = useState<WorkflowCheckState | null>(null);
   const [isChecking, setIsChecking] = useState(false);
-  const [workflowState, setWorkflowState] = useState<WorkflowCheckState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const checkWorkflowState = useCallback(async () => {
@@ -15,16 +15,34 @@ export function useWorkflowCheck() {
       console.log('🔍 Début vérification workflow...');
 
       // Vérifications de base avec Promise.all
-      const [
-        { data: hasSuperAdmin, error: superAdminError },
-        { data: hasAdmin, error: adminError },
-      ] = await Promise.all([
-        supabase.rpc('check_super_admin_exists'),
-        supabase.rpc('check_admin_exists'),
-      ]);
+      let hasSuperAdmin = false;
+      let hasAdmin = false;
 
-      if (superAdminError || adminError) {
-        throw superAdminError || adminError;
+      try {
+        const [
+          { data: superAdminResult, error: superAdminError },
+          { data: adminResult, error: adminError },
+        ] = await Promise.all([
+          supabase.rpc('check_super_admin_exists'),
+          supabase.rpc('check_admin_exists'),
+        ]);
+
+        if (superAdminError) {
+          console.warn('⚠️ Erreur vérification super admin:', superAdminError);
+        } else {
+          hasSuperAdmin = superAdminResult || false;
+        }
+
+        if (adminError) {
+          console.warn('⚠️ Erreur vérification admin:', adminError);
+        } else {
+          hasAdmin = adminResult || false;
+        }
+      } catch (rpcError) {
+        console.warn('⚠️ Erreur RPC, utilisation des valeurs par défaut:', rpcError);
+        // En cas d'erreur RPC, on assume qu'il n'y a pas d'admin
+        hasSuperAdmin = false;
+        hasAdmin = false;
       }
 
       console.log('✅ Vérifications de base:', { hasSuperAdmin, hasAdmin });
@@ -37,56 +55,72 @@ export function useWorkflowCheck() {
       let organizationData = null;
 
       if (hasAdmin) {
-        // Vérifier le plan sélectionné
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: adminData } = await supabase
-            .from('admins')
-            .select('selected_plan_id')
-            .eq('id', user.id)
-            .single();
-
-          hasPricingSelected = !!adminData?.selected_plan_id;
-          console.log('✅ Plan sélectionné:', hasPricingSelected);
-        }
-
-        // Vérifier l'organisation si nécessaire
         try {
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('id, name, phone')
-            .eq('is_active', true)
-            .maybeSingle();
+          // Vérifier le plan sélectionné
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            try {
+              const { data: adminData } = await supabase
+                .from('admins')
+                .select('selected_plan_id')
+                .eq('id', user.id)
+                .single();
 
-          if (orgData) {
-            hasOrganization = true;
-            organizationData = orgData;
-            console.log('✅ Organisation trouvée:', orgData);
+              hasPricingSelected = !!adminData?.selected_plan_id;
+              console.log('✅ Plan sélectionné:', hasPricingSelected);
+            } catch (adminError) {
+              console.warn('⚠️ Erreur vérification plan admin:', adminError);
+            }
+          }
 
-            // Vérifier la validation SMS
-            const { data: smsData } = await supabase
-              .from('sms_validations')
-              .select('id')
-              .eq('organization_id', orgData.id)
-              .eq('is_used', true)
-              .maybeSingle();
-
-            hasSmsValidated = !!smsData;
-            console.log('✅ SMS validé:', hasSmsValidated);
-
-            // Vérifier le garage
-            const { data: garageData } = await supabase
-              .from('garages')
-              .select('id')
-              .eq('organization_id', orgData.id)
+          // Vérifier l'organisation si nécessaire
+          try {
+            const { data: orgData } = await supabase
+              .from('organizations')
+              .select('id, name, phone')
               .eq('is_active', true)
               .maybeSingle();
 
-            hasGarage = !!garageData;
-            console.log('✅ Garage existe:', hasGarage);
+            if (orgData) {
+              hasOrganization = true;
+              organizationData = orgData;
+              console.log('✅ Organisation trouvée:', orgData);
+
+              // Vérifier la validation SMS
+              try {
+                const { data: smsData } = await supabase
+                  .from('sms_validations')
+                  .select('id')
+                  .eq('organization_id', orgData.id)
+                  .eq('is_used', true)
+                  .maybeSingle();
+
+                hasSmsValidated = !!smsData;
+                console.log('✅ SMS validé:', hasSmsValidated);
+              } catch (smsError) {
+                console.warn('⚠️ Erreur vérification SMS:', smsError);
+              }
+
+              // Vérifier le garage
+              try {
+                const { data: garageData } = await supabase
+                  .from('garages')
+                  .select('id')
+                  .eq('organization_id', orgData.id)
+                  .eq('is_active', true)
+                  .maybeSingle();
+
+                hasGarage = !!garageData;
+                console.log('✅ Garage existe:', hasGarage);
+              } catch (garageError) {
+                console.warn('⚠️ Erreur vérification garage:', garageError);
+              }
+            }
+          } catch (orgError) {
+            console.warn('⚠️ Erreur vérification organisation:', orgError);
           }
-        } catch (orgError) {
-          console.warn('⚠️ Erreur vérification organisation:', orgError);
+        } catch (userError) {
+          console.warn('⚠️ Erreur récupération utilisateur:', userError);
         }
       }
 
@@ -113,7 +147,19 @@ export function useWorkflowCheck() {
       };
 
       console.log('📊 État workflow final:', workflowData);
-      setWorkflowState(workflowData);
+
+      // Sauvegarder l'état (optionnel, peut échouer si les tables n'existent pas)
+      try {
+        await supabase
+          .from('workflow_states')
+          .upsert({ ...workflowData });
+        console.log('✅ État workflow sauvegardé');
+      } catch (saveError) {
+        console.warn('⚠️ Erreur sauvegarde état workflow:', saveError);
+        // On continue même si la sauvegarde échoue
+      }
+
+      setState(workflowData);
 
     } catch (err) {
       console.error('❌ Erreur vérification workflow:', err);
@@ -123,7 +169,12 @@ export function useWorkflowCheck() {
     }
   }, []);
 
-  return { isChecking, workflowState, error, checkWorkflowState };
+  // Effet pour vérifier l'état au chargement
+  useEffect(() => {
+    checkWorkflowState();
+  }, []);
+
+  return { isChecking, state, error, checkWorkflowState };
 }
 
 // Fonction helper pour déterminer l'étape courante

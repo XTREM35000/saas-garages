@@ -95,6 +95,11 @@ export interface AdminData {
   [key: string]: any;
 }
 
+export interface AdminCredentials {
+  email: string;
+  password: string;
+}
+
 export interface OptimizedWorkflowWizardProps {
   isOpen: boolean;
   onComplete: (step: WorkflowStep) => Promise<void>;
@@ -117,12 +122,14 @@ export interface WorkflowCheckState {
 
 export interface AdminCreationModalProps {
   isOpen: boolean;
-  onComplete: () => void;
+  onComplete: (data: AdminCredentials) => Promise<void>; // Mise à jour de la signature
   onClose: () => void;
-  selectedPlan: PlanDetails | null; // Changement ici : accepte PlanDetails au lieu de string
+  selectedPlan?: PlanDetails;
 }
 
-export interface PricingPlan {
+export type PlanType = 'free' | 'monthly' | 'annual' | 'license';
+
+export interface PlanDetails {
   id: PlanType;
   name: string;
   price: string;
@@ -130,32 +137,14 @@ export interface PricingPlan {
   description: string;
   features: string[];
   limitations: string[];
-  popular?: boolean;
-  icon: IconType;
-  buttonColors: {
-    bg: string;
-    hover: string;
-    text: string;
-  };
-  cardGradient: string;
-}
-
-export type PlanType = 'free' | 'monthly' | 'annual' | 'license';
-
-export interface PlanDetails {
-  id: string;
-  name: string;
-  price: string;
-  duration: number;
-  features: string[];
-  type: 'free' | 'monthly' | 'annual' | 'license'; // Type de plan
-  limitations: string[];    // Limitations éventuelles
-  selected_at: string;      // Date de sélection au format ISO
+  type: PlanType;
+  selected_at: string;
 }
 
 export interface PricingModalProps {
   isOpen: boolean;
-  onSelectPlan: (plan: PlanDetails) => Promise<void>;
+  onSelectPlan: (planDetails: PlanDetails) => Promise<void>; <void>;
+adminCredentials ?: AdminCredentials;
 }
 
 export interface WorkflowData {
@@ -170,4 +159,74 @@ export interface WorkflowStateProps {
   isChecking: boolean;
   error: string | null;
   checkWorkflowState: () => Promise<void>;
+}
+
+export interface OrganizationSetupModalProps {
+  isOpen: boolean;
+  onComplete: () => void;
+  selectedPlan: PlanDetails | null;
+}
+
+// Nouvelles interfaces pour les données des étapes
+export interface OrganizationData {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  postal_code: string;
+  country: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SmsValidationData {
+  id: string;
+  organization_id: string;
+  phone_number: string;
+  validation_code: string;
+  is_validated: boolean;
+  validated_at: string;
+  created_at: string;
+}
+
+export interface GarageSetupData {
+  id: string;
+  organization_id: string;
+  name: string;
+  address: string;
+  city: string;
+  postal_code: string;
+  phone: string;
+  email: string;
+  manager_name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Interface pour les données de validation des formulaires
+export interface ValidationResult {
+  isValid: boolean;
+  error?: string;
+}
+
+// Interface pour les props communes des modaux
+export interface BaseModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete: (data?: any) => Promise<void>;
+  isLoading?: boolean;
+  error?: string | null;
+}
+
+// Interface pour les données de progression
+export interface WorkflowProgress {
+  currentStep: WorkflowStep;
+  totalSteps: number;
+  completedSteps: number;
+  percentage: number;
+  canProceed: boolean;
+  canGoBack: boolean;
 }

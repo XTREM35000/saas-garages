@@ -46,7 +46,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
     if (Math.abs(info.offset.x) > 50) {
       return;
     }
-
+    // onSelectPlan: (plan: PlanDetails) => Promise<void>;
     // Limiter le drag vertical
     const maxDragY = 100;
     const clampedY = Math.max(-maxDragY, Math.min(maxDragY, info.offset.y));
