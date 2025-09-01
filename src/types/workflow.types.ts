@@ -103,7 +103,6 @@ export interface AdminCredentials {
 export interface OptimizedWorkflowWizardProps {
   isOpen: boolean;
   onComplete: (step: WorkflowStep) => Promise<void>;
-  workflowState: WorkflowCheckState | null; // Changé de initialState à workflowState
 }
 
 export interface WorkflowCheckState {

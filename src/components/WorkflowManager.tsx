@@ -83,7 +83,6 @@ export const WorkflowManager: React.FC<WorkflowManagerProps> = ({
     <OptimizedWorkflowWizard
       isOpen={isWorkflowOpen}
       onComplete={handleWorkflowComplete}
-      workflowState={workflowState}
     />
   );
 };

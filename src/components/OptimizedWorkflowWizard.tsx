@@ -1,7 +1,7 @@
 // src/components/OptimizedWorkflowWizard.tsx
 import { OptimizedWorkflowWizardProps, WorkflowState, PlanDetails, AdminCredentials } from '@/types/workflow.types';
 import React, { useState, useEffect, useCallback } from 'react';
-import { useWorkflowCheck } from '@/hooks/useWorkflowCheck';
+import { useWorkflowState } from '@/hooks/useWorkflowState';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
@@ -32,10 +32,9 @@ type WorkflowStep =
 
 export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = ({
   isOpen,
-  onComplete,
-  workflowState
+  onComplete
 }) => {
-  const { isChecking, error, checkWorkflowState } = useWorkflowCheck();
+  const { isChecking, workflowState, error, checkWorkflowState } = useWorkflowState();
   const [currentModal, setCurrentModal] = useState<WorkflowStep | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanDetails | null>(null);
   const [adminCredentials, setAdminCredentials] = useState<AdminCredentials | null>(null);

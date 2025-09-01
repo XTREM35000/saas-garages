@@ -4,14 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { WorkflowCheckState } from '@/types/workflow.types';
 
-interface UseWorkflowCheckResult {
+interface UseWorkflowStateResult {
   isChecking: boolean;
   workflowState: WorkflowCheckState | null;
   error: string | null;
   checkWorkflowState: () => Promise<void>;
 }
 
-export function useWorkflowState(): UseWorkflowCheckResult {
+export function useWorkflowState(): UseWorkflowStateResult {
   const [isChecking, setIsChecking] = useState(true);
   const [workflowState, setWorkflowState] = useState<WorkflowCheckState | null>(null);
   const [error, setError] = useState<string | null>(null);
