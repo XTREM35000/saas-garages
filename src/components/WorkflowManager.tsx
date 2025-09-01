@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useWorkflowState } from '@/hooks/useWorkflowState';
 import { WorkflowStep } from '@/types/workflow.types';
-import { OptimizedWorkflowWizard } from './OptimizedWorkflowWizard';
+import { SuperAdminCreationModal } from './SuperAdminCreationModal';
+import { GeneralAuthModal } from './GeneralAuthModal';
 import { Loader2 } from 'lucide-react';
 
 interface WorkflowManagerProps {
@@ -13,25 +14,31 @@ export const WorkflowManager: React.FC<WorkflowManagerProps> = ({
   onComplete
 }) => {
   const { isChecking, workflowState, error, checkWorkflowState } = useWorkflowState();
-  const [isWorkflowOpen, setIsWorkflowOpen] = useState(false);
+  const [currentModal, setCurrentModal] = useState<string | null>(null);
 
-  // Ouvrir le workflow si nécessaire
+  // Déterminer quel modal afficher
   useEffect(() => {
-    if (!isChecking && workflowState && !workflowState.is_completed) {
-      setIsWorkflowOpen(true);
+    if (!isChecking && workflowState) {
+      console.log('🔄 Workflow state:', workflowState);
+      
+      if (!workflowState.has_super_admin) {
+        setCurrentModal('super_admin');
+      } else if (!workflowState.has_admin) {
+        setCurrentModal('general_auth');
+      } else {
+        setCurrentModal(null);
+      }
     }
   }, [isChecking, workflowState]);
 
-  const handleWorkflowComplete = async (step: WorkflowStep) => {
-    console.log('✅ Workflow step completed:', step);
-    
-    if (step === 'completed') {
-      setIsWorkflowOpen(false);
-      onComplete?.();
-    } else {
-      // Reverifier l'état après chaque étape
-      await checkWorkflowState();
-    }
+  const handleSuperAdminComplete = async () => {
+    console.log('✅ Super admin créé');
+    await checkWorkflowState();
+  };
+
+  const handleAuthComplete = async () => {
+    console.log('✅ Auth complétée');
+    await checkWorkflowState();
   };
 
   // Loader pendant la vérification
@@ -78,12 +85,38 @@ export const WorkflowManager: React.FC<WorkflowManagerProps> = ({
     return null;
   }
 
-  // Rendu du workflow wizard
+  // Affichage conditionnel des modals
   return (
-    <OptimizedWorkflowWizard
-      isOpen={isWorkflowOpen}
-      onComplete={handleWorkflowComplete}
-    />
+    <>
+      {currentModal === 'super_admin' && (
+        <SuperAdminCreationModal
+          isOpen={true}
+          onComplete={handleSuperAdminComplete}
+          onClose={() => setCurrentModal(null)}
+        />
+      )}
+
+      {currentModal === 'general_auth' && (
+        <GeneralAuthModal
+          isOpen={true}
+          onClose={() => setCurrentModal(null)}
+          onNewTenant={() => {
+            console.log('🚀 Nouveau tenant requis');
+            setCurrentModal('pricing');
+          }}
+          onAuthSuccess={handleAuthComplete}
+        />
+      )}
+
+      {!currentModal && !isChecking && workflowState?.is_completed && (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-4">Système configuré !</h1>
+            <p className="text-muted-foreground">Prêt à être utilisé.</p>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
