@@ -2,16 +2,24 @@
 import React from 'react';
 import { Toaster } from 'sonner';
 import { WorkflowProvider } from '@/contexts/WorkflowProvider';
-import OptimizedWorkflowWizard from '@/components/OptimizedWorkflowWizard';
+import IntelligentRouter from '@/components/IntelligentRouter';
 import './App.css';
 
 function App() {
+  const handleSystemReady = (status: any) => {
+    console.log('🎯 [App] Système prêt avec status:', status);
+  };
+
+  const handleSystemError = (error: Error) => {
+    console.error('❌ [App] Erreur système:', error);
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <WorkflowProvider>
-        <OptimizedWorkflowWizard
-          isOpen={true}
-          onComplete={() => console.log('Workflow completed!')}
+        <IntelligentRouter
+          onSystemReady={handleSystemReady}
+          onError={handleSystemError}
         />
       </WorkflowProvider>
 

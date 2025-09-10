@@ -35,7 +35,10 @@ export interface WorkflowState {
   has_sms_validated: boolean;
   has_garage: boolean;
   current_step: WorkflowStep;
+  currentStep: WorkflowStep; // Alias pour compatibilité
   is_completed: boolean;
+  completedSteps?: WorkflowStep[]; // Ajout pour compatibilité
+  stepData?: Record<string, any>; // Ajout pour compatibilité
   organization_id?: string;
   organization_name?: string;
   organization_phone?: string;
