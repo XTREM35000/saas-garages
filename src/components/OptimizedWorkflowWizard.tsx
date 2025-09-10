@@ -1,7 +1,7 @@
 // src/components/OptimizedWorkflowWizard.tsx
 import { OptimizedWorkflowWizardProps, WorkflowState, PlanDetails, AdminCredentials } from '@/types/workflow.types';
 import React, { useState, useEffect, useCallback } from 'react';
-import { useWorkflowState } from '@/hooks/useWorkflowState';
+import { useWorkflow } from '@/contexts/WorkflowProvider';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
@@ -13,6 +13,7 @@ import { OrganizationSetupModal } from './OrganizationSetupModal';
 import SmsValidationModal from './SmsValidationModal';
 import GarageSetupModal from './GarageSetupModal';
 import CompletionSummaryModal from './CompletionSummaryModal';
+import WorkflowProgressBar from './WorkflowProgressBar';
 
 interface OrganizationSetupModalProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = (
   isOpen,
   onComplete
 }) => {
-  const { isChecking, workflowState, error, checkWorkflowState } = useWorkflowState();
+  const { state, isLoading, error, goToStep } = useWorkflow();
   const [currentModal, setCurrentModal] = useState<WorkflowStep | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanDetails | null>(null);
   const [adminCredentials, setAdminCredentials] = useState<AdminCredentials | null>(null);
@@ -45,60 +46,36 @@ export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = (
   }, [currentModal]);
 
   useEffect(() => {
-    console.log('📊 Workflow state updated:', workflowState);
-  }, [workflowState]);
+    console.log('📊 Workflow state updated:', state);
+  }, [state]);
 
   const determineCurrentModal = useCallback(() => {
-    if (!workflowState || !isOpen) {
+    if (!state || !isOpen) {
       console.log('❌ État workflow non disponible ou modal fermé');
       return null;
     }
 
-    console.log('🔍 Analyse workflow:', workflowState);
+    console.log('🔍 Analyse workflow:', state);
 
-    // Vérification séquentielle stricte
-    if (!workflowState.has_super_admin) {
-      console.log('➡️ Affichage modal Super Admin');
-      return 'super_admin';
-    }
-
-    if (!workflowState.has_admin) {
-      console.log('➡️ Transition vers création Admin');
-      return 'admin';
-    }
-
-    if (!workflowState.has_pricing_selected) {
-      console.log('➡️ Plan non sélectionné → Affichage modal pricing');
-      return 'pricing';
-    }
-
-    if (!workflowState.has_organization) {
-      console.log('🔴 Organisation manquante → Affichage modal organisation');
-      return 'organization';
-    }
-
-    if (!workflowState.has_sms_validated) {
-      console.log('🔴 SMS non validé → Affichage modal validation SMS');
-      return 'sms_validation';
-    }
-
-    if (!workflowState.has_garage) {
-      console.log('🔴 Garage manquant → Affichage modal garage');
-      return 'garage';
-    }
-
-    console.log('✅ Workflow complet');
-    return 'completed';
-  }, [workflowState, isOpen]);
+    // Utiliser currentStep directement depuis le contexte
+    return state.currentStep;
+  }, [state, isOpen]);
 
   // Mise à jour du modal actuel
   useEffect(() => {
     const nextModal = determineCurrentModal();
+    console.log(`🔍 [OptimizedWorkflowWizard] Détermination modal:`, {
+      nextModal,
+      currentModal,
+      stateCurrentStep: state?.currentStep,
+      isOpen
+    });
+
     if (nextModal !== currentModal) {
       console.log(`🔄 Changement modal: ${currentModal} → ${nextModal}`);
       setCurrentModal(nextModal);
     }
-  }, [determineCurrentModal, currentModal]);
+  }, [determineCurrentModal, currentModal, state?.currentStep, isOpen]);
 
   // Effet pour forcer la vérification après chaque étape
   useEffect(() => {
@@ -110,7 +87,6 @@ export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = (
   // Handlers
   const handleStepCompleted = async (step: WorkflowStep) => {
     console.log(`✅ Étape terminée: ${step}`);
-    await checkWorkflowState();
     toast.success(`${step.replace('_', ' ')} complété ! 🎉`);
   };
 
@@ -131,7 +107,7 @@ export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = (
   };
 
   // Loader
-  if (isChecking) {
+  if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white p-8 rounded-lg shadow-lg">
@@ -151,7 +127,7 @@ export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = (
         <div className="bg-white p-8 rounded-lg shadow-lg">
           <p className="text-red-500">{error}</p>
           <button
-            onClick={checkWorkflowState}
+            onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Réessayer
@@ -169,66 +145,41 @@ export const OptimizedWorkflowWizard: React.FC<OptimizedWorkflowWizardProps> = (
   // Rendu des modaux
   return (
     <>
-      {currentModal === 'super_admin' && (
-        <SuperAdminCreationModal
-          isOpen={true}
-          onComplete={() => handleStepCompleted('super_admin')}
-          onClose={() => { }}
+      {/* Progress Bar UI */}
+      {state && (
+        <WorkflowProgressBar
+          currentStep={state.currentStep as any}
+          completedSteps={state.completedSteps as any}
+          onStepClick={(step) => goToStep(step as any)}
         />
+      )}
+
+      {currentModal === 'super_admin' && (
+        <SuperAdminCreationModal />
       )}
 
       {currentModal === 'admin' && (
-        <AdminCreationModal
-          isOpen={true}
-          onComplete={() => handleStepCompleted('admin')}
-          onClose={() => { }}
-          selectedPlan={selectedPlan}
-        />
+        <AdminCreationModal />
       )}
 
       {currentModal === 'pricing' && (
-        <PricingModal
-          isOpen={true}
-          onSelectPlan={handlePlanSelected}
-          adminCredentials={adminCredentials}
-        />
+        <PricingModal />
       )}
 
       {currentModal === 'organization' && (
-        <OrganizationSetupModal
-          isOpen={true}
-          onComplete={() => handleStepCompleted('organization')}
-          selectedPlan={selectedPlan?.type}
-        />
+        <OrganizationSetupModal />
       )}
 
-      {currentModal === 'sms_validation' && workflowState && (
-        <SmsValidationModal
-          isOpen={true}
-          onComplete={handleSmsValidated}
-          onSubmit={handleSmsValidated}
-          onClose={() => { }}
-          organizationData={{
-            id: workflowState.organization_id || '',
-            name: workflowState.organization_name || '',
-            phone: workflowState.organization_phone || ''
-          }}
-        />
+      {currentModal === 'sms_validation' && state && (
+        <SmsValidationModal />
       )}
 
-      {currentModal === 'garage' && workflowState && (
-        <GarageSetupModal
-          isOpen={true}
-          onComplete={() => handleStepCompleted('garage')}
-          organizationName={workflowState.organization_name || ''}
-        />
+      {currentModal === 'garage' && state && (
+        <GarageSetupModal />
       )}
 
       {currentModal === 'completed' && (
-        <CompletionSummaryModal
-          isOpen={true}
-          onClose={handleCompletionClose}
-        />
+        <CompletionSummaryModal />
       )}
     </>
   );

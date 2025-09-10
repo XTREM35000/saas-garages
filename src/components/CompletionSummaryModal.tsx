@@ -3,16 +3,12 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useWorkflow } from '@/contexts/WorkflowProvider';
 
-interface CompletionSummaryModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
+// Props supprimées - maintenant gérées par le contexte
 
-const CompletionSummaryModal: React.FC<CompletionSummaryModalProps> = ({
-  isOpen,
-  onClose
-}) => {
+const CompletionSummaryModal = () => {
+  const { state } = useWorkflow();
   const navigate = useNavigate();
   const [summary, setSummary] = useState({
     adminName: '',
@@ -20,6 +16,11 @@ const CompletionSummaryModal: React.FC<CompletionSummaryModalProps> = ({
     garageName: '',
     plan: '',
   });
+
+  // Vérifier si c'est l'étape actuelle
+  if (state.currentStep !== 'completed') {
+    return null;
+  }
 
   useEffect(() => {
     const loadSummary = async () => {
@@ -88,7 +89,7 @@ const CompletionSummaryModal: React.FC<CompletionSummaryModalProps> = ({
   }, [isOpen, onClose]);
 
   return (
-    <Dialog open={isOpen}>
+    <Dialog open={true}>
       <DialogContent className="sm:max-w-md bg-white dark:bg-gray-950">
         <div className="space-y-6 text-center">
           <div className="flex justify-center">

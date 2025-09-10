@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { WhatsAppModal } from '@/components/ui/whatsapp-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,12 +10,12 @@ import { PasswordFieldPro } from '@/components/ui/password-field-pro';
 import { toast } from 'sonner';
 import AvatarUpload from '@/components/ui/avatar-upload';
 import { supabase } from '@/integrations/supabase/client';
+import { useWorkflow } from '@/contexts/WorkflowProvider';
 import '../styles/whatsapp-theme.css';
+import MiniStepProgress from '@/components/ui/MiniStepProgress';
 
 interface SuperAdminCreationModalProps {
-  isOpen: boolean;
-  onComplete: (userData: any) => void;
-  onClose: () => void;
+  // Props supprimées - maintenant gérées par le contexte
 }
 
 interface FormData {
@@ -27,11 +27,14 @@ interface FormData {
   avatarUrl: string;
 }
 
-export const SuperAdminCreationModal = ({
-  isOpen,
-  onComplete,
-  onClose
-}: SuperAdminCreationModalProps) => {
+export const SuperAdminCreationModal = memo(({ }: SuperAdminCreationModalProps) => {
+  const { state, completeStep } = useWorkflow();
+  
+  // Vérifier si c'est l'étape actuelle AVANT les hooks
+  if (state.currentStep !== 'super_admin') {
+    return null;
+  }
+
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -43,6 +46,16 @@ export const SuperAdminCreationModal = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+  // Pré-remplir avec les données existantes si disponibles
+  useEffect(() => {
+    if (state.stepData?.super_admin_check) {
+      setFormData(prev => ({
+        ...prev,
+        ...state.stepData.super_admin_check
+      }));
+    }
+  }, [state.stepData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,9 +119,20 @@ export const SuperAdminCreationModal = ({
         duration: 5000
       });
 
-      onComplete(data);
-      onClose();
-      resetForm();
+      // Utiliser la nouvelle architecture
+      try {
+        console.log('🔄 SuperAdminCreationModal: Appel completeStep...');
+        await completeStep('super_admin');
+        console.log('✅ SuperAdminCreationModal: Étape complétée avec succès');
+        
+        // Petit délai pour permettre la transition UI
+        setTimeout(() => {
+          resetForm();
+        }, 1000);
+      } catch (stepError) {
+        console.error('❌ SuperAdminCreationModal: Erreur lors de la complétion de l\'étape:', stepError);
+        // Ne pas re-throw l'erreur car la création a réussi
+      }
 
     } catch (err: any) {
       console.error("❌ Erreur création complète:", err);
@@ -161,8 +185,11 @@ export const SuperAdminCreationModal = ({
   };
 
   return (
-    <WhatsAppModal isOpen={isOpen} onClose={onClose}>
+    <WhatsAppModal isOpen={true} onClose={() => { }}>
       <div className="max-w-4xl mx-auto">
+        <div className="mb-4">
+          <MiniStepProgress currentStep={state.currentStep} completedSteps={state.completedSteps} />
+        </div>
         <AvatarUpload
           avatarPreview={avatarPreview}
           onAvatarChange={handleAvatarChange}
@@ -299,4 +326,6 @@ export const SuperAdminCreationModal = ({
       </div>
     </WhatsAppModal>
   );
-};
+});
+
+SuperAdminCreationModal.displayName = 'SuperAdminCreationModal';

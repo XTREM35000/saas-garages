@@ -2,20 +2,34 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import {
-  WorkflowState,
   WorkflowStep,
   DBWorkflowState,
   WorkflowContextType
 } from '@/types/workflow.types';
 
+// Interface locale pour l'état du workflow dans le contexte
+interface WorkflowState {
+  currentStep: WorkflowStep;
+  completedSteps: WorkflowStep[];
+  isDemo: boolean;
+  loading: boolean;
+  error: string | null;
+  userId?: string;
+  lastActiveOrg?: string;
+  metadata?: Record<string, any>;
+  stepData?: Record<string, any>;
+  isOpen?: boolean;
+}
+
 export const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
 
 const initialState: WorkflowState = {
-  currentStep: 'super_admin_check',
+  currentStep: 'super_admin',
   completedSteps: [],
   isDemo: false,
   loading: false,
-  error: null
+  error: null,
+  isOpen: true
 };
 
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
@@ -24,21 +38,32 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const { user, isAuthenticated } = useAuthSession();
 
-  // Vérifier l'existence d'un super admin
+  // Vérifier l'existence d'un super admin (nouvelle table: profiles)
   const checkSuperAdminExists = useCallback(async () => {
     try {
-      const { data: superAdmins, error } = await supabase
-        .from('super_admins')
-        .select('*')
-        .eq('est_actif', true);
+      console.log('🔍 [WorkflowProvider] Vérification super admin dans profiles...');
+      
+      // D'abord, vérifier tous les profils pour debug
+      const { data: allProfiles, error: allError } = await supabase
+        .from('profiles')
+        .select('id, role, email');
+      
+      console.log('📊 [WorkflowProvider] Tous les profils:', allProfiles);
+      
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'super_admin');
+
+      console.log('📊 [WorkflowProvider] Résultat requête super_admin:', { count, error });
 
       if (error) {
         console.error('❌ [WorkflowProvider] Erreur vérification super admin:', error);
         return false;
       }
 
-      const hasSuperAdmin = superAdmins && superAdmins.length > 0;
-      console.log('✅ [WorkflowProvider] Vérification super admin:', hasSuperAdmin ? 'Trouvé' : 'Non trouvé');
+      const hasSuperAdmin = typeof count === 'number' && count > 0;
+      console.log('✅ [WorkflowProvider] Vérification super admin (profiles):', hasSuperAdmin ? 'Trouvé' : 'Non trouvé', `(count: ${count})`);
       return hasSuperAdmin;
     } catch (err) {
       console.error('❌ [WorkflowProvider] Erreur inattendue:', err);
@@ -48,7 +73,30 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
   // Créer l'état initial du workflow
   const createInitialState = useCallback(async () => {
-    if (!user?.id) return;
+    // Pour l'étape super_admin, on n'a pas besoin d'utilisateur connecté
+    // Mais on doit toujours vérifier s'il existe déjà un super admin
+    if (!user?.id && state.currentStep !== 'super_admin') {
+      // Vérifier quand même s'il existe un super admin pour déterminer l'état initial
+      const hasSuperAdmin = await checkSuperAdminExists();
+      if (hasSuperAdmin) {
+        console.log('✅ [WorkflowProvider] Super admin trouvé, passage à admin');
+        setState(prev => ({
+          ...prev,
+          currentStep: 'admin',
+          completedSteps: ['super_admin'],
+          isLoading: false
+        }));
+      } else {
+        console.log('ℹ️ [WorkflowProvider] Aucun super admin, création nécessaire');
+        setState(prev => ({
+          ...prev,
+          currentStep: 'super_admin',
+          completedSteps: [],
+          isLoading: false
+        }));
+      }
+      return;
+    }
 
     try {
       console.log('🔄 [WorkflowProvider] Création de l\'état initial...');
@@ -60,13 +108,13 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       let completedSteps: WorkflowStep[];
 
       if (hasSuperAdmin) {
-        // Si un super admin existe, passer directement à l'étape pricing
-        currentStep = 'pricing_selection';
-        completedSteps = ['super_admin_check'];
-        console.log('✅ [WorkflowProvider] Super admin trouvé, passage direct à pricing_selection');
+        // Si un super admin existe, passer à la création admin
+        currentStep = 'admin';
+        completedSteps = ['super_admin'];
+        console.log('✅ [WorkflowProvider] Super admin trouvé, passage direct à admin');
       } else {
         // Aucun super admin, commencer par la création
-        currentStep = 'super_admin_check';
+        currentStep = 'super_admin';
         completedSteps = [];
         console.log('ℹ️ [WorkflowProvider] Aucun super admin, création nécessaire');
       }
@@ -78,19 +126,23 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         completedSteps
       };
 
-      // Sauvegarder dans Supabase
-      const { error: insertError } = await supabase
-        .from('workflow_states')
-        .insert({
-          user_id: user.id,
-          current_step: newState.currentStep,
-          completed_steps: newState.completedSteps,
-          meta: { isDemo: newState.isDemo }
-        });
+      // Sauvegarder dans Supabase (seulement si on a un utilisateur)
+      if (user?.id) {
+        const { error: insertError } = await supabase
+          .from('workflow_states')
+          .insert({
+            user_id: user.id,
+            current_step: newState.currentStep,
+            completed_steps: newState.completedSteps,
+            metadata: { isDemo: newState.isDemo }
+          });
 
-      if (insertError) {
-        console.error('❌ [WorkflowProvider] Erreur insertion workflow state:', insertError);
-        throw insertError;
+        if (insertError) {
+          console.error('❌ [WorkflowProvider] Erreur insertion workflow state:', insertError);
+          throw insertError;
+        }
+      } else {
+        console.log('ℹ️ [WorkflowProvider] Pas d\'utilisateur, pas de sauvegarde workflow state');
       }
 
       setState(newState);
@@ -136,6 +188,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           userId: workflowData.user_id,
           loading: false,
           error: null,
+          isOpen: true,
           metadata: typeof workflowData.metadata === 'object' && workflowData.metadata !== null
             ? (workflowData.metadata as Record<string, any>)
             : {}
@@ -171,7 +224,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     try {
       const dataToUpsert: WorkflowStateInsert = {
         user_id: user.id,
-        current_step: workflowData.current_step || 'super_admin_check',
+        current_step: workflowData.current_step || 'super_admin',
         completed_steps: workflowData.completed_steps || [],
         metadata: {
           ...(state.metadata || {}),
@@ -200,9 +253,16 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, state.metadata]);
 
-  // Compléter une étape et passer à la suivante
+  // Compléter une étape et passer à la suivante (ordre strict)
   const completeStep = useCallback(async (step: WorkflowStep) => {
-    if (!user?.id) return;
+    console.log('🎯 [WorkflowProvider] completeStep appelé avec:', step);
+    console.log('🎯 [WorkflowProvider] user?.id:', user?.id);
+    
+    // Pour la création du super admin, on n'a pas besoin d'utilisateur connecté
+    if (!user?.id && step !== 'super_admin') {
+      console.log('❌ [WorkflowProvider] Pas d\'utilisateur, abandon');
+      return;
+    }
 
     try {
       console.log('🎯 [WorkflowProvider] Complétion étape:', step);
@@ -214,43 +274,76 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       let nextStep: WorkflowStep;
 
       switch (step) {
-        case 'super_admin_check':
-          nextStep = 'pricing_selection';
+        case 'super_admin':
+          nextStep = 'admin';
           break;
-        case 'pricing_selection':
-          nextStep = 'admin_creation';
+        case 'admin':
+          nextStep = 'pricing';
           break;
-        case 'admin_creation':
-          nextStep = 'org_creation';
+        case 'pricing':
+          nextStep = 'organization';
           break;
-        case 'org_creation':
-          nextStep = 'garage_setup';
+        case 'organization':
+          nextStep = 'sms_validation';
           break;
-        case 'garage_setup':
+        case 'sms_validation':
+          nextStep = 'garage';
+          break;
+        case 'garage':
           nextStep = 'completed';
           break;
         default:
           nextStep = 'completed';
       }
 
-      // Mettre à jour l'état local
+      // Mettre à jour l'état local immédiatement
       const newState = {
         ...state,
         currentStep: nextStep,
-        completedSteps: newCompletedSteps
+        completedSteps: newCompletedSteps,
+        loading: false,
+        error: null
       };
 
       setState(newState);
-
-      // Sauvegarder dans Supabase
-      await createOrUpdateWorkflowState({
-        current_step: nextStep,
-        completed_steps: newCompletedSteps,
-        metadata: {
-          lastCompletedStep: step,
-          completedAt: new Date().toISOString()
+      console.log('✅ [WorkflowProvider] État local mis à jour:', newState);
+      
+      // Si on vient de créer un super admin, vérifier qu'il existe bien
+      if (step === 'super_admin') {
+        console.log('🔄 [WorkflowProvider] Vérification post-création super admin...');
+        
+        // Petit délai pour permettre la propagation des données
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const hasSuperAdmin = await checkSuperAdminExists();
+        console.log('🔍 [WorkflowProvider] Résultat vérification:', hasSuperAdmin);
+        
+        if (!hasSuperAdmin) {
+          console.warn('⚠️ [WorkflowProvider] Super admin non trouvé après création, réinitialisation...');
+          // Réinitialiser l'état si la création a échoué
+          setState(prev => ({
+            ...prev,
+            currentStep: 'super_admin',
+            completedSteps: prev.completedSteps.filter(s => s !== 'super_admin')
+          }));
+          return;
         }
-      });
+        console.log('✅ [WorkflowProvider] Super admin confirmé après création');
+      }
+
+      // Sauvegarder dans Supabase (sauf pour super_admin qui n'a pas d'utilisateur)
+      if (step !== 'super_admin' && user?.id) {
+        await createOrUpdateWorkflowState({
+          current_step: nextStep,
+          completed_steps: newCompletedSteps,
+          metadata: {
+            lastCompletedStep: step,
+            completedAt: new Date().toISOString()
+          }
+        });
+      } else if (step === 'super_admin') {
+        console.log('ℹ️ [WorkflowProvider] Étape super_admin complétée, pas de sauvegarde nécessaire');
+      }
 
       console.log('✅ [WorkflowProvider] Étape complétée, passage à:', nextStep);
 
@@ -272,6 +365,52 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la complétion');
     }
   }, [user?.id, state, createOrUpdateWorkflowState]);
+
+  // Navigation contrôlée avec garde d'ordre
+  const goToStep = useCallback(async (targetStep: WorkflowStep) => {
+    try {
+      const stepOrder: WorkflowStep[] = [
+        'super_admin',
+        'pricing',
+        'admin',
+        'organization',
+        'sms_validation',
+        'garage',
+        'completed'
+      ];
+
+      const currentIndex = stepOrder.indexOf(state.currentStep);
+      const targetIndex = stepOrder.indexOf(targetStep);
+
+      // Garde d'ordre: on ne peut aller qu'à une étape déjà complétée ou la suivante immédiate
+      const isCompleted = state.completedSteps.includes(targetStep);
+      const isNext = targetIndex === currentIndex + 1;
+      const isSame = targetIndex === currentIndex;
+
+      if (!(isCompleted || isNext || isSame)) {
+        console.warn('⛔ Navigation refusée vers', targetStep);
+        try {
+          const { toast } = await import('sonner');
+          toast.error("Navigation non autorisée vers cette étape. Veuillez compléter les étapes précédentes.");
+        } catch (_) {
+          // pas de toast disponible dans ce contexte, ignorer
+        }
+        return;
+      }
+
+      setState(prev => ({
+        ...prev,
+        currentStep: targetStep
+      }));
+
+      await createOrUpdateWorkflowState({
+        current_step: targetStep,
+        completed_steps: state.completedSteps
+      });
+    } catch (err) {
+      console.error('❌ [WorkflowProvider] Erreur goToStep:', err);
+    }
+  }, [state.currentStep, state.completedSteps, createOrUpdateWorkflowState]);
 
   // Validation flexible des champs
   const validateFormField = useCallback((field: string, value: string) => {
@@ -344,11 +483,22 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const contextValue: WorkflowContextType = {
     state,
     completeStep,
+    goToStep,
     reset,
     isLoading,
     error,
     validateFormField
   };
+
+  // Debug: Log de l'état à chaque changement
+  useEffect(() => {
+    console.log('🔄 [WorkflowProvider] État mis à jour:', {
+      currentStep: state.currentStep,
+      completedSteps: state.completedSteps,
+      isLoading,
+      error
+    });
+  }, [state.currentStep, state.completedSteps, isLoading, error]);
 
   return (
     <WorkflowContext.Provider value={contextValue}>

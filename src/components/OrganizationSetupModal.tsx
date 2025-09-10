@@ -9,17 +9,14 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import AvatarUpload from '@/components/ui/avatar-upload';
 import { generateSlug, isValidSlug } from '@/utils/slugGenerator';
+import { useWorkflow } from '@/contexts/WorkflowProvider';
 import '../styles/whatsapp-theme.css';
+import MiniStepProgress from '@/components/ui/MiniStepProgress';
 
 
 // Ajoutez ces imports en haut du fichier
 import { CopyIcon } from 'lucide-react';
-// Define OrganizationSetupModalProps locally if not exported from workflow.types
-interface OrganizationSetupModalProps {
-  isOpen: boolean;
-  onComplete: (data: any) => void;
-  selectedPlan?: string;
-}
+// Props supprimées - maintenant gérées par le contexte
 
 // Ajoutez cette fonction dans le composant
 const copyToClipboard = async (text: string) => {
@@ -44,11 +41,8 @@ interface FormData {
   logoUrl: string;
 }
 
-export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
-  isOpen,
-  onComplete,
-  selectedPlan
-}) => {
+export const OrganizationSetupModal = () => {
+  const { state, completeStep } = useWorkflow();
   const [currentStep, setCurrentStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -68,28 +62,20 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Réinitialiser le formulaire quand le modal s'ouvre
+  // Vérifier si c'est l'étape actuelle
+  if (state.currentStep !== 'organization') {
+    return null;
+  }
+
+  // Pré-remplir avec les données existantes si disponibles
   useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        name: '',
-        description: '',
-        address: '',
-        city: '',
-        country: '',
-        phone: '',
-        email: '',
-        website: '',
-        logoUrl: ''
-      });
-      setCurrentStep(1);
-      setShowSuccess(false);
-      setLogoPreview(null);
-      setGeneratedSlug('');
-      setGeneratedSubdomain('');
-      setGeneratedEmail('');
+    if (state.stepData?.organization) {
+      setFormData(prev => ({
+        ...prev,
+        ...state.stepData.organization
+      }));
     }
-  }, [isOpen]);
+  }, [state.stepData]);
 
   // Event listeners pour les pictos de test
   useEffect(() => {
@@ -321,15 +307,14 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
 
       console.log('✅ Organisation créée avec succès:', orgData);
 
-      // 2. Envoyer à onComplete avec les données pour la validation SMS
-      onComplete({
-        organization: orgData,
-        smsData: {
-          phone: formData.phone,
-          organizationName: formData.name,
-          organizationId: orgData.id
-        }
-      });
+      // 2. Utiliser la nouvelle architecture
+      try {
+        await completeStep('organization');
+        console.log('✅ OrganizationSetupModal: Étape complétée avec succès');
+      } catch (stepError) {
+        console.error('❌ OrganizationSetupModal: Erreur lors de la complétion de l\'étape:', stepError);
+        toast.error('Erreur lors de la sauvegarde de l\'organisation');
+      }
 
     } catch (error) {
       console.error('❌ Erreur création:', error);
@@ -341,7 +326,7 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
 
   if (showSuccess) {
     return (
-      <WhatsAppModal isOpen={isOpen} onClose={() => { }}>
+      <WhatsAppModal isOpen={true} onClose={() => { }}>
         <div className="text-center p-8">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <div className="text-green-500 text-3xl">✅</div>
@@ -371,6 +356,9 @@ export const OrganizationSetupModal: React.FC<OrganizationSetupModalProps> = ({
   return (
     <WhatsAppModal isOpen={isOpen} onClose={() => { }}>
       <div className="max-w-4xl mx-auto">
+        <div className="mb-4">
+          <MiniStepProgress currentStep={state.currentStep} completedSteps={state.completedSteps} />
+        </div>
         {/* Utilisation du composant AvatarUpload réutilisable */}
         <AvatarUpload
           avatarPreview={logoPreview}

@@ -12,12 +12,10 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useWorkflow } from '@/contexts/WorkflowProvider';
+import MiniStepProgress from '@/components/ui/MiniStepProgress';
 
-interface GarageSetupModalProps {
-  isOpen: boolean;
-  onComplete: (data: any) => void;
-  organizationName: string;
-}
+// Props supprimées - maintenant gérées par le contexte
 
 interface FormData {
   name: string;
@@ -54,11 +52,8 @@ const AFRICAN_COUNTRIES = [
   { value: 'OTHER', label: 'Autre pays' }
 ] as const;
 
-export const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
-  isOpen,
-  onComplete,
-  organizationName
-}) => {
+export const GarageSetupModal = () => {
+  const { state, completeStep } = useWorkflow();
   const [formData, setFormData] = useState<FormData>({
     name: '',
     address: '',
@@ -77,25 +72,20 @@ export const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
   const [isLocating, setIsLocating] = useState(false);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Réinitialiser le formulaire quand le modal s'ouvre
+  // Vérifier si c'est l'étape actuelle
+  if (state.currentStep !== 'garage') {
+    return null;
+  }
+
+  // Pré-remplir avec les données existantes si disponibles
   useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        name: '',
-        address: '',
-        city: '',
-        postalCode: '',
-        country: 'France',
-        phone: '',
-        email: '',
-        website: '',
-        description: ''
-      });
-      setErrors({});
-      setShowSuccess(false);
-      setCoordinates(null);
+    if (state.stepData?.garage) {
+      setFormData(prev => ({
+        ...prev,
+        ...state.stepData.garage
+      }));
     }
-  }, [isOpen]);
+  }, [state.stepData]);
 
   // Validation des champs
   const validateField = (field: keyof FormData, value: string): string | undefined => {
@@ -250,8 +240,13 @@ export const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
         setShowSuccess(true);
 
         // Attendre un peu pour l'animation
-        setTimeout(() => {
-          onComplete(rpcData);
+        setTimeout(async () => {
+          try {
+            await completeStep('garage');
+            console.log('✅ GarageSetupModal: Étape complétée avec succès');
+          } catch (stepError) {
+            console.error('❌ GarageSetupModal: Erreur lors de la complétion de l\'étape:', stepError);
+          }
         }, 2000);
       } else {
         throw new Error(rpcData?.error || 'Erreur lors de la création du garage');
@@ -269,7 +264,7 @@ export const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
   if (showSuccess) {
     return (
       <WhatsAppModal
-        isOpen={isOpen}
+        isOpen={true}
         onClose={() => { }}
         title="Garage créé ! 🎉"
         description={`${formData.name} est maintenant configuré`}
@@ -304,6 +299,9 @@ export const GarageSetupModal: React.FC<GarageSetupModalProps> = ({
       headerLogo={<AnimatedLogo size={64} />}
     >
       <div className="max-w-4xl mx-auto">
+        <div className="mb-4">
+          <MiniStepProgress currentStep={state.currentStep} completedSteps={state.completedSteps} />
+        </div>
         <Card className="modal-whatsapp-card">
           <CardContent className="space-y-6 p-6">
             <form onSubmit={handleSubmit} className="space-y-6">

@@ -44,6 +44,7 @@ export interface WorkflowState {
 export interface WorkflowContextType {
   state: WorkflowState;
   completeStep: (step: WorkflowStep) => Promise<void>;
+  goToStep: (step: WorkflowStep) => Promise<void>;
   reset: () => Promise<void>;
   isLoading: boolean;
   error: string | null;

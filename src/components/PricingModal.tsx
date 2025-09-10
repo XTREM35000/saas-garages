@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Check, Star, Zap, Crown, Sparkles, AlertTriangle, Clock, Building, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePricing } from '@/hooks/usePricing';
-import { PlanDetails, PlanType, PricingModalProps } from '@/types/workflow.types';
+import { useWorkflow } from '@/contexts/WorkflowProvider';
+import { PlanDetails, PlanType } from '@/types/workflow.types';
 
 interface PricingPlan {
   id: string;
@@ -26,10 +27,16 @@ interface PricingPlan {
   cardGradient: string;
 }
 
-export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onSelectPlan, adminCredentials }) => {
+export const PricingModal = () => {
+  const { state, completeStep } = useWorkflow();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { pricing, loading: pricingLoading } = usePricing();
+
+  // Vérifier si c'est l'étape actuelle
+  if (state.currentStep !== 'pricing') {
+    return null;
+  }
 
   const plans: PricingPlan[] = [
     {
@@ -148,10 +155,6 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onSelectPlan
 
   const handlePlanSelect = async (plan: PricingPlan) => {
     try {
-      if (!adminCredentials) {
-        throw new Error('Veuillez d\'abord créer votre compte');
-      }
-
       setSelectedPlan(plan.id);
       setIsLoading(true);
 
@@ -167,12 +170,13 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onSelectPlan
         selected_at: new Date().toISOString()
       };
 
-      await onSelectPlan(planDetails);
+      await completeStep('pricing');
       toast.success(`Plan ${plan.name} sélectionné avec succès!`);
+      console.log('✅ PricingModal: Étape complétée avec succès');
 
     } catch (error: any) {
       console.error('❌ Erreur sélection plan:', error);
-      toast.error(error.message);
+      toast.error(error.message || 'Erreur lors de la sélection du plan');
       setSelectedPlan(null);
     } finally {
       setIsLoading(false);
@@ -180,7 +184,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onSelectPlan
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => { }}>
+    <Dialog open={true} onOpenChange={() => { }}>
       <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900 border-blue-200 dark:border-blue-700">
         <DialogHeader className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-full flex items-center justify-center animate-pulse">

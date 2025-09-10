@@ -9,8 +9,9 @@ import { PhoneFieldPro } from '@/components/ui/phone-field-pro';
 import { PasswordFieldPro } from '@/components/ui/password-field-pro';
 import { toast } from 'sonner';
 import AvatarUpload from '@/components/ui/avatar-upload';
+import { useWorkflow } from '@/contexts/WorkflowProvider';
 import '../styles/whatsapp-theme.css';
-import { AdminCreationModalProps } from '@/types/workflow.types';
+import MiniStepProgress from '@/components/ui/MiniStepProgress';
 
 interface FormData {
   firstName: string;
@@ -21,12 +22,8 @@ interface FormData {
   avatarUrl: string;
 }
 
-export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
-  isOpen,
-  onComplete,
-  onClose,
-  selectedPlan
-}) => {
+export const AdminCreationModal = () => {
+  const { state, completeStep } = useWorkflow();
   const [currentStep, setCurrentStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -40,23 +37,20 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Réinitialiser le formulaire quand le modal s'ouvre
+  // Vérifier si c'est l'étape actuelle
+  if (state.currentStep !== 'admin') {
+    return null;
+  }
+
+  // Pré-remplir avec les données existantes si disponibles
   useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        password: '',
-        avatarUrl: ''
-      });
-      setCurrentStep(1);
-      setShowSuccess(false);
-      setAvatarPreview(null);
-      setIsLoading(false);
+    if (state.stepData?.admin) {
+      setFormData(prev => ({
+        ...prev,
+        ...state.stepData.admin
+      }));
     }
-  }, [isOpen]);
+  }, [state.stepData]);
 
   const handleAvatarChange = (file: File) => {
     const reader = new FileReader();
@@ -163,9 +157,13 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
       toast.success(`Administrateur ${formData.firstName} créé avec succès ! 🎉`);
 
       // Délai avant fermeture
-      setTimeout(() => {
-        onComplete(data);
-        onClose();
+      setTimeout(async () => {
+        try {
+          await completeStep('admin');
+          console.log('✅ AdminCreationModal: Étape complétée avec succès');
+        } catch (stepError) {
+          console.error('❌ AdminCreationModal: Erreur lors de la complétion de l\'étape:', stepError);
+        }
       }, 2000);
 
     } catch (error: any) {
@@ -178,7 +176,7 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
 
   if (showSuccess) {
     return (
-      <WhatsAppModal isOpen={isOpen} onClose={onClose}>
+      <WhatsAppModal isOpen={true} onClose={() => { }}>
         <div className="text-center p-8">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <div className="text-green-500 text-3xl">✅</div>
@@ -204,8 +202,11 @@ export const AdminCreationModal: React.FC<AdminCreationModalProps> = ({
   };
 
   return (
-    <WhatsAppModal isOpen={isOpen} onClose={onClose}>
+    <WhatsAppModal isOpen={true} onClose={() => {}}>
       <div className="max-w-4xl mx-auto">
+        <div className="mb-4">
+          <MiniStepProgress currentStep={state.currentStep} completedSteps={state.completedSteps} />
+        </div>
         <AvatarUpload
           avatarPreview={avatarPreview}
           onAvatarChange={handleAvatarChange}

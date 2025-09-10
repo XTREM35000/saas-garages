@@ -9,19 +9,10 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { WhatsAppModal } from './ui/whatsapp-modal';
 import { CheckCircle, Search, AlertCircle } from 'lucide-react';
+import { useWorkflow } from '@/contexts/WorkflowProvider';
+import MiniStepProgress from '@/components/ui/MiniStepProgress';
 
-interface SmsValidationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onComplete: (validationData: any) => void;
-  onSubmit: (validationData: any) => void;  // Ajout du type de paramètre
-  organizationData?: {
-    id: string;
-    name: string;
-    slug?: string;
-    phone: string;
-  };
-}
+// Props supprimées - maintenant gérées par le contexte
 
 interface Organization {
   id: string;
@@ -30,13 +21,8 @@ interface Organization {
   phone: string;
 }
 
-export const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
-  isOpen,
-  onClose,
-  onComplete,
-  onSubmit,
-  organizationData
-}) => {
+export const SmsValidationModal = () => {
+  const { state, completeStep } = useWorkflow();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrganization, setSelectedOrganization] = useState<string>('');
   const [slugInput, setSlugInput] = useState('');
@@ -46,12 +32,15 @@ export const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
   const [isSlugValid, setIsSlugValid] = useState(false);
   const [foundOrganization, setFoundOrganization] = useState<Organization | null>(null);
 
+  // Vérifier si c'est l'étape actuelle
+  if (state.currentStep !== 'sms_validation') {
+    return null;
+  }
+
   // Charger les organisations
   useEffect(() => {
-    if (isOpen) {
-      loadOrganizations();
-    }
-  }, [isOpen]);
+    loadOrganizations();
+  }, []);
 
   const loadOrganizations = async () => {
     try {
@@ -102,16 +91,14 @@ export const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
     }
   };
 
-  // Réinitialiser le formulaire
+  // Pré-remplir avec les données existantes si disponibles
   useEffect(() => {
-    if (isOpen) {
-      setSelectedOrganization('');
-      setSlugInput('');
-      setCode('');
-      setIsSlugValid(false);
-      setFoundOrganization(null);
+    if (state.stepData?.sms_validation) {
+      setSelectedOrganization(state.stepData.sms_validation.selectedOrganization || '');
+      setSlugInput(state.stepData.sms_validation.slugInput || '');
+      setCode(state.stepData.sms_validation.code || '');
     }
-  }, [isOpen]);
+  }, [state.stepData]);
 
   // Si organizationData est fourni, l'utiliser directement
   useEffect(() => {
@@ -168,14 +155,14 @@ export const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
           validationId: insertedValidation.id
         };
 
-        // Important: d'abord onComplete pour mise à jour du workflow
-        await onComplete(validationData);
-        
-        // Ensuite fermer le modal
-        onClose();
-        
-        // Enfin, déclencher la transition vers l'étape suivante
-        onSubmit(validationData);
+        // Utiliser la nouvelle architecture
+        try {
+          await completeStep('sms_validation');
+          console.log('✅ SmsValidationModal: Étape complétée avec succès');
+        } catch (stepError) {
+          console.error('❌ SmsValidationModal: Erreur lors de la complétion de l\'étape:', stepError);
+          toast.error('Erreur lors de la sauvegarde de la validation SMS');
+        }
 
       } else {
         throw new Error('Code invalide');
@@ -191,8 +178,11 @@ export const SmsValidationModal: React.FC<SmsValidationModalProps> = ({
   const selectedOrgData = organizations.find(org => org.id === selectedOrganization);
 
   return (
-    <WhatsAppModal isOpen={isOpen} onClose={onClose}>
+    <WhatsAppModal isOpen={true} onClose={() => { }}>
       <div className="p-6 max-w-md mx-auto">
+        <div className="mb-4">
+          <MiniStepProgress currentStep={state.currentStep} completedSteps={state.completedSteps} />
+        </div>
         <h2 className="text-2xl font-bold text-[#128C7E] mb-6 text-center">
           Validation SMS Organisation
         </h2>
